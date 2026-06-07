@@ -1,0 +1,20 @@
+swift-google-slides-view
+
+This package includes material derived from third-party projects:
+
+1. md2googleslides
+   https://github.com/googleworkspace/md2googleslides
+   Copyright 2016 Google Inc.
+   Licensed under the Apache License, Version 2.0.
+   - Test fixtures: Tests/GSlidesSchemaTests/Fixtures/blank_presentation.json,
+     mock_presentation.json
+   - Layout matching rules (GSlidesLayout) are a Swift port of
+     src/layout/match_layout.ts
+
+2. Google Slides API discovery document
+   https://slides.googleapis.com/$discovery/rest?version=v1
+   Vendored at Sources/GSlidesSchema/Resources/Spec/slides-api-discovery-v1.json
+   as the pinned schema source of truth.
+
+"Google Slides" is a trademark of Google LLC. This project is not affiliated
+with, endorsed by, or sponsored by Google.
