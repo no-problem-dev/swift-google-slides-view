@@ -40,7 +40,7 @@ let package = Package(
         ),
         .target(name: "GSlidesLayout", dependencies: ["GSlidesSchema"]),
         .target(name: "GSlidesAssembly", dependencies: ["GSlidesSchema"]),
-        .target(name: "GSlidesPrompt", dependencies: ["GSlidesSchema"]),
+        .target(name: "GSlidesPrompt", dependencies: ["GSlidesSchema", "GSlidesLayout"]),
         .target(name: "GSlidesA2A", dependencies: [
             "GSlidesSchema",
             "GSlidesAssembly",
