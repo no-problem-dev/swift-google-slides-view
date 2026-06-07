@@ -56,5 +56,6 @@ let package = Package(
         .testTarget(name: "GSlidesAssemblyTests", dependencies: ["GSlidesAssembly"]),
         .testTarget(name: "GSlidesPromptTests", dependencies: ["GSlidesPrompt"]),
         .testTarget(name: "GSlidesA2ATests", dependencies: ["GSlidesA2A"]),
+        .testTarget(name: "GSlidesRendererTests", dependencies: ["GSlidesRenderer", "GSlidesPrompt"]),
     ]
 )

@@ -23,15 +23,35 @@ Google Slides API の presentation スキーマ（のセマンティック・サ
 | `GSlidesA2A` | A2A Artifact/DataPart ⇄ schema coding、ストリームイベント写像 | + A2ACore |
 | `GSlidesRenderer` | SwiftUI レンダラ（16:9 キャンバス、EMU→pt） | GSlidesSchema, GSlidesLayout |
 
+## 使い方
+
+```swift
+// 受信側（A2A ストリーム → 表示）
+var assembler = GSlidesArtifactAssembler()
+for try await event in artifactEvents {           // TaskArtifactUpdateEvent
+    try assembler.apply(event)                    // gslides 以外の artifact は自動スキップ
+}
+GSlidesDeckView(presentation: assembler.presentation!)
+
+// 生成側（LLM 構造化出力 → 配信）
+let schema = try GSlidesGenerationContract.jsonSchemaData()  // モデルに渡す JSON Schema
+let presentation = try GSlidesGenerationContract.presentation(from: llmOutput)  // validate + expand
+let event = try GSlidesArtifactCoding.envelopeEvent(
+    taskId: taskId, contextId: contextId, artifactId: "deck", presentation: presentation
+)
+```
+
+スナップショット確認: `GSLIDES_SNAPSHOT_DIR=/tmp/snap swift test --filter SnapshotDumpTests`
+
 ## ロードマップ
 
 - [x] M0 scaffold + vendored spec
-- [ ] M1 GSlidesSchema: fixtures round-trip + enum parity
-- [ ] M2 GSlidesLayout: md2googleslides ルール移植 parity
-- [ ] M3 GSlidesAssembly: reducer（append / 全置換 / lastChunk / unknown layout first-class）
-- [ ] M4 GSlidesA2A: イベント写像 + A2AInProcess E2E
-- [ ] M5 GSlidesPrompt: validation sandwich
-- [ ] M6 GSlidesRenderer: golden snapshot
+- [x] M1 GSlidesSchema: fixtures round-trip + enum parity
+- [x] M2 GSlidesLayout: md2googleslides ルール移植 parity
+- [x] M3 GSlidesAssembly: reducer（append / 全置換 / lastChunk / unknown layout first-class）
+- [x] M4 GSlidesA2A: イベント写像 + ワイヤ round-trip
+- [x] M5 GSlidesPrompt: validation sandwich
+- [x] M6 GSlidesRenderer: CLI ImageRenderer スモーク + スナップショットダンプ
 - [ ] M7 デモ統合（A2AResearchDemo content 層）
 
 ## License
