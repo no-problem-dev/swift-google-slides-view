@@ -84,6 +84,18 @@ public enum GSlidesArtifactCoding {
         return try JSONDecoder().decode(Presentation.self, from: payload)
     }
 
+    // MARK: Artifact builders (for servers emitting via their own TaskUpdater / event queue)
+
+    /// Envelope artifact: the full presentation as one DataPart.
+    public static func envelopeArtifact(id: ArtifactID, presentation: Presentation) throws -> Artifact {
+        try artifact(id: id, payload: presentation)
+    }
+
+    /// Single-slide artifact for append events.
+    public static func slideArtifact(id: ArtifactID, page: Page) throws -> Artifact {
+        try artifact(id: id, payload: page)
+    }
+
     // MARK: Coding helpers
 
     static func artifact(id: ArtifactID, payload: some Encodable) throws -> Artifact {

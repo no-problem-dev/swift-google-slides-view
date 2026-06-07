@@ -73,3 +73,37 @@ import GSlidesPrompt
         #expect(render(GSlidesDeckView(presentation: presentation)) != nil)
     }
 }
+
+@MainActor
+@Suite struct DeckNavigationViewTests {
+    func navPresentation() throws -> Presentation {
+        let json = """
+        {"title": "Nav", "slides": [
+            {"layout": "TITLE", "title": "One", "subtitle": "s"},
+            {"title": "Two", "bodies": [{"bullets": ["a"]}]}
+        ]}
+        """
+        return try GSlidesGenerationContract.presentation(from: Data(json.utf8))
+    }
+
+    func renderNav(_ view: some View) -> CGImage? {
+        let renderer = ImageRenderer(content: view.frame(width: 600, height: 400))
+        return renderer.cgImage
+    }
+
+    @Test func carouselRenders() throws {
+        #expect(renderNav(GSlidesCarouselView(presentation: try navPresentation())) != nil)
+    }
+
+    @Test func carouselShowsGeneratingCardWhenIncomplete() throws {
+        #expect(renderNav(GSlidesCarouselView(presentation: try navPresentation(), isComplete: false)) != nil)
+    }
+
+    @Test func stackRenders() throws {
+        #expect(renderNav(GSlidesStackView(presentation: try navPresentation())) != nil)
+    }
+
+    @Test func fullScreenRenders() throws {
+        #expect(renderNav(GSlidesFullScreenView(presentation: try navPresentation(), initialIndex: 1)) != nil)
+    }
+}
