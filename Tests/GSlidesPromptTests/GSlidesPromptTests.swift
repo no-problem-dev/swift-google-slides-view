@@ -138,3 +138,39 @@ import GSlidesSchema
         #expect(decoded.slides?.count == 3)
     }
 }
+
+@Suite struct PromptBlockTests {
+    /// The A2UI invariant: the bundled example never contradicts the schema.
+    @Test func exampleValidatesAgainstSchema() throws {
+        let deck = try GSlidesGenerationContract.exampleDeck()
+        #expect(deck.slides.count >= 3)
+    }
+
+    /// The example is a real quality bar: it exercises several distinct layouts.
+    @Test func exampleExercisesMultipleLayouts() throws {
+        let deck = try GSlidesGenerationContract.exampleDeck()
+        let layouts = Set(deck.slides.map { DeckExpander.resolvedLayout(of: $0).rawValue })
+        #expect(layouts.count >= 3)
+        #expect(layouts.contains("TITLE"))
+        #expect(layouts.contains("BIG_NUMBER"))
+        #expect(layouts.contains("TITLE_AND_TWO_COLUMNS"))
+    }
+
+    /// The example expands end-to-end into a profile presentation (no dangling references).
+    @Test func examplePresentationExpands() throws {
+        let presentation = try GSlidesGenerationContract.presentation(from: Data(GSlidesGenerationContract.exampleDeckJSON.utf8))
+        #expect(presentation.slides?.count == 4)
+        #expect(presentation.layouts?.isEmpty == false)
+    }
+
+    /// The composed prompt block carries both the schema (all layouts) and the example.
+    @Test func promptBlockContainsSchemaAndExample() {
+        let block = GSlidesGenerationContract.promptBlock()
+        #expect(block.contains("SLIDE DECK SCHEMA"))
+        #expect(block.contains("EXAMPLE"))
+        for layout in GSlidesGenerationContract.allowedLayouts {
+            #expect(block.contains(layout))
+        }
+        #expect(block.contains("Quarterly Product Review")) // the example title
+    }
+}
