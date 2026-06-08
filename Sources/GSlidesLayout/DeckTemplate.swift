@@ -139,8 +139,9 @@ public enum DeckTemplate {
         case .bigNumber:
             return [] // the number itself is the accent
         default:
-            // title-band layouts: an accent underline under the title
-            return [bar("\(slideId)-accent", M, 1_500_000, 880_000, 72_000)]
+            // title-band layouts: accent underline in the gap below the title band (y 685800+880000
+            // = 1_565_800) and above the body (y 1_720_000) — never inside the title box.
+            return [bar("\(slideId)-accent", M, 1_610_000, 880_000, 72_000)]
         }
     }
 
