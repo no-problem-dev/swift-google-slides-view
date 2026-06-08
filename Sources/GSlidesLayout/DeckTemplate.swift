@@ -107,6 +107,64 @@ public enum DeckTemplate {
         PlaceholderSpec(x: margin, y: margin, w: contentW, h: 880_000, fontSizePt: 28, themeColor: .text1, bold: true, align: .start, vAlign: .middle)
     }
 
+    // MARK: - Decorations (accent rules / bars, as filled shapes — color and structure as data)
+
+    /// A filled accent rectangle (the renderer draws shapeBackgroundFill).
+    static func bar(_ id: String, _ x: Double, _ y: Double, _ w: Double, _ h: Double, _ color: ThemeColorType = .accent1) -> PageElement {
+        PageElement(
+            objectId: id,
+            size: Size(width: Dimension(magnitude: w, unit: .emu), height: Dimension(magnitude: h, unit: .emu)),
+            transform: AffineTransform(scaleX: 1, scaleY: 1, translateX: x, translateY: y, unit: .emu),
+            shape: Shape(
+                shapeType: .rectangle,
+                shapeProperties: ShapeProperties(shapeBackgroundFill: ShapeBackgroundFill(
+                    solidFill: SolidFill(color: OpaqueColor(themeColor: color))))
+            )
+        )
+    }
+
+    /// Accent decorations for a layout — color and visual structure that lift a slide above
+    /// "black text on white", expressed as shapes (data), not renderer code.
+    public static func decorations(for layout: PredefinedLayout, slideId: String) -> [PageElement] {
+        let M = margin
+        switch layout {
+        case .title:
+            // a short centered accent rule above the title
+            return [bar("\(slideId)-accent", (pageW - 360_000) / 2, 1_560_000, 360_000, 78_000)]
+        case .sectionHeader:
+            // a bold accent rule above the section title
+            return [bar("\(slideId)-accent", M, 1_770_000, 1_000_000, 96_000)]
+        case .mainPoint:
+            return [bar("\(slideId)-accent", M, 1_460_000, 880_000, 84_000)]
+        case .bigNumber:
+            return [] // the number itself is the accent
+        default:
+            // title-band layouts: an accent underline under the title
+            return [bar("\(slideId)-accent", M, 1_500_000, 880_000, 72_000)]
+        }
+    }
+
+    /// Page-number footer text for content slides (TITLE / SECTION get none). Baked as plain text
+    /// styled muted at bottom-right — a small "designed deck" signal.
+    public static func footer(slideId: String, number: Int, layout: PredefinedLayout) -> PageElement? {
+        switch layout {
+        case .title, .sectionHeader: return nil
+        default:
+            let spec = PlaceholderSpec(x: pageW - margin - 600_000, y: pageH - 520_000, w: 600_000, h: 300_000, fontSizePt: 11, themeColor: .dark2, bold: false, align: .end, vAlign: .middle)
+            return PageElement(
+                objectId: "\(slideId)-pageno",
+                size: spec.size, transform: spec.transform,
+                shape: Shape(
+                    shapeType: .textBox,
+                    text: TextContent(textElements: [TextElement(
+                        paragraphMarker: ParagraphMarker(style: ParagraphStyle(alignment: .end)),
+                        textRun: TextRun(content: "\(number)", style: spec.defaultStyle))]),
+                    shapeProperties: ShapeProperties(contentAlignment: .middle)
+                )
+            )
+        }
+    }
+
     /// Layout pages carrying the placeholder geometry — emitted so the presentation is well-formed
     /// (and matches what `presentations.get` returns). The used placeholder types per layout drive
     /// which slots appear.

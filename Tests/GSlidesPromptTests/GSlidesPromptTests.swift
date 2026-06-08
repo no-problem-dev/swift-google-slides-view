@@ -223,3 +223,30 @@ import GSlidesLayout
         #expect(p.slides?.first?.slideProperties?.masterObjectId == DeckTemplate.masterObjectId)
     }
 }
+
+@Suite struct DeckDecorationTests {
+    func slide(_ layout: String) -> Page {
+        DeckExpander.expand(SemanticDeck(title: "x", slides: [
+            SemanticSlide(layout: layout, title: "T", bodies: [SemanticBody(text: "b")]),
+        ])).slides!.first!
+    }
+
+    @Test func contentSlidesGetAccentBarAndPageNumber() throws {
+        let s = slide("TITLE_AND_BODY")
+        // an accent-filled rectangle (no placeholder) provides the color/structure
+        let accent = (s.pageElements ?? []).first { $0.shape?.shapeType == .rectangle && $0.shape?.placeholder == nil }
+        let fill = try #require(accent?.shape?.shapeProperties?.shapeBackgroundFill?.solidFill?.color?.themeColor)
+        #expect(fill == .accent1)
+        // page number footer
+        let pageNo = (s.pageElements ?? []).first { $0.objectId.hasSuffix("-pageno") }
+        #expect(pageNo?.shape?.text?.textElements?.first?.textRun?.content == "1")
+    }
+
+    @Test func sectionAndTitleGetAccentButNoPageNumber() {
+        for layout in ["SECTION_HEADER", "TITLE"] {
+            let s = slide(layout)
+            #expect((s.pageElements ?? []).contains { $0.objectId.hasSuffix("-accent") })
+            #expect(!(s.pageElements ?? []).contains { $0.objectId.hasSuffix("-pageno") })
+        }
+    }
+}

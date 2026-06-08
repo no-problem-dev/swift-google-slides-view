@@ -60,7 +60,11 @@ public enum DeckExpander {
 
     static func page(for slide: SemanticSlide, layout: PredefinedLayout, index: Int) -> Page {
         let slideId = "slide-\(index + 1)"
-        var elements: [PageElement] = []
+        // Decorations first (drawn under content): accent rules/bars + page number.
+        var elements: [PageElement] = DeckTemplate.decorations(for: layout, slideId: slideId)
+        if let footer = DeckTemplate.footer(slideId: slideId, number: index + 1, layout: layout) {
+            elements.append(footer)
+        }
 
         if let title = slide.title {
             let type: PlaceholderType = layout == .title ? .centeredTitle : .title
