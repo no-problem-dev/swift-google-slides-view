@@ -50,16 +50,13 @@ struct TextContentView: View {
             .italic(line.style?.italic == true)
             .underline(line.style?.underline == true)
             .strikethrough(line.style?.strikethrough == true)
-            .foregroundStyle(palette.color(line.style?.foregroundColor) ?? .primary)
+            .foregroundStyle(palette.color(line.style?.foregroundColor) ?? palette.defaultText)
             .frame(maxWidth: .infinity, alignment: frameAlignment(line.alignment))
             .minimumScaleFactor(0.3)
     }
 
     private var weightDefault: Font.Weight {
-        switch placeholderType {
-        case .some(.centeredTitle), .some(.title): .semibold
-        default: .regular
-        }
+        PlaceholderTypography.weight(for: placeholderType)
     }
 
     private func frameAlignment(_ alignment: GSlidesSchema.Alignment?) -> SwiftUI.Alignment {

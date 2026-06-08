@@ -1,23 +1,25 @@
+import DesignSystem
 import GSlidesSchema
 import SwiftUI
 
 /// Horizontal carousel of slide thumbnails — the inline "deck section" representation.
 /// Slides appear as they stream in; `isComplete == false` shows a trailing progress card.
 public struct GSlidesCarouselView: View {
+    @Environment(\.colorPalette) private var colors
     public var presentation: Presentation
     public var isComplete: Bool
-    public var palette: GSlidesPalette
+    public var basePalette: any ColorPalette
     public var onSelect: ((Int) -> Void)?
 
     public init(
         presentation: Presentation,
         isComplete: Bool = true,
-        palette: GSlidesPalette = GSlidesPalette(),
+        basePalette: any ColorPalette = LightColorPalette(),
         onSelect: ((Int) -> Void)? = nil
     ) {
         self.presentation = presentation
         self.isComplete = isComplete
-        self.palette = palette
+        self.basePalette = basePalette
         self.onSelect = onSelect
     }
 
@@ -30,7 +32,7 @@ public struct GSlidesCarouselView: View {
                     Button {
                         onSelect?(index)
                     } label: {
-                        GSlidesSlideView(slide: slide, presentation: presentation, palette: palette)
+                        GSlidesSlideView(slide: slide, presentation: presentation, basePalette: basePalette)
                             .frame(width: 240)
                             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                             .overlay(
@@ -53,13 +55,13 @@ public struct GSlidesCarouselView: View {
 
     private var generatingCard: some View {
         RoundedRectangle(cornerRadius: 10, style: .continuous)
-            .fill(.quaternary.opacity(0.4))
+            .fill(colors.surfaceVariant.opacity(0.4))
             .frame(width: 240)
             .aspectRatio(16 / 9, contentMode: .fit)
             .overlay {
                 VStack(spacing: 6) {
                     ProgressView()
-                    Text("生成中…").font(.caption).foregroundStyle(.secondary)
+                    Text("生成中…").typography(.labelSmall).foregroundStyle(colors.onSurfaceVariant)
                 }
             }
     }
@@ -69,16 +71,16 @@ public struct GSlidesCarouselView: View {
 /// index back (hosts present the fullscreen pager).
 public struct GSlidesStackView: View {
     public var presentation: Presentation
-    public var palette: GSlidesPalette
+    public var basePalette: any ColorPalette
     public var onSelect: ((Int) -> Void)?
 
     public init(
         presentation: Presentation,
-        palette: GSlidesPalette = GSlidesPalette(),
+        basePalette: any ColorPalette = LightColorPalette(),
         onSelect: ((Int) -> Void)? = nil
     ) {
         self.presentation = presentation
-        self.palette = palette
+        self.basePalette = basePalette
         self.onSelect = onSelect
     }
 
@@ -89,7 +91,7 @@ public struct GSlidesStackView: View {
                     Button {
                         onSelect?(index)
                     } label: {
-                        GSlidesSlideView(slide: slide, presentation: presentation, palette: palette)
+                        GSlidesSlideView(slide: slide, presentation: presentation, basePalette: basePalette)
                             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -109,17 +111,17 @@ public struct GSlidesStackView: View {
 /// Fullscreen pager over the deck. Horizontal paging starting at `initialIndex`.
 public struct GSlidesFullScreenView: View {
     public var presentation: Presentation
-    public var palette: GSlidesPalette
+    public var basePalette: any ColorPalette
     @State private var index: Int
     @Environment(\.dismiss) private var dismiss
 
     public init(
         presentation: Presentation,
         initialIndex: Int = 0,
-        palette: GSlidesPalette = GSlidesPalette()
+        basePalette: any ColorPalette = LightColorPalette()
     ) {
         self.presentation = presentation
-        self.palette = palette
+        self.basePalette = basePalette
         _index = State(initialValue: initialIndex)
     }
 
@@ -143,7 +145,8 @@ public struct GSlidesFullScreenView: View {
         .overlay(alignment: .bottom) {
             if slides.count > 1 {
                 Text("\(index + 1) / \(slides.count)")
-                    .font(.caption.monospacedDigit())
+                    .typography(.labelSmall)
+                    .monospacedDigit()
                     .foregroundStyle(.white.opacity(0.7))
                     .padding(.bottom, 12)
             }
@@ -154,7 +157,7 @@ public struct GSlidesFullScreenView: View {
         #if os(iOS)
         TabView(selection: $index) {
             ForEach(Array(slides.enumerated()), id: \.element.objectId) { slideIndex, slide in
-                GSlidesSlideView(slide: slide, presentation: presentation, palette: palette)
+                GSlidesSlideView(slide: slide, presentation: presentation, basePalette: basePalette)
                     .padding(.horizontal, 8)
                     .tag(slideIndex)
             }
@@ -163,7 +166,7 @@ public struct GSlidesFullScreenView: View {
         #else
         VStack {
             if slides.indices.contains(index) {
-                GSlidesSlideView(slide: slides[index], presentation: presentation, palette: palette)
+                GSlidesSlideView(slide: slides[index], presentation: presentation, basePalette: basePalette)
                     .padding()
             }
             HStack(spacing: 24) {

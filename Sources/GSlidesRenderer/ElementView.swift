@@ -73,16 +73,21 @@ struct ElementView: View {
 
     @ViewBuilder
     private func shapeView(_ shape: GSlidesSchema.Shape) -> some View {
-        let fill = palette.color(shape.shapeProperties?.shapeBackgroundFill?.solidFill)
-        let outline = shape.shapeProperties?.outline
-        ZStack {
+        let props = shape.shapeProperties
+        let fill = palette.color(props?.shapeBackgroundFill?.solidFill)
+        let outline = props?.outline
+        ZStack(alignment: contentAlignment(props?.contentAlignment)) {
             if fill != nil || outline != nil {
                 shapeStyle(shape.shapeType)
                     .fill(fill ?? .clear)
                     .strokeBorder(
                         palette.color(outline?.outlineFill?.solidFill) ?? .clear,
-                        lineWidth: (outline?.weight?.pointMagnitude ?? 0) * pointScale
+                        style: StrokeStyle(
+                            lineWidth: (outline?.weight?.pointMagnitude ?? 0) * pointScale,
+                            dash: dashPattern(outline?.dashStyle, scale: pointScale)
+                        )
                     )
+                    .modifier(ShadowModifier(shadow: props?.shadow, palette: palette, scale: pointScale))
             }
             if let text = shape.text {
                 TextContentView(
@@ -93,6 +98,24 @@ struct ElementView: View {
                 )
                 .padding(4 * pointScale)
             }
+        }
+    }
+
+    private func contentAlignment(_ value: ContentAlignment?) -> SwiftUI.Alignment {
+        switch value {
+        case .some(.top): .top
+        case .some(.bottom): .bottom
+        case .some(.middle): .center
+        default: .center
+        }
+    }
+
+    private func dashPattern(_ style: DashStyle?, scale: Double) -> [CGFloat] {
+        switch style {
+        case .some(.dot): [1 * scale, 3 * scale]
+        case .some(.dash), .some(.longDash): [6 * scale, 4 * scale]
+        case .some(.dashDot), .some(.longDashDot): [6 * scale, 3 * scale, 1 * scale, 3 * scale]
+        default: []
         }
     }
 
@@ -137,6 +160,23 @@ struct ElementView: View {
         RoundedRectangle(cornerRadius: 4)
             .strokeBorder(.secondary.opacity(0.4), style: StrokeStyle(lineWidth: 1, dash: [4]))
             .overlay(SwiftUI.Image(systemName: systemImage).foregroundStyle(.secondary))
+    }
+}
+
+/// Renders a profile `Shadow` as a SwiftUI shadow (OUTER only; the profile's other states are no-ops).
+struct ShadowModifier: ViewModifier {
+    var shadow: Shadow?
+    var palette: GSlidesPalette
+    var scale: Double
+
+    func body(content: Content) -> some View {
+        if let shadow, shadow.type == .outer, shadow.propertyState != .notRendered {
+            let color = (palette.color(shadow.color) ?? .black).opacity(shadow.alpha ?? 0.4)
+            let radius = (shadow.blurRadius?.pointMagnitude ?? 4) * scale
+            content.shadow(color: color, radius: radius, x: radius * 0.3, y: radius * 0.3)
+        } else {
+            content
+        }
     }
 }
 

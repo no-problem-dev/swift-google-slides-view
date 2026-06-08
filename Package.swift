@@ -31,6 +31,9 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/no-problem-dev/swift-structured-data.git", from: "1.3.0"),
         .package(url: "https://github.com/no-problem-dev/swift-a2a.git", from: "0.5.0"),
+        // レンダラのテーミング基盤: デッキの ColorScheme を DS ColorPalette に写し、
+        // 中身もクロームも同じ @Environment(colorPalette) / Typography で描く。
+        .package(url: "https://github.com/no-problem-dev/swift-design-system.git", from: "1.4.0"),
     ],
     targets: [
         .target(
@@ -53,7 +56,11 @@ let package = Package(
             "GSlidesAssembly",
             .product(name: "A2ACore", package: "swift-a2a"),
         ]),
-        .target(name: "GSlidesRenderer", dependencies: ["GSlidesSchema", "GSlidesLayout"]),
+        .target(name: "GSlidesRenderer", dependencies: [
+            "GSlidesSchema",
+            "GSlidesLayout",
+            .product(name: "DesignSystem", package: "swift-design-system"),
+        ]),
         .testTarget(
             name: "GSlidesSchemaTests",
             dependencies: ["GSlidesSchema"],

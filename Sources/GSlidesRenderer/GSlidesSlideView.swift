@@ -1,3 +1,4 @@
+import DesignSystem
 import GSlidesLayout
 import GSlidesSchema
 import SwiftUI
@@ -6,19 +7,30 @@ import SwiftUI
 /// Elements carrying geometry (size + transform, possibly inherited from their
 /// layout) are placed absolutely in page coordinates; semantic-tier elements
 /// without geometry fall back to a placeholder-type-driven stack layout.
+///
+/// Colors come from the deck's theme: the master/layout/slide `ColorScheme` is
+/// projected onto a DS `ColorPalette` (`DeckColorPalette`), which drives both the
+/// slide content and any DS chrome via `@Environment(\.colorPalette)`.
 public struct GSlidesSlideView: View {
     public var slide: Page
     public var presentation: Presentation
-    public var palette: GSlidesPalette
+    /// Base DS palette for slots the deck doesn't define (defaults to light).
+    public var basePalette: any ColorPalette
 
-    public init(slide: Page, presentation: Presentation, palette: GSlidesPalette = GSlidesPalette()) {
+    public init(slide: Page, presentation: Presentation, basePalette: any ColorPalette = LightColorPalette()) {
         self.slide = slide
         self.presentation = presentation
-        self.palette = palette
+        self.basePalette = basePalette
+    }
+
+    private var deckPalette: DeckColorPalette {
+        DeckColorPalette(scheme: DeckTheme.colorScheme(for: slide, in: presentation), base: basePalette)
     }
 
     public var body: some View {
         let pageSize = PageGeometry.pageSize(of: presentation)
+        let deckPalette = deckPalette
+        let palette = GSlidesPalette(deck: deckPalette)
         GeometryReader { proxy in
             let emuScale = proxy.size.width / pageSize.width
             let pointScale = proxy.size.width / (pageSize.width / EMU.perPoint)
@@ -27,7 +39,7 @@ public struct GSlidesSlideView: View {
             let flowing = elements.filter { PageGeometry.frame(of: $0) == nil }
 
             ZStack(alignment: .topLeading) {
-                Color.white
+                DeckTheme.backgroundColor(for: slide, in: presentation, palette: deckPalette)
                 ForEach(positioned, id: \.objectId) { element in
                     let frame = PageGeometry.frame(of: element)!
                     ElementView(element: element, pointScale: pointScale, palette: palette)
@@ -47,6 +59,8 @@ public struct GSlidesSlideView: View {
         }
         .aspectRatio(pageSize.width / pageSize.height, contentMode: .fit)
         .clipped()
+        // Chrome that reads @Environment(\.colorPalette) (DS components) shares the deck's theme.
+        .environment(\.colorPalette, deckPalette)
     }
 
     private var layoutName: PredefinedLayout? {
@@ -123,12 +137,12 @@ struct SemanticSlideLayout: View {
 /// Apps with their own chrome should drive GSlidesSlideView directly.
 public struct GSlidesDeckView: View {
     public var presentation: Presentation
-    public var palette: GSlidesPalette
+    public var basePalette: any ColorPalette
     @State private var index = 0
 
-    public init(presentation: Presentation, palette: GSlidesPalette = GSlidesPalette()) {
+    public init(presentation: Presentation, basePalette: any ColorPalette = LightColorPalette()) {
         self.presentation = presentation
-        self.palette = palette
+        self.basePalette = basePalette
     }
 
     private var slides: [Page] { presentation.slides ?? [] }
@@ -136,7 +150,7 @@ public struct GSlidesDeckView: View {
     public var body: some View {
         VStack(spacing: 12) {
             if slides.indices.contains(index) {
-                GSlidesSlideView(slide: slides[index], presentation: presentation, palette: palette)
+                GSlidesSlideView(slide: slides[index], presentation: presentation, basePalette: basePalette)
                     .shadow(radius: 4)
             } else {
                 ContentUnavailableView("No slides", systemImage: "rectangle.on.rectangle.slash")

@@ -21,7 +21,15 @@ Google Slides API の presentation スキーマ（のセマンティック・サ
 | `GSlidesAssembly` | チャンク列 `(payload, append, lastChunk)` → presentation 状態の純関数 reducer | GSlidesSchema |
 | `GSlidesPrompt` | LLM 構造化出力スキーマ + few-shot 例（契約の提供のみ） | GSlidesSchema |
 | `GSlidesA2A` | A2A Artifact/DataPart ⇄ schema coding、ストリームイベント写像 | + A2ACore |
-| `GSlidesRenderer` | SwiftUI レンダラ（16:9 キャンバス、EMU→pt） | GSlidesSchema, GSlidesLayout |
+| `GSlidesRequests` | batchUpdate write モデル（44 Request + Response の型安全ミラー） | GSlidesSchema |
+| `GSlidesRenderer` | SwiftUI レンダラ（16:9 キャンバス、EMU→pt、デッキテーマ → DS ColorPalette） | + DesignSystem |
+
+## テーマ
+
+デッキの `ColorScheme`（master/layout/slide 継承）を DesignSystem の `ColorPalette` に射影する（`DeckColorPalette`）。
+`ACCENT1→primary`、`TEXT1/DARK1→onSurface`、`BACKGROUND1/LIGHT1→background` のように DS のセマンティックスロットを埋め、
+スライドの中身とクロームを同じ `@Environment(\.colorPalette)` で描く — 「Google Slides のテーマ忠実再現」と「デザインシステム統一」を両立する。
+`basePalette` でデッキが定義しないスロットのフォールバックを差し替え可能。
 
 ## 使い方
 
