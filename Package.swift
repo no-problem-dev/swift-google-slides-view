@@ -17,6 +17,9 @@ let package = Package(
         .library(name: "GSlidesAssembly", targets: ["GSlidesAssembly"]),
         // LLM 構造化出力スキーマと few-shot 例。LLM クライアントには依存しない（契約の提供のみ）。
         .library(name: "GSlidesPrompt", targets: ["GSlidesPrompt"]),
+        // batchUpdate write モデル（46 Request/Response を含む Codable ミラー）。
+        // 編集 API のリクエストを型安全に組み立てる。描画には不要。
+        .library(name: "GSlidesRequests", targets: ["GSlidesRequests"]),
         // A2A 統合アダプタ: Artifact/DataPart ⇄ GSlidesSchema coding、
         // TaskArtifactUpdateEvent → GSlidesAssembly プリミティブの写像、metadata 語彙。
         // A2A 依存はこのターゲットだけに隔離する。
@@ -41,6 +44,10 @@ let package = Package(
         .target(name: "GSlidesLayout", dependencies: ["GSlidesSchema"]),
         .target(name: "GSlidesAssembly", dependencies: ["GSlidesSchema"]),
         .target(name: "GSlidesPrompt", dependencies: ["GSlidesSchema", "GSlidesLayout"]),
+        .target(name: "GSlidesRequests", dependencies: [
+            "GSlidesSchema",
+            .product(name: "StructuredDataCore", package: "swift-structured-data"),
+        ]),
         .target(name: "GSlidesA2A", dependencies: [
             "GSlidesSchema",
             "GSlidesAssembly",
@@ -55,6 +62,7 @@ let package = Package(
         .testTarget(name: "GSlidesLayoutTests", dependencies: ["GSlidesLayout"]),
         .testTarget(name: "GSlidesAssemblyTests", dependencies: ["GSlidesAssembly"]),
         .testTarget(name: "GSlidesPromptTests", dependencies: ["GSlidesPrompt"]),
+        .testTarget(name: "GSlidesRequestsTests", dependencies: ["GSlidesRequests"]),
         .testTarget(name: "GSlidesA2ATests", dependencies: ["GSlidesA2A"]),
         .testTarget(name: "GSlidesRendererTests", dependencies: ["GSlidesRenderer", "GSlidesPrompt"]),
     ]
