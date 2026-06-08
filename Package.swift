@@ -68,7 +68,7 @@ let package = Package(
         ),
         .testTarget(name: "GSlidesLayoutTests", dependencies: ["GSlidesLayout"]),
         .testTarget(name: "GSlidesAssemblyTests", dependencies: ["GSlidesAssembly"]),
-        .testTarget(name: "GSlidesPromptTests", dependencies: ["GSlidesPrompt"]),
+        .testTarget(name: "GSlidesPromptTests", dependencies: ["GSlidesPrompt", "GSlidesLayout"]),
         .testTarget(name: "GSlidesRequestsTests", dependencies: ["GSlidesRequests"]),
         .testTarget(name: "GSlidesA2ATests", dependencies: ["GSlidesA2A"]),
         .testTarget(name: "GSlidesRendererTests", dependencies: ["GSlidesRenderer", "GSlidesPrompt"]),

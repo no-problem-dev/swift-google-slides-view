@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 import GSlidesSchema
+import GSlidesLayout
 @testable import GSlidesPrompt
 
 @Suite struct GenerationContractTests {
@@ -181,5 +182,44 @@ import GSlidesSchema
             #expect(block.contains(layout))
         }
         #expect(block.contains(GSlidesGenerationContract.exampleDeck().title)) // the example title
+    }
+}
+
+@Suite struct DeckTemplateTests {
+    @Test func masterCarriesThemeColorScheme() throws {
+        let p = DeckExpander.expand(SemanticDeck(title: "x", slides: [SemanticSlide(title: "A")]))
+        let scheme = try #require(p.masters?.first?.pageProperties?.colorScheme)
+        #expect(scheme.rgb(for: .accent1) != nil)
+        #expect(scheme.rgb(for: .text1) != nil)
+        #expect(scheme.rgb(for: .background1) != nil)
+    }
+
+    @Test func slideElementsCarryBakedGeometryAndStyle() throws {
+        let p = DeckExpander.expand(SemanticDeck(title: "x", slides: [
+            SemanticSlide(layout: "BIG_NUMBER", title: "42%", big: true, bodies: [SemanticBody(text: "of teams")]),
+        ]))
+        let title = try #require(p.slides?.first?.pageElements?.first { $0.shape?.placeholder?.type == .title })
+        // geometry baked in (renderer's positioned path can place it)
+        #expect(title.size?.width?.magnitude != nil)
+        #expect(title.transform?.translateX != nil)
+        // the big number is accent-colored and large, from the template
+        let run = try #require(title.shape?.text?.textElements?.first?.textRun)
+        #expect(run.style?.foregroundColor?.opaqueColor?.themeColor == .accent1)
+        #expect((run.style?.fontSize?.pointMagnitude ?? 0) >= 80)
+    }
+
+    @Test func layoutPagesReferenceMasterAndHavePlaceholders() throws {
+        let p = DeckExpander.expand(SemanticDeck(title: "x", slides: [
+            SemanticSlide(layout: "TITLE_AND_TWO_COLUMNS", title: "T", bodies: [SemanticBody(text: "l"), SemanticBody(text: "r")]),
+        ]))
+        let layout = try #require(p.layouts?.first)
+        #expect(layout.layoutProperties?.masterObjectId == DeckTemplate.masterObjectId)
+        let bodyIndices = (layout.pageElements ?? []).compactMap { $0.shape?.placeholder }.filter { $0.type == .body }.compactMap(\.index)
+        #expect(Set(bodyIndices) == [0, 1])
+    }
+
+    @Test func slideReferencesTemplateMaster() {
+        let p = DeckExpander.expand(SemanticDeck(title: "x", slides: [SemanticSlide(title: "A")]))
+        #expect(p.slides?.first?.slideProperties?.masterObjectId == DeckTemplate.masterObjectId)
     }
 }
