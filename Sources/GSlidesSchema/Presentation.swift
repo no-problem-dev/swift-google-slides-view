@@ -43,6 +43,7 @@ public struct Presentation: Codable, Hashable, Sendable {
     public var slides: [Page]?
     public var layouts: [Page]?
     public var masters: [Page]?
+    public var notesMaster: Page?
 
     public init(
         presentationId: String? = nil,
@@ -52,7 +53,8 @@ public struct Presentation: Codable, Hashable, Sendable {
         pageSize: Size? = nil,
         slides: [Page]? = nil,
         layouts: [Page]? = nil,
-        masters: [Page]? = nil
+        masters: [Page]? = nil,
+        notesMaster: Page? = nil
     ) {
         self.presentationId = presentationId
         self.title = title
@@ -62,5 +64,6 @@ public struct Presentation: Codable, Hashable, Sendable {
         self.slides = slides
         self.layouts = layouts
         self.masters = masters
+        self.notesMaster = notesMaster
     }
 }

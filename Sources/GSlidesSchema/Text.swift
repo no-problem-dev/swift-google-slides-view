@@ -1,8 +1,11 @@
 public struct TextContent: Codable, Hashable, Sendable {
     public var textElements: [TextElement]?
+    /// Bulleted lists in this text, keyed by list ID (referenced by `Bullet.listId`).
+    public var lists: [String: List]?
 
-    public init(textElements: [TextElement]? = nil) {
+    public init(textElements: [TextElement]? = nil, lists: [String: List]? = nil) {
         self.textElements = textElements
+        self.lists = lists
     }
 }
 
@@ -11,17 +14,62 @@ public struct TextElement: Codable, Hashable, Sendable {
     public var endIndex: Int?
     public var paragraphMarker: ParagraphMarker?
     public var textRun: TextRun?
+    public var autoText: AutoText?
 
     public init(
         startIndex: Int? = nil,
         endIndex: Int? = nil,
         paragraphMarker: ParagraphMarker? = nil,
-        textRun: TextRun? = nil
+        textRun: TextRun? = nil,
+        autoText: AutoText? = nil
     ) {
         self.startIndex = startIndex
         self.endIndex = endIndex
         self.paragraphMarker = paragraphMarker
         self.textRun = textRun
+        self.autoText = autoText
+    }
+}
+
+public struct AutoTextType: SpecEnum {
+    public var rawValue: String
+    public init(rawValue: String) { self.rawValue = rawValue }
+
+    public static let unspecified = Self(rawValue: "TYPE_UNSPECIFIED")
+    public static let slideNumber = Self(rawValue: "SLIDE_NUMBER")
+
+    public static var knownValues: [Self] { [.unspecified, .slideNumber] }
+}
+
+/// Dynamic text (e.g. slide number) resolved at render time.
+public struct AutoText: Codable, Hashable, Sendable {
+    public var type: AutoTextType?
+    public var content: String?
+    public var style: TextStyle?
+
+    public init(type: AutoTextType? = nil, content: String? = nil, style: TextStyle? = nil) {
+        self.type = type
+        self.content = content
+        self.style = style
+    }
+}
+
+/// A bulleted list's per-nesting-level styling, keyed by depth (0-based, as string keys).
+public struct List: Codable, Hashable, Sendable {
+    public var listId: String?
+    public var nestingLevel: [String: NestingLevel]?
+
+    public init(listId: String? = nil, nestingLevel: [String: NestingLevel]? = nil) {
+        self.listId = listId
+        self.nestingLevel = nestingLevel
+    }
+}
+
+public struct NestingLevel: Codable, Hashable, Sendable {
+    public var bulletStyle: TextStyle?
+
+    public init(bulletStyle: TextStyle? = nil) {
+        self.bulletStyle = bulletStyle
     }
 }
 
@@ -87,6 +135,8 @@ public struct TextStyle: Codable, Hashable, Sendable {
     public var fontSize: Dimension?
     public var foregroundColor: OptionalColor?
     public var backgroundColor: OptionalColor?
+    public var weightedFontFamily: WeightedFontFamily?
+    public var link: Link?
 
     public init(
         bold: Bool? = nil,
@@ -98,7 +148,9 @@ public struct TextStyle: Codable, Hashable, Sendable {
         fontFamily: String? = nil,
         fontSize: Dimension? = nil,
         foregroundColor: OptionalColor? = nil,
-        backgroundColor: OptionalColor? = nil
+        backgroundColor: OptionalColor? = nil,
+        weightedFontFamily: WeightedFontFamily? = nil,
+        link: Link? = nil
     ) {
         self.bold = bold
         self.italic = italic
@@ -110,6 +162,8 @@ public struct TextStyle: Codable, Hashable, Sendable {
         self.fontSize = fontSize
         self.foregroundColor = foregroundColor
         self.backgroundColor = backgroundColor
+        self.weightedFontFamily = weightedFontFamily
+        self.link = link
     }
 }
 

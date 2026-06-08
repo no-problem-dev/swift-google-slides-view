@@ -12,6 +12,10 @@ public struct PageElement: Codable, Hashable, Sendable {
     public var line: Line?
     public var table: Table?
     public var elementGroup: Group?
+    public var video: Video?
+    public var wordArt: WordArt?
+    public var sheetsChart: SheetsChart?
+    public var speakerSpotlight: SpeakerSpotlight?
 
     public init(
         objectId: String,
@@ -23,7 +27,11 @@ public struct PageElement: Codable, Hashable, Sendable {
         image: Image? = nil,
         line: Line? = nil,
         table: Table? = nil,
-        elementGroup: Group? = nil
+        elementGroup: Group? = nil,
+        video: Video? = nil,
+        wordArt: WordArt? = nil,
+        sheetsChart: SheetsChart? = nil,
+        speakerSpotlight: SpeakerSpotlight? = nil
     ) {
         self.objectId = objectId
         self.size = size
@@ -35,6 +43,10 @@ public struct PageElement: Codable, Hashable, Sendable {
         self.line = line
         self.table = table
         self.elementGroup = elementGroup
+        self.video = video
+        self.wordArt = wordArt
+        self.sheetsChart = sheetsChart
+        self.speakerSpotlight = speakerSpotlight
     }
 
     public enum Kind: Hashable, Sendable {
@@ -43,6 +55,11 @@ public struct PageElement: Codable, Hashable, Sendable {
         case line(Line)
         case table(Table)
         case elementGroup(Group)
+        case video(Video)
+        case wordArt(WordArt)
+        case sheetsChart(SheetsChart)
+        case speakerSpotlight(SpeakerSpotlight)
+        /// A union member outside this profile (none of the spec's element kinds present).
         case unknown
     }
 
@@ -52,6 +69,10 @@ public struct PageElement: Codable, Hashable, Sendable {
         if let line { return .line(line) }
         if let table { return .table(table) }
         if let elementGroup { return .elementGroup(elementGroup) }
+        if let video { return .video(video) }
+        if let wordArt { return .wordArt(wordArt) }
+        if let sheetsChart { return .sheetsChart(sheetsChart) }
+        if let speakerSpotlight { return .speakerSpotlight(speakerSpotlight) }
         return .unknown
     }
 }
@@ -163,13 +184,35 @@ public struct ShapeBackgroundFill: Codable, Hashable, Sendable {
     }
 }
 
+public struct ContentAlignment: SpecEnum {
+    public var rawValue: String
+    public init(rawValue: String) { self.rawValue = rawValue }
+
+    public static let unspecified = Self(rawValue: "CONTENT_ALIGNMENT_UNSPECIFIED")
+    public static let unsupported = Self(rawValue: "CONTENT_ALIGNMENT_UNSUPPORTED")
+    public static let top = Self(rawValue: "TOP")
+    public static let middle = Self(rawValue: "MIDDLE")
+    public static let bottom = Self(rawValue: "BOTTOM")
+
+    public static var knownValues: [Self] { [.unspecified, .unsupported, .top, .middle, .bottom] }
+}
+
 public struct Outline: Codable, Hashable, Sendable {
     public var outlineFill: OutlineFill?
     public var weight: Dimension?
+    public var dashStyle: DashStyle?
+    public var propertyState: PropertyState?
 
-    public init(outlineFill: OutlineFill? = nil, weight: Dimension? = nil) {
+    public init(
+        outlineFill: OutlineFill? = nil,
+        weight: Dimension? = nil,
+        dashStyle: DashStyle? = nil,
+        propertyState: PropertyState? = nil
+    ) {
         self.outlineFill = outlineFill
         self.weight = weight
+        self.dashStyle = dashStyle
+        self.propertyState = propertyState
     }
 }
 
@@ -184,15 +227,24 @@ public struct OutlineFill: Codable, Hashable, Sendable {
 public struct ShapeProperties: Codable, Hashable, Sendable {
     public var shapeBackgroundFill: ShapeBackgroundFill?
     public var outline: Outline?
+    public var shadow: Shadow?
+    public var link: Link?
+    public var contentAlignment: ContentAlignment?
     public var autofit: Autofit?
 
     public init(
         shapeBackgroundFill: ShapeBackgroundFill? = nil,
         outline: Outline? = nil,
+        shadow: Shadow? = nil,
+        link: Link? = nil,
+        contentAlignment: ContentAlignment? = nil,
         autofit: Autofit? = nil
     ) {
         self.shapeBackgroundFill = shapeBackgroundFill
         self.outline = outline
+        self.shadow = shadow
+        self.link = link
+        self.contentAlignment = contentAlignment
         self.autofit = autofit
     }
 }
@@ -216,25 +268,163 @@ public struct Shape: Codable, Hashable, Sendable {
     }
 }
 
+public struct ImageProperties: Codable, Hashable, Sendable {
+    public var cropProperties: CropProperties?
+    public var transparency: Double?
+    public var brightness: Double?
+    public var contrast: Double?
+    public var recolor: Recolor?
+    public var outline: Outline?
+    public var shadow: Shadow?
+    public var link: Link?
+
+    public init(
+        cropProperties: CropProperties? = nil,
+        transparency: Double? = nil,
+        brightness: Double? = nil,
+        contrast: Double? = nil,
+        recolor: Recolor? = nil,
+        outline: Outline? = nil,
+        shadow: Shadow? = nil,
+        link: Link? = nil
+    ) {
+        self.cropProperties = cropProperties
+        self.transparency = transparency
+        self.brightness = brightness
+        self.contrast = contrast
+        self.recolor = recolor
+        self.outline = outline
+        self.shadow = shadow
+        self.link = link
+    }
+}
+
 public struct Image: Codable, Hashable, Sendable {
     public var contentUrl: String?
     public var sourceUrl: String?
+    public var imageProperties: ImageProperties?
     public var placeholder: Placeholder?
 
-    public init(contentUrl: String? = nil, sourceUrl: String? = nil, placeholder: Placeholder? = nil) {
+    public init(
+        contentUrl: String? = nil,
+        sourceUrl: String? = nil,
+        imageProperties: ImageProperties? = nil,
+        placeholder: Placeholder? = nil
+    ) {
         self.contentUrl = contentUrl
         self.sourceUrl = sourceUrl
+        self.imageProperties = imageProperties
         self.placeholder = placeholder
+    }
+}
+
+// MARK: - Profile union members previously stubbed as `.unknown`, now first-class.
+
+public struct VideoProperties: Codable, Hashable, Sendable {
+    public var outline: Outline?
+    public var autoPlay: Bool?
+    public var start: Int?
+    public var end: Int?
+    public var mute: Bool?
+
+    public init(
+        outline: Outline? = nil,
+        autoPlay: Bool? = nil,
+        start: Int? = nil,
+        end: Int? = nil,
+        mute: Bool? = nil
+    ) {
+        self.outline = outline
+        self.autoPlay = autoPlay
+        self.start = start
+        self.end = end
+        self.mute = mute
+    }
+}
+
+public struct Video: Codable, Hashable, Sendable {
+    public var url: String?
+    public var source: String?
+    public var id: String?
+    public var videoProperties: VideoProperties?
+
+    public init(url: String? = nil, source: String? = nil, id: String? = nil, videoProperties: VideoProperties? = nil) {
+        self.url = url
+        self.source = source
+        self.id = id
+        self.videoProperties = videoProperties
+    }
+}
+
+public struct WordArt: Codable, Hashable, Sendable {
+    public var renderedText: String?
+
+    public init(renderedText: String? = nil) {
+        self.renderedText = renderedText
+    }
+}
+
+public struct SheetsChartProperties: Codable, Hashable, Sendable {
+    public var chartImageProperties: ImageProperties?
+
+    public init(chartImageProperties: ImageProperties? = nil) {
+        self.chartImageProperties = chartImageProperties
+    }
+}
+
+public struct SheetsChart: Codable, Hashable, Sendable {
+    public var spreadsheetId: String?
+    public var chartId: Int?
+    public var contentUrl: String?
+    public var sheetsChartProperties: SheetsChartProperties?
+
+    public init(
+        spreadsheetId: String? = nil,
+        chartId: Int? = nil,
+        contentUrl: String? = nil,
+        sheetsChartProperties: SheetsChartProperties? = nil
+    ) {
+        self.spreadsheetId = spreadsheetId
+        self.chartId = chartId
+        self.contentUrl = contentUrl
+        self.sheetsChartProperties = sheetsChartProperties
+    }
+}
+
+public struct SpeakerSpotlightProperties: Codable, Hashable, Sendable {
+    public var outline: Outline?
+    public var shadow: Shadow?
+
+    public init(outline: Outline? = nil, shadow: Shadow? = nil) {
+        self.outline = outline
+        self.shadow = shadow
+    }
+}
+
+public struct SpeakerSpotlight: Codable, Hashable, Sendable {
+    public var speakerSpotlightProperties: SpeakerSpotlightProperties?
+
+    public init(speakerSpotlightProperties: SpeakerSpotlightProperties? = nil) {
+        self.speakerSpotlightProperties = speakerSpotlightProperties
     }
 }
 
 public struct LineProperties: Codable, Hashable, Sendable {
     public var lineFill: LineFill?
     public var weight: Dimension?
+    public var dashStyle: DashStyle?
+    public var link: Link?
 
-    public init(lineFill: LineFill? = nil, weight: Dimension? = nil) {
+    public init(
+        lineFill: LineFill? = nil,
+        weight: Dimension? = nil,
+        dashStyle: DashStyle? = nil,
+        link: Link? = nil
+    ) {
         self.lineFill = lineFill
         self.weight = weight
+        self.dashStyle = dashStyle
+        self.link = link
     }
 }
 

@@ -22,9 +22,53 @@ struct ElementView: View {
             ForEach(group.children ?? [], id: \.objectId) { child in
                 ElementView(element: child, pointScale: pointScale, palette: palette)
             }
+        case .video(let video):
+            videoView(video)
+        case .sheetsChart(let chart):
+            chartView(chart)
+        case .wordArt(let wordArt):
+            wordArtView(wordArt)
+        case .speakerSpotlight:
+            placeholderBox(systemImage: "person.crop.rectangle")
         case .unknown:
             unknownView
         }
+    }
+
+    @ViewBuilder
+    private func videoView(_ video: Video) -> some View {
+        // Static deck rendering: show the thumbnail with a play affordance (no inline playback).
+        ZStack {
+            if let url = video.url.flatMap(URL.init(string:)) {
+                AsyncImage(url: url) { phase in
+                    if case .success(let loaded) = phase { loaded.resizable().scaledToFit() } else { Color.black.opacity(0.85) }
+                }
+            } else {
+                Color.black.opacity(0.85)
+            }
+            SwiftUI.Image(systemName: "play.circle.fill")
+                .font(.largeTitle)
+                .foregroundStyle(.white.opacity(0.9))
+                .shadow(radius: 3)
+        }
+    }
+
+    @ViewBuilder
+    private func chartView(_ chart: SheetsChart) -> some View {
+        if let url = chart.contentUrl.flatMap(URL.init(string:)) {
+            AsyncImage(url: url) { phase in
+                if case .success(let loaded) = phase { loaded.resizable().scaledToFit() } else { placeholderBox(systemImage: "chart.bar") }
+            }
+        } else {
+            placeholderBox(systemImage: "chart.bar")
+        }
+    }
+
+    private func wordArtView(_ wordArt: WordArt) -> some View {
+        Text(wordArt.renderedText ?? "")
+            .font(.system(size: 24 * pointScale, weight: .heavy, design: .rounded))
+            .minimumScaleFactor(0.3)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     @ViewBuilder

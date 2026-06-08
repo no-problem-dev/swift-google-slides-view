@@ -15,6 +15,13 @@ import Testing
         (ShapeType.knownValues.map(\.rawValue), "Shape", "shapeType"),
         (AutofitType.knownValues.map(\.rawValue), "Autofit", "autofitType"),
         (PredefinedLayout.knownValues.map(\.rawValue), "LayoutReference", "predefinedLayout"),
+        (PropertyState.knownValues.map(\.rawValue), "Outline", "propertyState"),
+        (DashStyle.knownValues.map(\.rawValue), "Outline", "dashStyle"),
+        (ShadowType.knownValues.map(\.rawValue), "Shadow", "type"),
+        (RectanglePosition.knownValues.map(\.rawValue), "Shadow", "alignment"),
+        (RecolorName.knownValues.map(\.rawValue), "Recolor", "name"),
+        (ContentAlignment.knownValues.map(\.rawValue), "ShapeProperties", "contentAlignment"),
+        (AutoTextType.knownValues.map(\.rawValue), "AutoText", "type"),
     ]
 
     static func discoveryEnum(schema: String, property: String) throws -> Set<String> {
