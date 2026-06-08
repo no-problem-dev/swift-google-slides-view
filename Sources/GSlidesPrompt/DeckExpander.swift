@@ -68,25 +68,33 @@ public enum DeckExpander {
 
         if let title = slide.title {
             let type: PlaceholderType = layout == .title ? .centeredTitle : .title
-            elements.append(shape(slideId, "title", layout, type, 0, plainText(title)))
+            elements.append(titleShape(slideId, "title", layout, type, plainText(title)))
         }
         if let subtitle = slide.subtitle {
-            elements.append(shape(slideId, "subtitle", layout, .subtitle, 0, plainText(subtitle)))
+            elements.append(titleShape(slideId, "subtitle", layout, .subtitle, plainText(subtitle)))
         }
+        // Title / section slides are title-only by design — drop any stray image the model added.
+        let allowsImages = ![.title, .sectionHeader].contains(layout)
         for (bodyIndex, body) in (slide.bodies ?? []).enumerated() {
-            if let imageUrl = body.imageUrl {
-                var image = PageElement(
-                    objectId: "\(slideId)-image-\(bodyIndex)",
-                    image: Image(sourceUrl: imageUrl, placeholder: Placeholder(type: .picture, index: bodyIndex))
-                )
-                if let spec = DeckTemplate.spec(layout: layout, type: .picture, index: bodyIndex) {
-                    image.size = spec.size
-                    image.transform = spec.transform
-                }
-                elements.append(image)
+            let text = bodyText(body)
+            let imageUrl = allowsImages ? body.imageUrl : nil
+            guard let bodySpec = DeckTemplate.spec(layout: layout, type: .body, index: bodyIndex) else {
+                if let text { elements.append(placeholderShape(id: "\(slideId)-body-\(bodyIndex)", type: .body, index: bodyIndex, text: text)) }
+                continue
             }
-            if let text = bodyText(body) {
-                elements.append(shape(slideId, "body-\(bodyIndex)", layout, .body, bodyIndex, text))
+
+            switch (text, imageUrl) {
+            case let (.some(text), .some(url)):
+                // Split the body box: text left, image right (no overlap).
+                let (textSpec, imageRect) = splitLeftRight(bodySpec)
+                elements.append(styledShape(id: "\(slideId)-body-\(bodyIndex)", type: .body, index: bodyIndex, spec: textSpec, text: text))
+                elements.append(imageElement(id: "\(slideId)-image-\(bodyIndex)", index: bodyIndex, rect: imageRect, url: url))
+            case let (.some(text), .none):
+                elements.append(styledShape(id: "\(slideId)-body-\(bodyIndex)", type: .body, index: bodyIndex, spec: bodySpec, text: text))
+            case let (.none, .some(url)):
+                elements.append(imageElement(id: "\(slideId)-image-\(bodyIndex)", index: bodyIndex, rect: bodySpec, url: url))
+            case (.none, .none):
+                break
             }
         }
 
@@ -98,19 +106,22 @@ public enum DeckExpander {
         )
     }
 
-    /// Builds a placeholder shape with the template's geometry + default style baked in. The slide
-    /// element is fully specified (like a flattened real deck) so the renderer places and styles it
-    /// without needing the semantic fallback. Falls back to a plain (geometry-less) shape if the
-    /// template has no spec for this slot.
-    static func shape(
+    /// Title / subtitle shape from the template spec (or a plain shape if no spec).
+    static func titleShape(
         _ slideId: String, _ suffix: String, _ layout: PredefinedLayout,
-        _ type: PlaceholderType, _ index: Int, _ text: TextContent
+        _ type: PlaceholderType, _ text: TextContent
     ) -> PageElement {
         let id = "\(slideId)-\(suffix)"
-        guard let spec = DeckTemplate.spec(layout: layout, type: type, index: index) else {
-            return placeholderShape(id: id, type: type, index: index, text: text)
+        guard let spec = DeckTemplate.spec(layout: layout, type: type, index: 0) else {
+            return placeholderShape(id: id, type: type, index: 0, text: text)
         }
-        return PageElement(
+        return styledShape(id: id, type: type, index: 0, spec: spec, text: text)
+    }
+
+    /// A fully-specified placeholder shape: geometry + default style baked in (like a flattened real
+    /// deck) so the renderer places and styles it without the semantic fallback.
+    static func styledShape(id: String, type: PlaceholderType, index: Int, spec: PlaceholderSpec, text: TextContent) -> PageElement {
+        PageElement(
             objectId: id,
             size: spec.size,
             transform: spec.transform,
@@ -121,6 +132,25 @@ public enum DeckExpander {
                 shapeProperties: ShapeProperties(contentAlignment: spec.vAlign)
             )
         )
+    }
+
+    static func imageElement(id: String, index: Int, rect: PlaceholderSpec, url: String) -> PageElement {
+        PageElement(
+            objectId: id,
+            size: rect.size,
+            transform: rect.transform,
+            image: Image(sourceUrl: url, placeholder: Placeholder(type: .picture, index: index))
+        )
+    }
+
+    /// Splits a body box into a text column (left, ~55%) and an image rect (right).
+    static func splitLeftRight(_ spec: PlaceholderSpec) -> (text: PlaceholderSpec, image: PlaceholderSpec) {
+        let gap = 360_000.0
+        let leftW = (spec.w - gap) * 0.55
+        let rightW = spec.w - gap - leftW
+        var text = spec; text.w = leftW
+        var image = spec; image.x = spec.x + leftW + gap; image.w = rightW
+        return (text, image)
     }
 
     /// Applies the spec's default text style + alignment to runs/paragraphs that don't set their own.

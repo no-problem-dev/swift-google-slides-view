@@ -250,3 +250,34 @@ import GSlidesLayout
         }
     }
 }
+
+@Suite struct ImageLayoutTests {
+    @Test func bodyWithTextAndImageSplitsLeftRight() throws {
+        let p = DeckExpander.expand(SemanticDeck(title: "x", slides: [
+            SemanticSlide(layout: "TITLE_AND_BODY", title: "T", bodies: [
+                SemanticBody(bullets: ["a", "b"], imageUrl: "https://x/i.png"),
+            ]),
+        ]))
+        let els = p.slides!.first!.pageElements!
+        let body = try #require(els.first { $0.shape?.placeholder?.type == .body })
+        let image = try #require(els.first { $0.image != nil })
+        // image starts to the right of where the text box ends (no overlap)
+        let textRight = (body.transform!.translateX!) + (body.size!.width!.magnitude!)
+        #expect(image.transform!.translateX! >= textRight)
+    }
+
+    @Test func titleSlideDropsStrayImages() {
+        let p = DeckExpander.expand(SemanticDeck(title: "x", slides: [
+            SemanticSlide(layout: "TITLE", title: "T", subtitle: "s", bodies: [SemanticBody(imageUrl: "https://x/i.png")]),
+        ]))
+        #expect(!(p.slides!.first!.pageElements!).contains { $0.image != nil })
+    }
+
+    @Test func imageOnlyBodyFillsBodyArea() throws {
+        let p = DeckExpander.expand(SemanticDeck(title: "x", slides: [
+            SemanticSlide(layout: "TITLE_AND_BODY", title: "T", bodies: [SemanticBody(imageUrl: "https://x/i.png")]),
+        ]))
+        let image = try #require(p.slides!.first!.pageElements!.first { $0.image != nil })
+        #expect(image.size?.width?.magnitude != nil)
+    }
+}
