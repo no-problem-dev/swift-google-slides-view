@@ -27,6 +27,8 @@ let package = Package(
         // SwiftUI レンダラ: 16:9 キャンバス + EMU→pt + placeholder 描画。
         // UI 依存は葉であるこのターゲットだけ（テストは Xcode 実行）。
         .library(name: "GSlidesRenderer", targets: ["GSlidesRenderer"]),
+        // エクスポート: Presentation → PDF / PNG（ImageRenderer + CGContext、外部依存なし）。
+        .library(name: "GSlidesExport", targets: ["GSlidesExport"]),
     ],
     dependencies: [
         .package(url: "https://github.com/no-problem-dev/swift-structured-data.git", from: "1.3.0"),
@@ -61,6 +63,7 @@ let package = Package(
             "GSlidesLayout",
             .product(name: "DesignSystem", package: "swift-design-system"),
         ]),
+        .target(name: "GSlidesExport", dependencies: ["GSlidesSchema", "GSlidesRenderer"]),
         .testTarget(
             name: "GSlidesSchemaTests",
             dependencies: ["GSlidesSchema"],
@@ -72,5 +75,6 @@ let package = Package(
         .testTarget(name: "GSlidesRequestsTests", dependencies: ["GSlidesRequests"]),
         .testTarget(name: "GSlidesA2ATests", dependencies: ["GSlidesA2A"]),
         .testTarget(name: "GSlidesRendererTests", dependencies: ["GSlidesRenderer", "GSlidesPrompt"]),
+        .testTarget(name: "GSlidesExportTests", dependencies: ["GSlidesExport", "GSlidesPrompt"]),
     ]
 )

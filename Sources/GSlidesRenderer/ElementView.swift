@@ -3,6 +3,7 @@ import GSlidesSchema
 import SwiftUI
 
 struct ElementView: View {
+    @Environment(\.gslidesImageProvider) private var imageProvider
     var element: PageElement
     var pointScale: Double
     var palette: GSlidesPalette
@@ -56,8 +57,12 @@ struct ElementView: View {
     @ViewBuilder
     private func chartView(_ chart: SheetsChart) -> some View {
         if let url = chart.contentUrl.flatMap(URL.init(string:)) {
-            AsyncImage(url: url) { phase in
-                if case .success(let loaded) = phase { loaded.resizable().scaledToFit() } else { placeholderBox(systemImage: "chart.bar") }
+            if let provided = imageProvider?.image(for: url) {
+                provided.resizable().scaledToFit()
+            } else {
+                AsyncImage(url: url) { phase in
+                    if case .success(let loaded) = phase { loaded.resizable().scaledToFit() } else { placeholderBox(systemImage: "chart.bar") }
+                }
             }
         } else {
             placeholderBox(systemImage: "chart.bar")
@@ -130,14 +135,18 @@ struct ElementView: View {
     @ViewBuilder
     private func imageView(_ image: GSlidesSchema.Image) -> some View {
         if let url = (image.contentUrl ?? image.sourceUrl).flatMap(URL.init(string:)) {
-            AsyncImage(url: url) { phase in
-                switch phase {
-                case .success(let loaded):
-                    loaded.resizable().scaledToFit()
-                case .failure:
-                    placeholderBox(systemImage: "photo")
-                default:
-                    ProgressView()
+            if let provided = imageProvider?.image(for: url) {
+                provided.resizable().scaledToFit()
+            } else {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let loaded):
+                        loaded.resizable().scaledToFit()
+                    case .failure:
+                        placeholderBox(systemImage: "photo")
+                    default:
+                        ProgressView()
+                    }
                 }
             }
         } else {
