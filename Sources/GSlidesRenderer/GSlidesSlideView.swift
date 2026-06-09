@@ -14,17 +14,23 @@ import SwiftUI
 public struct GSlidesSlideView: View {
     public var slide: Page
     public var presentation: Presentation
-    /// Base DS palette for slots the deck doesn't define (defaults to light).
-    public var basePalette: any ColorPalette
+    /// Explicit base DS palette for slots the deck doesn't define. When nil, the surrounding
+    /// app palette (`@Environment(\.colorPalette)`, e.g. the DS ThemeProvider) is used — so deck-
+    /// undefined slots and chrome follow the app's dark mode while the deck's own colors stay
+    /// authoritative for the canvas.
+    public var basePalette: (any ColorPalette)?
 
-    public init(slide: Page, presentation: Presentation, basePalette: any ColorPalette = LightColorPalette()) {
+    @Environment(\.colorPalette) private var envPalette
+    @Environment(\.gslidesImageProvider) private var imageProvider
+
+    public init(slide: Page, presentation: Presentation, basePalette: (any ColorPalette)? = nil) {
         self.slide = slide
         self.presentation = presentation
         self.basePalette = basePalette
     }
 
     private var deckPalette: DeckColorPalette {
-        DeckColorPalette(scheme: DeckTheme.colorScheme(for: slide, in: presentation), base: basePalette)
+        DeckColorPalette(scheme: DeckTheme.colorScheme(for: slide, in: presentation), base: basePalette ?? envPalette)
     }
 
     public var body: some View {
@@ -39,7 +45,7 @@ public struct GSlidesSlideView: View {
             let flowing = elements.filter { PageGeometry.frame(of: $0) == nil }
 
             ZStack(alignment: .topLeading) {
-                DeckTheme.backgroundColor(for: slide, in: presentation, palette: deckPalette)
+                slideBackground(deckPalette)
                 ForEach(positioned, id: \.objectId) { element in
                     let frame = PageGeometry.frame(of: element)!
                     ElementView(element: element, pointScale: pointScale, palette: palette)
@@ -61,6 +67,25 @@ public struct GSlidesSlideView: View {
         .clipped()
         // Chrome that reads @Environment(\.colorPalette) (DS components) shares the deck's theme.
         .environment(\.colorPalette, deckPalette)
+    }
+
+    /// The slide background: a stretched picture fill if the page defines one, otherwise the solid
+    /// theme color.
+    @ViewBuilder
+    private func slideBackground(_ deckPalette: DeckColorPalette) -> some View {
+        if let url = DeckTheme.backgroundFill(for: slide, in: presentation)?
+            .stretchedPictureFill?.contentUrl.flatMap(URL.init(string:)) {
+            if let provided = imageProvider?.image(for: url) {
+                provided.resizable().scaledToFill()
+            } else {
+                AsyncImage(url: url) { phase in
+                    if case .success(let image) = phase { image.resizable().scaledToFill() }
+                    else { DeckTheme.backgroundColor(for: slide, in: presentation, palette: deckPalette) }
+                }
+            }
+        } else {
+            DeckTheme.backgroundColor(for: slide, in: presentation, palette: deckPalette)
+        }
     }
 
     private var layoutName: PredefinedLayout? {
@@ -137,10 +162,10 @@ struct SemanticSlideLayout: View {
 /// Apps with their own chrome should drive GSlidesSlideView directly.
 public struct GSlidesDeckView: View {
     public var presentation: Presentation
-    public var basePalette: any ColorPalette
+    public var basePalette: (any ColorPalette)?
     @State private var index = 0
 
-    public init(presentation: Presentation, basePalette: any ColorPalette = LightColorPalette()) {
+    public init(presentation: Presentation, basePalette: (any ColorPalette)? = nil) {
         self.presentation = presentation
         self.basePalette = basePalette
     }

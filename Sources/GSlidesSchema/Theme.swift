@@ -1,5 +1,5 @@
 /// One theme color → concrete RGB binding (the master's color scheme entry).
-public struct ThemeColorPair: Codable, Hashable, Sendable {
+public struct ThemeColorPair: Codable, Equatable, Sendable {
     public var type: ThemeColorType?
     public var color: RgbColor?
 
@@ -11,7 +11,7 @@ public struct ThemeColorPair: Codable, Hashable, Sendable {
 
 /// The deck's palette: theme color name → RGB. Lives on a page's properties
 /// (inherited master → layout → slide). This is what resolves `ACCENT1` to a real color.
-public struct ColorScheme: Codable, Hashable, Sendable {
+public struct ColorScheme: Codable, Equatable, Sendable {
     public var colors: [ThemeColorPair]?
 
     public init(colors: [ThemeColorPair]? = nil) {
@@ -24,7 +24,7 @@ public struct ColorScheme: Codable, Hashable, Sendable {
     }
 }
 
-public struct MasterProperties: Codable, Hashable, Sendable {
+public struct MasterProperties: Codable, Equatable, Sendable {
     public var displayName: String?
 
     public init(displayName: String? = nil) {
@@ -32,7 +32,7 @@ public struct MasterProperties: Codable, Hashable, Sendable {
     }
 }
 
-public struct NotesProperties: Codable, Hashable, Sendable {
+public struct NotesProperties: Codable, Equatable, Sendable {
     public var speakerNotesObjectId: String?
 
     public init(speakerNotesObjectId: String? = nil) {

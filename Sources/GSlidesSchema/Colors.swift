@@ -1,4 +1,4 @@
-public struct RgbColor: Codable, Hashable, Sendable {
+public struct RgbColor: Codable, Equatable, Sendable {
     public var red: Double?
     public var green: Double?
     public var blue: Double?
@@ -41,7 +41,7 @@ public struct ThemeColorType: SpecEnum {
     }
 }
 
-public struct OpaqueColor: Codable, Hashable, Sendable {
+public struct OpaqueColor: Codable, Equatable, Sendable {
     public var rgbColor: RgbColor?
     public var themeColor: ThemeColorType?
 
@@ -51,7 +51,7 @@ public struct OpaqueColor: Codable, Hashable, Sendable {
     }
 }
 
-public struct OptionalColor: Codable, Hashable, Sendable {
+public struct OptionalColor: Codable, Equatable, Sendable {
     public var opaqueColor: OpaqueColor?
 
     public init(opaqueColor: OpaqueColor? = nil) {
@@ -59,7 +59,7 @@ public struct OptionalColor: Codable, Hashable, Sendable {
     }
 }
 
-public struct SolidFill: Codable, Hashable, Sendable {
+public struct SolidFill: Codable, Equatable, Sendable {
     public var color: OpaqueColor?
     public var alpha: Double?
 

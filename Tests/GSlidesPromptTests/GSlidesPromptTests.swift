@@ -280,4 +280,146 @@ import GSlidesLayout
         let image = try #require(p.slides!.first!.pageElements!.first { $0.image != nil })
         #expect(image.size?.width?.magnitude != nil)
     }
+
+    /// Regression: a model that splits bullets and image into SEPARATE bodies on a single-column
+    /// layout must still get side-by-side columns, not two elements stacked in the same rect.
+    @Test func separateTextAndImageBodiesDoNotOverlap() throws {
+        let p = DeckExpander.expand(SemanticDeck(title: "x", slides: [
+            SemanticSlide(layout: "TITLE_AND_BODY", title: "T", bodies: [
+                SemanticBody(bullets: ["a", "b", "c"]),
+                SemanticBody(imageUrl: "https://x/i.png"),
+            ]),
+        ]))
+        let els = try #require(p.slides?.first?.pageElements)
+        let textBody = try #require(els.first { $0.shape?.placeholder?.type == .body && $0.shape?.text != nil })
+        let image = try #require(els.first { $0.image != nil })
+        let textRight = textBody.transform!.translateX! + textBody.size!.width!.magnitude!
+        #expect(image.transform!.translateX! >= textRight) // image column is to the right of text
+    }
+}
+
+@Suite struct DeckThemeTests {
+    /// The master `ColorScheme` must mirror a real `presentations.get` master: all 16
+    /// `ThemeColorType`s present, every type ⊆ the discovery enum (knownValues).
+    @Test func masterEnumeratesAll16ThemeColorTypesForBothThemes() throws {
+        for theme in DeckColorTheme.allCases {
+            let colors = try #require(DeckTemplate.master(theme: theme).pageProperties?.colorScheme?.colors)
+            let types = colors.compactMap(\.type)
+            #expect(types.count == 16)
+            // every emitted type is a known protocol value (no invented vocabulary)
+            for type in types { #expect(ThemeColorType.knownValues.contains(type)) }
+            // the four alias slots are present and carry the conventional mapping
+            func rgb(_ t: ThemeColorType) -> RgbColor? { colors.first { $0.type == t }?.color }
+            #expect(rgb(.text1) == rgb(.dark1))
+            #expect(rgb(.background1) == rgb(.light1))
+            #expect(rgb(.text2) == rgb(.dark2))
+            #expect(rgb(.background2) == rgb(.light2))
+        }
+    }
+
+    /// Light vs dark differ only in RGB: dark has a dark canvas (light1) and light text (dark1).
+    @Test func darkThemeInvertsCanvasAndText() throws {
+        func light1(_ theme: DeckColorTheme) throws -> RgbColor {
+            let colors = try #require(DeckTemplate.master(theme: theme).pageProperties?.colorScheme?.colors)
+            return try #require(colors.first { $0.type == .light1 }?.color)
+        }
+        // light theme canvas (light1) is near-white; dark theme canvas is near-black
+        #expect(try light1(.light).red! > 0.9)
+        #expect(try light1(.dark).red! < 0.2)
+    }
+
+    @Test func deckThemeHintOverridesCallerDefault() throws {
+        let dark = DeckExpander.expand(SemanticDeck(title: "x", theme: "dark", slides: [SemanticSlide(title: "A")]), theme: .light)
+        let canvas = try #require(dark.masters?.first?.pageProperties?.colorScheme?.colors?.first { $0.type == .light1 }?.color)
+        #expect(canvas.red! < 0.2) // hint "dark" wins over the .light seed
+    }
+
+    @Test func callerThemeUsedWhenNoHint() throws {
+        let dark = DeckExpander.expand(SemanticDeck(title: "x", slides: [SemanticSlide(title: "A")]), theme: .dark)
+        let canvas = try #require(dark.masters?.first?.pageProperties?.colorScheme?.colors?.first { $0.type == .light1 }?.color)
+        #expect(canvas.red! < 0.2)
+    }
+
+    @Test func schemaExposesThemeEnum() throws {
+        let text = String(decoding: try GSlidesGenerationContract.jsonSchemaData(), as: UTF8.self)
+        #expect(text.contains("\"theme\""))
+        #expect(text.contains("light"))
+        #expect(text.contains("dark"))
+    }
+}
+
+@Suite struct VocabularyTests {
+    @Test func bulletDecodesFromStringOrObject() throws {
+        let json = #"[{"text":"a"},"b",{"text":"c","level":2}]"#
+        let bullets = try JSONDecoder().decode([SemanticBullet].self, from: Data(json.utf8))
+        #expect(bullets.map(\.text) == ["a", "b", "c"])
+        #expect(bullets.map(\.level) == [0, 0, 2])
+    }
+
+    @Test func bulletEncodesLevelZeroAsBareString() throws {
+        let data = try JSONEncoder().encode([SemanticBullet("a"), SemanticBullet("b", level: 1)])
+        let text = String(decoding: data, as: UTF8.self)
+        #expect(text.contains("\"a\""))        // level 0 → bare string
+        #expect(text.contains("\"level\":1"))  // nested → object
+    }
+
+    @Test func multiLevelBulletsCarryNestingLevelAndGlyph() throws {
+        let p = DeckExpander.expand(SemanticDeck(title: "x", slides: [
+            SemanticSlide(layout: "TITLE_AND_BODY", title: "T", bodies: [
+                SemanticBody(bullets: ["top", SemanticBullet("sub", level: 1)]),
+            ]),
+        ]))
+        let body = try #require(p.slides?.first?.pageElements?.first { $0.shape?.placeholder?.type == .body })
+        let markers = try #require(body.shape?.text?.textElements).compactMap { $0.paragraphMarker?.bullet }
+        #expect(markers.map(\.nestingLevel) == [0, 1])
+        #expect(markers[0].glyph != markers[1].glyph) // distinct glyph per level
+    }
+
+    @Test func backwardCompatFlatStringBullets() {
+        // existing [String]-literal call sites keep working via ExpressibleByStringLiteral
+        let body = SemanticBody(bullets: ["a", "b"])
+        #expect(body.bullets?.map(\.level) == [0, 0])
+    }
+
+    @Test func tableBodyExpandsToTableElement() throws {
+        let p = DeckExpander.expand(SemanticDeck(title: "x", slides: [
+            SemanticSlide(layout: "TITLE_AND_BODY", title: "T", bodies: [
+                SemanticBody(table: SemanticTable(headers: ["A", "B"], rows: [["1", "2"], ["3", "4"]])),
+            ]),
+        ]))
+        let element = try #require(p.slides?.first?.pageElements?.first { $0.table != nil })
+        let table = try #require(element.table)
+        #expect(table.rows == 3)      // 1 header + 2 data rows
+        #expect(table.columns == 2)
+        // header cells are emphasized (bold)
+        let headerCell = try #require(table.tableRows?.first?.tableCells?.first)
+        #expect(headerCell.text?.textElements?.first?.textRun?.style?.bold == true)
+        // table carries baked geometry (fills the body box)
+        #expect(element.size?.width?.magnitude != nil)
+    }
+
+    @Test func raggedTableRowsArePaddedToWidest() throws {
+        let p = DeckExpander.expand(SemanticDeck(title: "x", slides: [
+            SemanticSlide(layout: "TITLE_AND_BODY", title: "T", bodies: [
+                SemanticBody(table: SemanticTable(rows: [["a", "b", "c"], ["x"]])),
+            ]),
+        ]))
+        let table = try #require(p.slides?.first?.pageElements?.first { $0.table != nil }?.table)
+        #expect(table.columns == 3)
+        #expect(table.tableRows?.allSatisfy { ($0.tableCells?.count ?? 0) == 3 } == true)
+    }
+
+    @Test func schemaExposesTableAndNestedBullets() throws {
+        let text = String(decoding: try GSlidesGenerationContract.jsonSchemaData(), as: UTF8.self)
+        #expect(text.contains("\"table\""))
+        #expect(text.contains("\"level\""))
+        #expect(text.contains("oneOf"))
+    }
+
+    @Test func exampleDeckWithTableAndNestingStillValidates() throws {
+        // the worked example must round-trip through the validation sandwich
+        let presentation = try GSlidesGenerationContract.presentation(from: Data(GSlidesGenerationContract.exampleDeckJSON().utf8))
+        #expect((presentation.slides?.count ?? 0) > 0)
+        #expect(presentation.slides?.contains { ($0.pageElements ?? []).contains { $0.table != nil } } == true)
+    }
 }

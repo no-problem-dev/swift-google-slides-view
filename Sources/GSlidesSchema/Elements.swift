@@ -1,7 +1,7 @@
 /// Profile subset of the PageElement union: shape / image / line / table / elementGroup.
 /// An element where every known union member is nil is an out-of-profile element
 /// (e.g. video, wordArt) — first-class for renderers as `kind == .unknown`.
-public struct PageElement: Codable, Hashable, Sendable {
+public struct PageElement: Codable, Equatable, Sendable {
     public var objectId: String
     public var size: Size?
     public var transform: AffineTransform?
@@ -49,7 +49,7 @@ public struct PageElement: Codable, Hashable, Sendable {
         self.speakerSpotlight = speakerSpotlight
     }
 
-    public enum Kind: Hashable, Sendable {
+    public enum Kind: Equatable, Sendable {
         case shape(Shape)
         case image(Image)
         case line(Line)
@@ -108,7 +108,7 @@ public struct PlaceholderType: SpecEnum {
     }
 }
 
-public struct Placeholder: Codable, Hashable, Sendable {
+public struct Placeholder: Codable, Equatable, Sendable {
     public var type: PlaceholderType?
     public var index: Int?
     public var parentObjectId: String?
@@ -160,7 +160,7 @@ public struct AutofitType: SpecEnum {
     public static var knownValues: [Self] { [.unspecified, .none, .textAutofit, .shapeAutofit] }
 }
 
-public struct Autofit: Codable, Hashable, Sendable {
+public struct Autofit: Codable, Equatable, Sendable {
     public var autofitType: AutofitType?
     public var fontScale: Double?
     public var lineSpacingReduction: Double?
@@ -176,7 +176,7 @@ public struct Autofit: Codable, Hashable, Sendable {
     }
 }
 
-public struct ShapeBackgroundFill: Codable, Hashable, Sendable {
+public struct ShapeBackgroundFill: Codable, Equatable, Sendable {
     public var solidFill: SolidFill?
 
     public init(solidFill: SolidFill? = nil) {
@@ -197,7 +197,7 @@ public struct ContentAlignment: SpecEnum {
     public static var knownValues: [Self] { [.unspecified, .unsupported, .top, .middle, .bottom] }
 }
 
-public struct Outline: Codable, Hashable, Sendable {
+public struct Outline: Codable, Equatable, Sendable {
     public var outlineFill: OutlineFill?
     public var weight: Dimension?
     public var dashStyle: DashStyle?
@@ -216,7 +216,7 @@ public struct Outline: Codable, Hashable, Sendable {
     }
 }
 
-public struct OutlineFill: Codable, Hashable, Sendable {
+public struct OutlineFill: Codable, Equatable, Sendable {
     public var solidFill: SolidFill?
 
     public init(solidFill: SolidFill? = nil) {
@@ -224,7 +224,7 @@ public struct OutlineFill: Codable, Hashable, Sendable {
     }
 }
 
-public struct ShapeProperties: Codable, Hashable, Sendable {
+public struct ShapeProperties: Codable, Equatable, Sendable {
     public var shapeBackgroundFill: ShapeBackgroundFill?
     public var outline: Outline?
     public var shadow: Shadow?
@@ -249,7 +249,7 @@ public struct ShapeProperties: Codable, Hashable, Sendable {
     }
 }
 
-public struct Shape: Codable, Hashable, Sendable {
+public struct Shape: Codable, Equatable, Sendable {
     public var shapeType: ShapeType?
     public var text: TextContent?
     public var placeholder: Placeholder?
@@ -268,7 +268,7 @@ public struct Shape: Codable, Hashable, Sendable {
     }
 }
 
-public struct ImageProperties: Codable, Hashable, Sendable {
+public struct ImageProperties: Codable, Equatable, Sendable {
     public var cropProperties: CropProperties?
     public var transparency: Double?
     public var brightness: Double?
@@ -299,7 +299,7 @@ public struct ImageProperties: Codable, Hashable, Sendable {
     }
 }
 
-public struct Image: Codable, Hashable, Sendable {
+public struct Image: Codable, Equatable, Sendable {
     public var contentUrl: String?
     public var sourceUrl: String?
     public var imageProperties: ImageProperties?
@@ -320,7 +320,7 @@ public struct Image: Codable, Hashable, Sendable {
 
 // MARK: - Profile union members previously stubbed as `.unknown`, now first-class.
 
-public struct VideoProperties: Codable, Hashable, Sendable {
+public struct VideoProperties: Codable, Equatable, Sendable {
     public var outline: Outline?
     public var autoPlay: Bool?
     public var start: Int?
@@ -342,7 +342,7 @@ public struct VideoProperties: Codable, Hashable, Sendable {
     }
 }
 
-public struct Video: Codable, Hashable, Sendable {
+public struct Video: Codable, Equatable, Sendable {
     public var url: String?
     public var source: String?
     public var id: String?
@@ -356,7 +356,7 @@ public struct Video: Codable, Hashable, Sendable {
     }
 }
 
-public struct WordArt: Codable, Hashable, Sendable {
+public struct WordArt: Codable, Equatable, Sendable {
     public var renderedText: String?
 
     public init(renderedText: String? = nil) {
@@ -364,7 +364,7 @@ public struct WordArt: Codable, Hashable, Sendable {
     }
 }
 
-public struct SheetsChartProperties: Codable, Hashable, Sendable {
+public struct SheetsChartProperties: Codable, Equatable, Sendable {
     public var chartImageProperties: ImageProperties?
 
     public init(chartImageProperties: ImageProperties? = nil) {
@@ -372,7 +372,7 @@ public struct SheetsChartProperties: Codable, Hashable, Sendable {
     }
 }
 
-public struct SheetsChart: Codable, Hashable, Sendable {
+public struct SheetsChart: Codable, Equatable, Sendable {
     public var spreadsheetId: String?
     public var chartId: Int?
     public var contentUrl: String?
@@ -391,7 +391,7 @@ public struct SheetsChart: Codable, Hashable, Sendable {
     }
 }
 
-public struct SpeakerSpotlightProperties: Codable, Hashable, Sendable {
+public struct SpeakerSpotlightProperties: Codable, Equatable, Sendable {
     public var outline: Outline?
     public var shadow: Shadow?
 
@@ -401,7 +401,7 @@ public struct SpeakerSpotlightProperties: Codable, Hashable, Sendable {
     }
 }
 
-public struct SpeakerSpotlight: Codable, Hashable, Sendable {
+public struct SpeakerSpotlight: Codable, Equatable, Sendable {
     public var speakerSpotlightProperties: SpeakerSpotlightProperties?
 
     public init(speakerSpotlightProperties: SpeakerSpotlightProperties? = nil) {
@@ -409,26 +409,54 @@ public struct SpeakerSpotlight: Codable, Hashable, Sendable {
     }
 }
 
-public struct LineProperties: Codable, Hashable, Sendable {
+public struct ArrowStyle: SpecEnum {
+    public var rawValue: String
+    public init(rawValue: String) { self.rawValue = rawValue }
+
+    public static let unspecified = Self(rawValue: "ARROW_STYLE_UNSPECIFIED")
+    public static let none = Self(rawValue: "NONE")
+    public static let stealthArrow = Self(rawValue: "STEALTH_ARROW")
+    public static let fillArrow = Self(rawValue: "FILL_ARROW")
+    public static let fillCircle = Self(rawValue: "FILL_CIRCLE")
+    public static let fillSquare = Self(rawValue: "FILL_SQUARE")
+    public static let fillDiamond = Self(rawValue: "FILL_DIAMOND")
+    public static let openArrow = Self(rawValue: "OPEN_ARROW")
+    public static let openCircle = Self(rawValue: "OPEN_CIRCLE")
+    public static let openSquare = Self(rawValue: "OPEN_SQUARE")
+    public static let openDiamond = Self(rawValue: "OPEN_DIAMOND")
+
+    public static var knownValues: [Self] {
+        [.unspecified, .none, .stealthArrow, .fillArrow, .fillCircle, .fillSquare,
+         .fillDiamond, .openArrow, .openCircle, .openSquare, .openDiamond]
+    }
+}
+
+public struct LineProperties: Codable, Equatable, Sendable {
     public var lineFill: LineFill?
     public var weight: Dimension?
     public var dashStyle: DashStyle?
+    public var startArrow: ArrowStyle?
+    public var endArrow: ArrowStyle?
     public var link: Link?
 
     public init(
         lineFill: LineFill? = nil,
         weight: Dimension? = nil,
         dashStyle: DashStyle? = nil,
+        startArrow: ArrowStyle? = nil,
+        endArrow: ArrowStyle? = nil,
         link: Link? = nil
     ) {
         self.lineFill = lineFill
         self.weight = weight
         self.dashStyle = dashStyle
+        self.startArrow = startArrow
+        self.endArrow = endArrow
         self.link = link
     }
 }
 
-public struct LineFill: Codable, Hashable, Sendable {
+public struct LineFill: Codable, Equatable, Sendable {
     public var solidFill: SolidFill?
 
     public init(solidFill: SolidFill? = nil) {
@@ -436,7 +464,7 @@ public struct LineFill: Codable, Hashable, Sendable {
     }
 }
 
-public struct Line: Codable, Hashable, Sendable {
+public struct Line: Codable, Equatable, Sendable {
     public var lineProperties: LineProperties?
 
     public init(lineProperties: LineProperties? = nil) {
@@ -444,7 +472,7 @@ public struct Line: Codable, Hashable, Sendable {
     }
 }
 
-public struct TableCellLocation: Codable, Hashable, Sendable {
+public struct TableCellLocation: Codable, Equatable, Sendable {
     public var rowIndex: Int?
     public var columnIndex: Int?
 
@@ -454,26 +482,47 @@ public struct TableCellLocation: Codable, Hashable, Sendable {
     }
 }
 
-public struct TableCell: Codable, Hashable, Sendable {
+public struct TableCellBackgroundFill: Codable, Equatable, Sendable {
+    public var solidFill: SolidFill?
+
+    public init(solidFill: SolidFill? = nil) {
+        self.solidFill = solidFill
+    }
+}
+
+public struct TableCellProperties: Codable, Equatable, Sendable {
+    public var tableCellBackgroundFill: TableCellBackgroundFill?
+    public var contentAlignment: ContentAlignment?
+
+    public init(tableCellBackgroundFill: TableCellBackgroundFill? = nil, contentAlignment: ContentAlignment? = nil) {
+        self.tableCellBackgroundFill = tableCellBackgroundFill
+        self.contentAlignment = contentAlignment
+    }
+}
+
+public struct TableCell: Codable, Equatable, Sendable {
     public var location: TableCellLocation?
     public var rowSpan: Int?
     public var columnSpan: Int?
     public var text: TextContent?
+    public var tableCellProperties: TableCellProperties?
 
     public init(
         location: TableCellLocation? = nil,
         rowSpan: Int? = nil,
         columnSpan: Int? = nil,
-        text: TextContent? = nil
+        text: TextContent? = nil,
+        tableCellProperties: TableCellProperties? = nil
     ) {
         self.location = location
         self.rowSpan = rowSpan
         self.columnSpan = columnSpan
         self.text = text
+        self.tableCellProperties = tableCellProperties
     }
 }
 
-public struct TableRow: Codable, Hashable, Sendable {
+public struct TableRow: Codable, Equatable, Sendable {
     public var rowHeight: Dimension?
     public var tableCells: [TableCell]?
 
@@ -483,19 +532,29 @@ public struct TableRow: Codable, Hashable, Sendable {
     }
 }
 
-public struct Table: Codable, Hashable, Sendable {
-    public var rows: Int?
-    public var columns: Int?
-    public var tableRows: [TableRow]?
+public struct TableColumnProperties: Codable, Equatable, Sendable {
+    public var columnWidth: Dimension?
 
-    public init(rows: Int? = nil, columns: Int? = nil, tableRows: [TableRow]? = nil) {
-        self.rows = rows
-        self.columns = columns
-        self.tableRows = tableRows
+    public init(columnWidth: Dimension? = nil) {
+        self.columnWidth = columnWidth
     }
 }
 
-public struct Group: Codable, Hashable, Sendable {
+public struct Table: Codable, Equatable, Sendable {
+    public var rows: Int?
+    public var columns: Int?
+    public var tableRows: [TableRow]?
+    public var tableColumns: [TableColumnProperties]?
+
+    public init(rows: Int? = nil, columns: Int? = nil, tableRows: [TableRow]? = nil, tableColumns: [TableColumnProperties]? = nil) {
+        self.rows = rows
+        self.columns = columns
+        self.tableRows = tableRows
+        self.tableColumns = tableColumns
+    }
+}
+
+public struct Group: Codable, Equatable, Sendable {
     public var children: [PageElement]?
 
     public init(children: [PageElement]? = nil) {

@@ -3,7 +3,7 @@ import GSlidesSchema
 
 /// Transport-agnostic chunk primitive. Adapters (e.g. GSlidesA2A) map their
 /// protocol's stream events onto this — the reducer never sees protocol types.
-public struct GSlidesChunk: Hashable, Sendable {
+public struct GSlidesChunk: Equatable, Sendable {
     public var payload: Data
     public var append: Bool
     public var lastChunk: Bool
@@ -27,7 +27,7 @@ public enum GSlidesAssemblyError: Error, Hashable {
 ///   so streams that lead with slides still assemble.
 /// - `lastChunk == true`: completes the stream; further chunks are an error.
 /// A throwing apply leaves the state unchanged.
-public struct GSlidesAssembler: Hashable, Sendable {
+public struct GSlidesAssembler: Equatable, Sendable {
     public private(set) var presentation: Presentation?
     public private(set) var isComplete: Bool
 

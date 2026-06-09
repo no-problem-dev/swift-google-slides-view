@@ -8,13 +8,13 @@ public struct GSlidesCarouselView: View {
     @Environment(\.colorPalette) private var colors
     public var presentation: Presentation
     public var isComplete: Bool
-    public var basePalette: any ColorPalette
+    public var basePalette: (any ColorPalette)?
     public var onSelect: ((Int) -> Void)?
 
     public init(
         presentation: Presentation,
         isComplete: Bool = true,
-        basePalette: any ColorPalette = LightColorPalette(),
+        basePalette: (any ColorPalette)? = nil,
         onSelect: ((Int) -> Void)? = nil
     ) {
         self.presentation = presentation
@@ -71,12 +71,12 @@ public struct GSlidesCarouselView: View {
 /// index back (hosts present the fullscreen pager).
 public struct GSlidesStackView: View {
     public var presentation: Presentation
-    public var basePalette: any ColorPalette
+    public var basePalette: (any ColorPalette)?
     public var onSelect: ((Int) -> Void)?
 
     public init(
         presentation: Presentation,
-        basePalette: any ColorPalette = LightColorPalette(),
+        basePalette: (any ColorPalette)? = nil,
         onSelect: ((Int) -> Void)? = nil
     ) {
         self.presentation = presentation
@@ -111,14 +111,14 @@ public struct GSlidesStackView: View {
 /// Fullscreen pager over the deck. Horizontal paging starting at `initialIndex`.
 public struct GSlidesFullScreenView: View {
     public var presentation: Presentation
-    public var basePalette: any ColorPalette
+    public var basePalette: (any ColorPalette)?
     @State private var index: Int
     @Environment(\.dismiss) private var dismiss
 
     public init(
         presentation: Presentation,
         initialIndex: Int = 0,
-        basePalette: any ColorPalette = LightColorPalette()
+        basePalette: (any ColorPalette)? = nil
     ) {
         self.presentation = presentation
         self.basePalette = basePalette

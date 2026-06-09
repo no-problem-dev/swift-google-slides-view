@@ -9,7 +9,7 @@ public struct Unit: SpecEnum {
     public static var knownValues: [Self] { [.unspecified, .emu, .pt] }
 }
 
-public struct Dimension: Codable, Hashable, Sendable {
+public struct Dimension: Codable, Equatable, Sendable {
     public var magnitude: Double?
     public var unit: Unit?
 
@@ -19,7 +19,7 @@ public struct Dimension: Codable, Hashable, Sendable {
     }
 }
 
-public struct Size: Codable, Hashable, Sendable {
+public struct Size: Codable, Equatable, Sendable {
     public var width: Dimension?
     public var height: Dimension?
 
@@ -29,7 +29,7 @@ public struct Size: Codable, Hashable, Sendable {
     }
 }
 
-public struct AffineTransform: Codable, Hashable, Sendable {
+public struct AffineTransform: Codable, Equatable, Sendable {
     public var scaleX: Double?
     public var scaleY: Double?
     public var shearX: Double?

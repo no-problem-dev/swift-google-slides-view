@@ -2,7 +2,7 @@ import GSlidesSchema
 
 /// Typed accessor over the `Request` oneof — mirrors PageElement.Kind: exactly one member is set.
 extension Request {
-    public enum Kind: Hashable, Sendable {
+    public enum Kind: Equatable, Sendable {
         case createSlide(CreateSlideRequest)
         case createShape(CreateShapeRequest)
         case createTable(CreateTableRequest)

@@ -370,7 +370,7 @@ public struct UpdateTableBorderPropertiesRequestBorderPosition: SpecEnum {
     public static var knownValues: [Self] { [.all, .bottom, .inner, .innerHorizontal, .innerVertical, .left, .outer, .right, .top] }
 }
 
-public struct BatchUpdatePresentationRequest: Codable, Hashable, Sendable {
+public struct BatchUpdatePresentationRequest: Codable, Equatable, Sendable {
     public var requests: [Request]?
     public var writeControl: WriteControl?
 
@@ -383,7 +383,7 @@ public struct BatchUpdatePresentationRequest: Codable, Hashable, Sendable {
     }
 }
 
-public struct Request: Codable, Hashable, Sendable {
+public struct Request: Codable, Equatable, Sendable {
     public var createSlide: CreateSlideRequest?
     public var createShape: CreateShapeRequest?
     public var createTable: CreateTableRequest?
@@ -522,7 +522,7 @@ public struct Request: Codable, Hashable, Sendable {
     }
 }
 
-public struct CreateSlideRequest: Codable, Hashable, Sendable {
+public struct CreateSlideRequest: Codable, Equatable, Sendable {
     public var objectId: String?
     public var insertionIndex: Int?
     public var slideLayoutReference: LayoutReference?
@@ -541,7 +541,7 @@ public struct CreateSlideRequest: Codable, Hashable, Sendable {
     }
 }
 
-public struct CreateShapeRequest: Codable, Hashable, Sendable {
+public struct CreateShapeRequest: Codable, Equatable, Sendable {
     public var objectId: String?
     public var elementProperties: PageElementProperties?
     public var shapeType: CreateShapeRequestShapeType?
@@ -557,7 +557,7 @@ public struct CreateShapeRequest: Codable, Hashable, Sendable {
     }
 }
 
-public struct CreateTableRequest: Codable, Hashable, Sendable {
+public struct CreateTableRequest: Codable, Equatable, Sendable {
     public var objectId: String?
     public var elementProperties: PageElementProperties?
     public var rows: Int?
@@ -576,7 +576,7 @@ public struct CreateTableRequest: Codable, Hashable, Sendable {
     }
 }
 
-public struct InsertTextRequest: Codable, Hashable, Sendable {
+public struct InsertTextRequest: Codable, Equatable, Sendable {
     public var objectId: String?
     public var cellLocation: TableCellLocation?
     public var text: String?
@@ -595,7 +595,7 @@ public struct InsertTextRequest: Codable, Hashable, Sendable {
     }
 }
 
-public struct InsertTableRowsRequest: Codable, Hashable, Sendable {
+public struct InsertTableRowsRequest: Codable, Equatable, Sendable {
     public var tableObjectId: String?
     public var cellLocation: TableCellLocation?
     public var insertBelow: Bool?
@@ -614,7 +614,7 @@ public struct InsertTableRowsRequest: Codable, Hashable, Sendable {
     }
 }
 
-public struct InsertTableColumnsRequest: Codable, Hashable, Sendable {
+public struct InsertTableColumnsRequest: Codable, Equatable, Sendable {
     public var tableObjectId: String?
     public var cellLocation: TableCellLocation?
     public var insertRight: Bool?
@@ -633,7 +633,7 @@ public struct InsertTableColumnsRequest: Codable, Hashable, Sendable {
     }
 }
 
-public struct DeleteTableRowRequest: Codable, Hashable, Sendable {
+public struct DeleteTableRowRequest: Codable, Equatable, Sendable {
     public var tableObjectId: String?
     public var cellLocation: TableCellLocation?
 
@@ -646,7 +646,7 @@ public struct DeleteTableRowRequest: Codable, Hashable, Sendable {
     }
 }
 
-public struct DeleteTableColumnRequest: Codable, Hashable, Sendable {
+public struct DeleteTableColumnRequest: Codable, Equatable, Sendable {
     public var tableObjectId: String?
     public var cellLocation: TableCellLocation?
 
@@ -659,7 +659,7 @@ public struct DeleteTableColumnRequest: Codable, Hashable, Sendable {
     }
 }
 
-public struct ReplaceAllTextRequest: Codable, Hashable, Sendable {
+public struct ReplaceAllTextRequest: Codable, Equatable, Sendable {
     public var replaceText: String?
     public var pageObjectIds: [String]?
     public var containsText: SubstringMatchCriteria?
@@ -675,7 +675,7 @@ public struct ReplaceAllTextRequest: Codable, Hashable, Sendable {
     }
 }
 
-public struct DeleteObjectRequest: Codable, Hashable, Sendable {
+public struct DeleteObjectRequest: Codable, Equatable, Sendable {
     public var objectId: String?
 
     public init(
@@ -685,7 +685,7 @@ public struct DeleteObjectRequest: Codable, Hashable, Sendable {
     }
 }
 
-public struct UpdatePageElementTransformRequest: Codable, Hashable, Sendable {
+public struct UpdatePageElementTransformRequest: Codable, Equatable, Sendable {
     public var objectId: String?
     public var transform: AffineTransform?
     public var applyMode: UpdatePageElementTransformRequestApplyMode?
@@ -701,7 +701,7 @@ public struct UpdatePageElementTransformRequest: Codable, Hashable, Sendable {
     }
 }
 
-public struct UpdateSlidesPositionRequest: Codable, Hashable, Sendable {
+public struct UpdateSlidesPositionRequest: Codable, Equatable, Sendable {
     public var slideObjectIds: [String]?
     public var insertionIndex: Int?
 
@@ -714,7 +714,7 @@ public struct UpdateSlidesPositionRequest: Codable, Hashable, Sendable {
     }
 }
 
-public struct DeleteTextRequest: Codable, Hashable, Sendable {
+public struct DeleteTextRequest: Codable, Equatable, Sendable {
     public var objectId: String?
     public var cellLocation: TableCellLocation?
     public var textRange: Range?
@@ -730,7 +730,7 @@ public struct DeleteTextRequest: Codable, Hashable, Sendable {
     }
 }
 
-public struct CreateImageRequest: Codable, Hashable, Sendable {
+public struct CreateImageRequest: Codable, Equatable, Sendable {
     public var objectId: String?
     public var elementProperties: PageElementProperties?
     public var url: String?
@@ -746,7 +746,7 @@ public struct CreateImageRequest: Codable, Hashable, Sendable {
     }
 }
 
-public struct CreateVideoRequest: Codable, Hashable, Sendable {
+public struct CreateVideoRequest: Codable, Equatable, Sendable {
     public var objectId: String?
     public var elementProperties: PageElementProperties?
     public var source: CreateVideoRequestSource?
@@ -765,7 +765,7 @@ public struct CreateVideoRequest: Codable, Hashable, Sendable {
     }
 }
 
-public struct CreateSheetsChartRequest: Codable, Hashable, Sendable {
+public struct CreateSheetsChartRequest: Codable, Equatable, Sendable {
     public var objectId: String?
     public var elementProperties: PageElementProperties?
     public var spreadsheetId: String?
@@ -787,7 +787,7 @@ public struct CreateSheetsChartRequest: Codable, Hashable, Sendable {
     }
 }
 
-public struct CreateLineRequest: Codable, Hashable, Sendable {
+public struct CreateLineRequest: Codable, Equatable, Sendable {
     public var objectId: String?
     public var elementProperties: PageElementProperties?
     public var lineCategory: CreateLineRequestLineCategory?
@@ -806,7 +806,7 @@ public struct CreateLineRequest: Codable, Hashable, Sendable {
     }
 }
 
-public struct RefreshSheetsChartRequest: Codable, Hashable, Sendable {
+public struct RefreshSheetsChartRequest: Codable, Equatable, Sendable {
     public var objectId: String?
 
     public init(
@@ -816,7 +816,7 @@ public struct RefreshSheetsChartRequest: Codable, Hashable, Sendable {
     }
 }
 
-public struct UpdateShapePropertiesRequest: Codable, Hashable, Sendable {
+public struct UpdateShapePropertiesRequest: Codable, Equatable, Sendable {
     public var objectId: String?
     public var shapeProperties: ShapeProperties?
     public var fields: String?
@@ -832,7 +832,7 @@ public struct UpdateShapePropertiesRequest: Codable, Hashable, Sendable {
     }
 }
 
-public struct UpdateImagePropertiesRequest: Codable, Hashable, Sendable {
+public struct UpdateImagePropertiesRequest: Codable, Equatable, Sendable {
     public var objectId: String?
     public var imageProperties: ImageProperties?
     public var fields: String?
@@ -848,7 +848,7 @@ public struct UpdateImagePropertiesRequest: Codable, Hashable, Sendable {
     }
 }
 
-public struct UpdateVideoPropertiesRequest: Codable, Hashable, Sendable {
+public struct UpdateVideoPropertiesRequest: Codable, Equatable, Sendable {
     public var objectId: String?
     public var videoProperties: VideoProperties?
     public var fields: String?
@@ -864,7 +864,7 @@ public struct UpdateVideoPropertiesRequest: Codable, Hashable, Sendable {
     }
 }
 
-public struct UpdatePagePropertiesRequest: Codable, Hashable, Sendable {
+public struct UpdatePagePropertiesRequest: Codable, Equatable, Sendable {
     public var objectId: String?
     public var pageProperties: PageProperties?
     public var fields: String?
@@ -880,7 +880,7 @@ public struct UpdatePagePropertiesRequest: Codable, Hashable, Sendable {
     }
 }
 
-public struct UpdateTableCellPropertiesRequest: Codable, Hashable, Sendable {
+public struct UpdateTableCellPropertiesRequest: Codable, Equatable, Sendable {
     public var objectId: String?
     public var tableRange: TableRange?
     public var tableCellProperties: TableCellProperties?
@@ -899,7 +899,7 @@ public struct UpdateTableCellPropertiesRequest: Codable, Hashable, Sendable {
     }
 }
 
-public struct UpdateLinePropertiesRequest: Codable, Hashable, Sendable {
+public struct UpdateLinePropertiesRequest: Codable, Equatable, Sendable {
     public var objectId: String?
     public var lineProperties: LineProperties?
     public var fields: String?
@@ -915,7 +915,7 @@ public struct UpdateLinePropertiesRequest: Codable, Hashable, Sendable {
     }
 }
 
-public struct CreateParagraphBulletsRequest: Codable, Hashable, Sendable {
+public struct CreateParagraphBulletsRequest: Codable, Equatable, Sendable {
     public var objectId: String?
     public var cellLocation: TableCellLocation?
     public var textRange: Range?
@@ -934,7 +934,7 @@ public struct CreateParagraphBulletsRequest: Codable, Hashable, Sendable {
     }
 }
 
-public struct ReplaceAllShapesWithImageRequest: Codable, Hashable, Sendable {
+public struct ReplaceAllShapesWithImageRequest: Codable, Equatable, Sendable {
     public var containsText: SubstringMatchCriteria?
     public var imageUrl: String?
     public var replaceMethod: ReplaceAllShapesWithImageRequestReplaceMethod?
@@ -956,7 +956,7 @@ public struct ReplaceAllShapesWithImageRequest: Codable, Hashable, Sendable {
     }
 }
 
-public struct DuplicateObjectRequest: Codable, Hashable, Sendable {
+public struct DuplicateObjectRequest: Codable, Equatable, Sendable {
     public var objectId: String?
     public var objectIds: [String: String]?
 
@@ -969,7 +969,7 @@ public struct DuplicateObjectRequest: Codable, Hashable, Sendable {
     }
 }
 
-public struct UpdateTextStyleRequest: Codable, Hashable, Sendable {
+public struct UpdateTextStyleRequest: Codable, Equatable, Sendable {
     public var objectId: String?
     public var cellLocation: TableCellLocation?
     public var style: TextStyle?
@@ -991,7 +991,7 @@ public struct UpdateTextStyleRequest: Codable, Hashable, Sendable {
     }
 }
 
-public struct ReplaceAllShapesWithSheetsChartRequest: Codable, Hashable, Sendable {
+public struct ReplaceAllShapesWithSheetsChartRequest: Codable, Equatable, Sendable {
     public var containsText: SubstringMatchCriteria?
     public var spreadsheetId: String?
     public var chartId: Int?
@@ -1013,7 +1013,7 @@ public struct ReplaceAllShapesWithSheetsChartRequest: Codable, Hashable, Sendabl
     }
 }
 
-public struct DeleteParagraphBulletsRequest: Codable, Hashable, Sendable {
+public struct DeleteParagraphBulletsRequest: Codable, Equatable, Sendable {
     public var objectId: String?
     public var cellLocation: TableCellLocation?
     public var textRange: Range?
@@ -1029,7 +1029,7 @@ public struct DeleteParagraphBulletsRequest: Codable, Hashable, Sendable {
     }
 }
 
-public struct UpdateParagraphStyleRequest: Codable, Hashable, Sendable {
+public struct UpdateParagraphStyleRequest: Codable, Equatable, Sendable {
     public var objectId: String?
     public var cellLocation: TableCellLocation?
     public var style: ParagraphStyle?
@@ -1051,7 +1051,7 @@ public struct UpdateParagraphStyleRequest: Codable, Hashable, Sendable {
     }
 }
 
-public struct UpdateTableBorderPropertiesRequest: Codable, Hashable, Sendable {
+public struct UpdateTableBorderPropertiesRequest: Codable, Equatable, Sendable {
     public var objectId: String?
     public var tableRange: TableRange?
     public var borderPosition: UpdateTableBorderPropertiesRequestBorderPosition?
@@ -1073,7 +1073,7 @@ public struct UpdateTableBorderPropertiesRequest: Codable, Hashable, Sendable {
     }
 }
 
-public struct UpdateTableColumnPropertiesRequest: Codable, Hashable, Sendable {
+public struct UpdateTableColumnPropertiesRequest: Codable, Equatable, Sendable {
     public var objectId: String?
     public var columnIndices: [Int]?
     public var tableColumnProperties: TableColumnProperties?
@@ -1092,7 +1092,7 @@ public struct UpdateTableColumnPropertiesRequest: Codable, Hashable, Sendable {
     }
 }
 
-public struct UpdateTableRowPropertiesRequest: Codable, Hashable, Sendable {
+public struct UpdateTableRowPropertiesRequest: Codable, Equatable, Sendable {
     public var objectId: String?
     public var rowIndices: [Int]?
     public var tableRowProperties: TableRowProperties?
@@ -1111,7 +1111,7 @@ public struct UpdateTableRowPropertiesRequest: Codable, Hashable, Sendable {
     }
 }
 
-public struct MergeTableCellsRequest: Codable, Hashable, Sendable {
+public struct MergeTableCellsRequest: Codable, Equatable, Sendable {
     public var objectId: String?
     public var tableRange: TableRange?
 
@@ -1124,7 +1124,7 @@ public struct MergeTableCellsRequest: Codable, Hashable, Sendable {
     }
 }
 
-public struct UnmergeTableCellsRequest: Codable, Hashable, Sendable {
+public struct UnmergeTableCellsRequest: Codable, Equatable, Sendable {
     public var objectId: String?
     public var tableRange: TableRange?
 
@@ -1137,7 +1137,7 @@ public struct UnmergeTableCellsRequest: Codable, Hashable, Sendable {
     }
 }
 
-public struct GroupObjectsRequest: Codable, Hashable, Sendable {
+public struct GroupObjectsRequest: Codable, Equatable, Sendable {
     public var groupObjectId: String?
     public var childrenObjectIds: [String]?
 
@@ -1150,7 +1150,7 @@ public struct GroupObjectsRequest: Codable, Hashable, Sendable {
     }
 }
 
-public struct UngroupObjectsRequest: Codable, Hashable, Sendable {
+public struct UngroupObjectsRequest: Codable, Equatable, Sendable {
     public var objectIds: [String]?
 
     public init(
@@ -1160,7 +1160,7 @@ public struct UngroupObjectsRequest: Codable, Hashable, Sendable {
     }
 }
 
-public struct UpdatePageElementAltTextRequest: Codable, Hashable, Sendable {
+public struct UpdatePageElementAltTextRequest: Codable, Equatable, Sendable {
     public var objectId: String?
     public var title: String?
     public var description: String?
@@ -1176,7 +1176,7 @@ public struct UpdatePageElementAltTextRequest: Codable, Hashable, Sendable {
     }
 }
 
-public struct ReplaceImageRequest: Codable, Hashable, Sendable {
+public struct ReplaceImageRequest: Codable, Equatable, Sendable {
     public var imageObjectId: String?
     public var url: String?
     public var imageReplaceMethod: ReplaceImageRequestImageReplaceMethod?
@@ -1192,7 +1192,7 @@ public struct ReplaceImageRequest: Codable, Hashable, Sendable {
     }
 }
 
-public struct UpdateSlidePropertiesRequest: Codable, Hashable, Sendable {
+public struct UpdateSlidePropertiesRequest: Codable, Equatable, Sendable {
     public var objectId: String?
     public var slideProperties: SlideProperties?
     public var fields: String?
@@ -1208,7 +1208,7 @@ public struct UpdateSlidePropertiesRequest: Codable, Hashable, Sendable {
     }
 }
 
-public struct UpdatePageElementsZOrderRequest: Codable, Hashable, Sendable {
+public struct UpdatePageElementsZOrderRequest: Codable, Equatable, Sendable {
     public var pageElementObjectIds: [String]?
     public var operation: UpdatePageElementsZOrderRequestOperation?
 
@@ -1221,7 +1221,7 @@ public struct UpdatePageElementsZOrderRequest: Codable, Hashable, Sendable {
     }
 }
 
-public struct UpdateLineCategoryRequest: Codable, Hashable, Sendable {
+public struct UpdateLineCategoryRequest: Codable, Equatable, Sendable {
     public var objectId: String?
     public var lineCategory: UpdateLineCategoryRequestLineCategory?
 
@@ -1234,7 +1234,7 @@ public struct UpdateLineCategoryRequest: Codable, Hashable, Sendable {
     }
 }
 
-public struct RerouteLineRequest: Codable, Hashable, Sendable {
+public struct RerouteLineRequest: Codable, Equatable, Sendable {
     public var objectId: String?
 
     public init(
@@ -1244,7 +1244,7 @@ public struct RerouteLineRequest: Codable, Hashable, Sendable {
     }
 }
 
-public struct BatchUpdatePresentationResponse: Codable, Hashable, Sendable {
+public struct BatchUpdatePresentationResponse: Codable, Equatable, Sendable {
     public var presentationId: String?
     public var replies: [Response]?
     public var writeControl: WriteControl?
@@ -1260,7 +1260,7 @@ public struct BatchUpdatePresentationResponse: Codable, Hashable, Sendable {
     }
 }
 
-public struct Response: Codable, Hashable, Sendable {
+public struct Response: Codable, Equatable, Sendable {
     public var createSlide: CreateSlideResponse?
     public var createShape: CreateShapeResponse?
     public var createTable: CreateTableResponse?
@@ -1303,7 +1303,7 @@ public struct Response: Codable, Hashable, Sendable {
     }
 }
 
-public struct CreateSlideResponse: Codable, Hashable, Sendable {
+public struct CreateSlideResponse: Codable, Equatable, Sendable {
     public var objectId: String?
 
     public init(
@@ -1313,7 +1313,7 @@ public struct CreateSlideResponse: Codable, Hashable, Sendable {
     }
 }
 
-public struct CreateShapeResponse: Codable, Hashable, Sendable {
+public struct CreateShapeResponse: Codable, Equatable, Sendable {
     public var objectId: String?
 
     public init(
@@ -1323,7 +1323,7 @@ public struct CreateShapeResponse: Codable, Hashable, Sendable {
     }
 }
 
-public struct CreateTableResponse: Codable, Hashable, Sendable {
+public struct CreateTableResponse: Codable, Equatable, Sendable {
     public var objectId: String?
 
     public init(
@@ -1333,7 +1333,7 @@ public struct CreateTableResponse: Codable, Hashable, Sendable {
     }
 }
 
-public struct ReplaceAllTextResponse: Codable, Hashable, Sendable {
+public struct ReplaceAllTextResponse: Codable, Equatable, Sendable {
     public var occurrencesChanged: Int?
 
     public init(
@@ -1343,7 +1343,7 @@ public struct ReplaceAllTextResponse: Codable, Hashable, Sendable {
     }
 }
 
-public struct CreateImageResponse: Codable, Hashable, Sendable {
+public struct CreateImageResponse: Codable, Equatable, Sendable {
     public var objectId: String?
 
     public init(
@@ -1353,7 +1353,7 @@ public struct CreateImageResponse: Codable, Hashable, Sendable {
     }
 }
 
-public struct CreateVideoResponse: Codable, Hashable, Sendable {
+public struct CreateVideoResponse: Codable, Equatable, Sendable {
     public var objectId: String?
 
     public init(
@@ -1363,7 +1363,7 @@ public struct CreateVideoResponse: Codable, Hashable, Sendable {
     }
 }
 
-public struct CreateSheetsChartResponse: Codable, Hashable, Sendable {
+public struct CreateSheetsChartResponse: Codable, Equatable, Sendable {
     public var objectId: String?
 
     public init(
@@ -1373,7 +1373,7 @@ public struct CreateSheetsChartResponse: Codable, Hashable, Sendable {
     }
 }
 
-public struct CreateLineResponse: Codable, Hashable, Sendable {
+public struct CreateLineResponse: Codable, Equatable, Sendable {
     public var objectId: String?
 
     public init(
@@ -1383,7 +1383,7 @@ public struct CreateLineResponse: Codable, Hashable, Sendable {
     }
 }
 
-public struct ReplaceAllShapesWithImageResponse: Codable, Hashable, Sendable {
+public struct ReplaceAllShapesWithImageResponse: Codable, Equatable, Sendable {
     public var occurrencesChanged: Int?
 
     public init(
@@ -1393,7 +1393,7 @@ public struct ReplaceAllShapesWithImageResponse: Codable, Hashable, Sendable {
     }
 }
 
-public struct DuplicateObjectResponse: Codable, Hashable, Sendable {
+public struct DuplicateObjectResponse: Codable, Equatable, Sendable {
     public var objectId: String?
 
     public init(
@@ -1403,7 +1403,7 @@ public struct DuplicateObjectResponse: Codable, Hashable, Sendable {
     }
 }
 
-public struct ReplaceAllShapesWithSheetsChartResponse: Codable, Hashable, Sendable {
+public struct ReplaceAllShapesWithSheetsChartResponse: Codable, Equatable, Sendable {
     public var occurrencesChanged: Int?
 
     public init(
@@ -1413,7 +1413,7 @@ public struct ReplaceAllShapesWithSheetsChartResponse: Codable, Hashable, Sendab
     }
 }
 
-public struct GroupObjectsResponse: Codable, Hashable, Sendable {
+public struct GroupObjectsResponse: Codable, Equatable, Sendable {
     public var objectId: String?
 
     public init(
@@ -1423,7 +1423,7 @@ public struct GroupObjectsResponse: Codable, Hashable, Sendable {
     }
 }
 
-public struct WriteControl: Codable, Hashable, Sendable {
+public struct WriteControl: Codable, Equatable, Sendable {
     public var requiredRevisionId: String?
 
     public init(
@@ -1433,7 +1433,7 @@ public struct WriteControl: Codable, Hashable, Sendable {
     }
 }
 
-public struct LayoutPlaceholderIdMapping: Codable, Hashable, Sendable {
+public struct LayoutPlaceholderIdMapping: Codable, Equatable, Sendable {
     public var layoutPlaceholder: Placeholder?
     public var layoutPlaceholderObjectId: String?
     public var objectId: String?
@@ -1449,7 +1449,7 @@ public struct LayoutPlaceholderIdMapping: Codable, Hashable, Sendable {
     }
 }
 
-public struct PageElementProperties: Codable, Hashable, Sendable {
+public struct PageElementProperties: Codable, Equatable, Sendable {
     public var pageObjectId: String?
     public var size: Size?
     public var transform: AffineTransform?
@@ -1465,7 +1465,7 @@ public struct PageElementProperties: Codable, Hashable, Sendable {
     }
 }
 
-public struct SubstringMatchCriteria: Codable, Hashable, Sendable {
+public struct SubstringMatchCriteria: Codable, Equatable, Sendable {
     public var text: String?
     public var matchCase: Bool?
     public var searchByRegex: Bool?
@@ -1481,7 +1481,7 @@ public struct SubstringMatchCriteria: Codable, Hashable, Sendable {
     }
 }
 
-public struct Range: Codable, Hashable, Sendable {
+public struct Range: Codable, Equatable, Sendable {
     public var startIndex: Int?
     public var endIndex: Int?
     public var type: RangeType?
@@ -1497,7 +1497,7 @@ public struct Range: Codable, Hashable, Sendable {
     }
 }
 
-public struct TableRange: Codable, Hashable, Sendable {
+public struct TableRange: Codable, Equatable, Sendable {
     public var location: TableCellLocation?
     public var rowSpan: Int?
     public var columnSpan: Int?
@@ -1513,7 +1513,7 @@ public struct TableRange: Codable, Hashable, Sendable {
     }
 }
 
-public struct TableCellProperties: Codable, Hashable, Sendable {
+public struct TableCellProperties: Codable, Equatable, Sendable {
     public var tableCellBackgroundFill: TableCellBackgroundFill?
     public var contentAlignment: TableCellPropertiesContentAlignment?
 
@@ -1526,7 +1526,7 @@ public struct TableCellProperties: Codable, Hashable, Sendable {
     }
 }
 
-public struct TableBorderProperties: Codable, Hashable, Sendable {
+public struct TableBorderProperties: Codable, Equatable, Sendable {
     public var tableBorderFill: TableBorderFill?
     public var weight: Dimension?
     public var dashStyle: TableBorderPropertiesDashStyle?
@@ -1542,7 +1542,7 @@ public struct TableBorderProperties: Codable, Hashable, Sendable {
     }
 }
 
-public struct TableColumnProperties: Codable, Hashable, Sendable {
+public struct TableColumnProperties: Codable, Equatable, Sendable {
     public var columnWidth: Dimension?
 
     public init(
@@ -1552,7 +1552,7 @@ public struct TableColumnProperties: Codable, Hashable, Sendable {
     }
 }
 
-public struct TableRowProperties: Codable, Hashable, Sendable {
+public struct TableRowProperties: Codable, Equatable, Sendable {
     public var minRowHeight: Dimension?
 
     public init(
@@ -1562,7 +1562,7 @@ public struct TableRowProperties: Codable, Hashable, Sendable {
     }
 }
 
-public struct TableCellBackgroundFill: Codable, Hashable, Sendable {
+public struct TableCellBackgroundFill: Codable, Equatable, Sendable {
     public var propertyState: TableCellBackgroundFillPropertyState?
     public var solidFill: SolidFill?
 
@@ -1575,7 +1575,7 @@ public struct TableCellBackgroundFill: Codable, Hashable, Sendable {
     }
 }
 
-public struct TableBorderFill: Codable, Hashable, Sendable {
+public struct TableBorderFill: Codable, Equatable, Sendable {
     public var solidFill: SolidFill?
 
     public init(

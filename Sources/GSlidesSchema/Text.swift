@@ -1,4 +1,4 @@
-public struct TextContent: Codable, Hashable, Sendable {
+public struct TextContent: Codable, Equatable, Sendable {
     public var textElements: [TextElement]?
     /// Bulleted lists in this text, keyed by list ID (referenced by `Bullet.listId`).
     public var lists: [String: List]?
@@ -9,7 +9,7 @@ public struct TextContent: Codable, Hashable, Sendable {
     }
 }
 
-public struct TextElement: Codable, Hashable, Sendable {
+public struct TextElement: Codable, Equatable, Sendable {
     public var startIndex: Int?
     public var endIndex: Int?
     public var paragraphMarker: ParagraphMarker?
@@ -42,7 +42,7 @@ public struct AutoTextType: SpecEnum {
 }
 
 /// Dynamic text (e.g. slide number) resolved at render time.
-public struct AutoText: Codable, Hashable, Sendable {
+public struct AutoText: Codable, Equatable, Sendable {
     public var type: AutoTextType?
     public var content: String?
     public var style: TextStyle?
@@ -55,7 +55,7 @@ public struct AutoText: Codable, Hashable, Sendable {
 }
 
 /// A bulleted list's per-nesting-level styling, keyed by depth (0-based, as string keys).
-public struct List: Codable, Hashable, Sendable {
+public struct List: Codable, Equatable, Sendable {
     public var listId: String?
     public var nestingLevel: [String: NestingLevel]?
 
@@ -65,7 +65,7 @@ public struct List: Codable, Hashable, Sendable {
     }
 }
 
-public struct NestingLevel: Codable, Hashable, Sendable {
+public struct NestingLevel: Codable, Equatable, Sendable {
     public var bulletStyle: TextStyle?
 
     public init(bulletStyle: TextStyle? = nil) {
@@ -73,7 +73,7 @@ public struct NestingLevel: Codable, Hashable, Sendable {
     }
 }
 
-public struct TextRun: Codable, Hashable, Sendable {
+public struct TextRun: Codable, Equatable, Sendable {
     public var content: String?
     public var style: TextStyle?
 
@@ -83,7 +83,7 @@ public struct TextRun: Codable, Hashable, Sendable {
     }
 }
 
-public struct ParagraphMarker: Codable, Hashable, Sendable {
+public struct ParagraphMarker: Codable, Equatable, Sendable {
     public var style: ParagraphStyle?
     public var bullet: Bullet?
 
@@ -93,7 +93,7 @@ public struct ParagraphMarker: Codable, Hashable, Sendable {
     }
 }
 
-public struct Bullet: Codable, Hashable, Sendable {
+public struct Bullet: Codable, Equatable, Sendable {
     public var listId: String?
     public var nestingLevel: Int?
     public var glyph: String?
@@ -124,7 +124,7 @@ public struct BaselineOffset: SpecEnum {
     public static var knownValues: [Self] { [.unspecified, .none, .superscript, .subscript] }
 }
 
-public struct TextStyle: Codable, Hashable, Sendable {
+public struct TextStyle: Codable, Equatable, Sendable {
     public var bold: Bool?
     public var italic: Bool?
     public var underline: Bool?
@@ -180,7 +180,29 @@ public struct Alignment: SpecEnum {
     public static var knownValues: [Self] { [.unspecified, .start, .center, .end, .justified] }
 }
 
-public struct ParagraphStyle: Codable, Hashable, Sendable {
+public struct TextDirection: SpecEnum {
+    public var rawValue: String
+    public init(rawValue: String) { self.rawValue = rawValue }
+
+    public static let unspecified = Self(rawValue: "TEXT_DIRECTION_UNSPECIFIED")
+    public static let leftToRight = Self(rawValue: "LEFT_TO_RIGHT")
+    public static let rightToLeft = Self(rawValue: "RIGHT_TO_LEFT")
+
+    public static var knownValues: [Self] { [.unspecified, .leftToRight, .rightToLeft] }
+}
+
+public struct SpacingMode: SpecEnum {
+    public var rawValue: String
+    public init(rawValue: String) { self.rawValue = rawValue }
+
+    public static let unspecified = Self(rawValue: "SPACING_MODE_UNSPECIFIED")
+    public static let neverCollapse = Self(rawValue: "NEVER_COLLAPSE")
+    public static let collapseLists = Self(rawValue: "COLLAPSE_LISTS")
+
+    public static var knownValues: [Self] { [.unspecified, .neverCollapse, .collapseLists] }
+}
+
+public struct ParagraphStyle: Codable, Equatable, Sendable {
     public var alignment: Alignment?
     public var lineSpacing: Double?
     public var indentStart: Dimension?
@@ -188,6 +210,8 @@ public struct ParagraphStyle: Codable, Hashable, Sendable {
     public var indentFirstLine: Dimension?
     public var spaceAbove: Dimension?
     public var spaceBelow: Dimension?
+    public var direction: TextDirection?
+    public var spacingMode: SpacingMode?
 
     public init(
         alignment: Alignment? = nil,
@@ -196,7 +220,9 @@ public struct ParagraphStyle: Codable, Hashable, Sendable {
         indentEnd: Dimension? = nil,
         indentFirstLine: Dimension? = nil,
         spaceAbove: Dimension? = nil,
-        spaceBelow: Dimension? = nil
+        spaceBelow: Dimension? = nil,
+        direction: TextDirection? = nil,
+        spacingMode: SpacingMode? = nil
     ) {
         self.alignment = alignment
         self.lineSpacing = lineSpacing
@@ -205,5 +231,7 @@ public struct ParagraphStyle: Codable, Hashable, Sendable {
         self.indentFirstLine = indentFirstLine
         self.spaceAbove = spaceAbove
         self.spaceBelow = spaceBelow
+        self.direction = direction
+        self.spacingMode = spacingMode
     }
 }

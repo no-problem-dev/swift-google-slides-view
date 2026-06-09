@@ -146,3 +146,24 @@ import Testing
         #expect(back.slideProperties?.notesPage?.value.objectId == "notes-1")
     }
 }
+
+@Suite struct ParagraphStyleConformanceTests {
+    @Test func directionAndSpacingModeDecodeAndRoundTrip() throws {
+        let json = #"{"alignment":"END","direction":"RIGHT_TO_LEFT","spacingMode":"COLLAPSE_LISTS","lineSpacing":150}"#
+        let style = try JSONDecoder().decode(ParagraphStyle.self, from: Data(json.utf8))
+        #expect(style.direction == .rightToLeft)
+        #expect(style.spacingMode == .collapseLists)
+        let again = try JSONDecoder().decode(ParagraphStyle.self, from: JSONEncoder().encode(style))
+        #expect(again == style)
+    }
+
+    @Test func fullParagraphStyleRoundTrips() throws {
+        let style = ParagraphStyle(
+            alignment: .justified, lineSpacing: 115,
+            indentStart: Dimension(magnitude: 18, unit: .pt), indentEnd: Dimension(magnitude: 9, unit: .pt),
+            indentFirstLine: Dimension(magnitude: 36, unit: .pt), spaceAbove: Dimension(magnitude: 6, unit: .pt),
+            spaceBelow: Dimension(magnitude: 6, unit: .pt), direction: .leftToRight, spacingMode: .neverCollapse)
+        let data = try JSONEncoder().encode(style)
+        #expect(try JSONDecoder().decode(ParagraphStyle.self, from: data) == style)
+    }
+}

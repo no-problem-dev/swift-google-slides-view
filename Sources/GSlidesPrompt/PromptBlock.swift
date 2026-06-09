@@ -41,13 +41,28 @@ extension GSlidesGenerationContract {
             ]),
             SemanticSlide(layout: "TITLE_AND_BODY", title: "生産性を高める3つの習慣", bodies: [
                 SemanticBody(bullets: [
-                    "非同期：文章で決定を残し、会議を減らす",
-                    "境界：始業と終業の儀式で集中と休息を分ける",
-                    "可視化：進捗をオープンにして信頼を担保する",
+                    "非同期コミュニケーション",
+                    SemanticBullet("文章で決定を残し、後から追えるようにする", level: 1),
+                    SemanticBullet("会議は意思決定が必要なときだけに絞る", level: 1),
+                    "集中と休息の境界",
+                    SemanticBullet("始業と終業に小さな儀式を設けて切り替える", level: 1),
+                    "進捗の可視化",
+                    SemanticBullet("オープンに共有して信頼を担保する", level: 1),
                 ]),
             ]),
             SemanticSlide(layout: "BIG_NUMBER", title: "2.5倍", big: true, bodies: [
                 SemanticBody(text: "集中できた時間の差が、成果の差として表れる"),
+            ]),
+            SemanticSlide(layout: "TITLE_AND_BODY", title: "働き方モデルの比較", bodies: [
+                SemanticBody(table: SemanticTable(
+                    headers: ["項目", "オフィス中心", "リモート中心"],
+                    rows: [
+                        ["深い集中時間", "確保しにくい", "確保しやすい"],
+                        ["偶発的な対話", "多い", "少ない"],
+                        ["採用できる範囲", "通勤圏のみ", "全国・海外"],
+                        ["オフィス固定費", "高い", "低い"],
+                    ]
+                )),
             ]),
             SemanticSlide(layout: "SECTION_HEADER", title: "これからの課題"),
             SemanticSlide(layout: "TITLE_AND_BODY", title: "乗り越えるべき3つの壁", bodies: [

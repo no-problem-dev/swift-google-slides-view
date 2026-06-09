@@ -27,9 +27,13 @@ public enum DeckTheme {
         return presentation.masters?.first?.pageProperties?.colorScheme
     }
 
+    /// The effective page background fill, following slide → layout inheritance.
+    public static func backgroundFill(for page: Page, in presentation: Presentation) -> PageBackgroundFill? {
+        page.pageProperties?.pageBackgroundFill ?? layoutBackground(for: page, in: presentation)
+    }
+
     public static func backgroundColor(for page: Page, in presentation: Presentation, palette: DeckColorPalette) -> Color {
-        let fill = page.pageProperties?.pageBackgroundFill
-            ?? layoutBackground(for: page, in: presentation)
+        let fill = backgroundFill(for: page, in: presentation)
         if let solid = fill?.solidFill, let color = palette.resolve(solid.color) {
             return color.opacity(solid.alpha ?? 1)
         }

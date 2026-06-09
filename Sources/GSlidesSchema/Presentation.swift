@@ -24,7 +24,7 @@ public struct PredefinedLayout: SpecEnum {
     }
 }
 
-public struct LayoutReference: Codable, Hashable, Sendable {
+public struct LayoutReference: Codable, Equatable, Sendable {
     public var layoutId: String?
     public var predefinedLayout: PredefinedLayout?
 
@@ -34,7 +34,7 @@ public struct LayoutReference: Codable, Hashable, Sendable {
     }
 }
 
-public struct Presentation: Codable, Hashable, Sendable {
+public struct Presentation: Codable, Equatable, Sendable {
     public var presentationId: String?
     public var title: String?
     public var locale: String?

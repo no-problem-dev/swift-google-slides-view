@@ -1,5 +1,13 @@
 import GSlidesSchema
 
+/// Which baked-in theme a generated deck uses. A deck is an immutable document, so this is the
+/// document's own theme (it does NOT track the viewer's dark mode) — selected at generation time.
+/// Both variants are valid Slides `ColorScheme`s; only the master's RGB values differ, so every
+/// placeholder/decoration (which references theme colors symbolically) recolors automatically.
+public enum DeckColorTheme: String, Sendable, CaseIterable, Codable {
+    case light, dark
+}
+
 /// Placeholder geometry + default text style for one slot of a layout — the unit of slide design,
 /// expressed as data (EMU rect + style) exactly as a real Google Slides layout page carries it.
 public struct PlaceholderSpec: Sendable {
@@ -40,22 +48,85 @@ public enum DeckTemplate {
     public static let masterObjectId = "gslides-master"
 
     /// A clean, professional default theme. Unbranded decks still get color (accent + muted captions),
-    /// resolved through the same DeckColorPalette path as a branded deck's scheme.
-    public static func master() -> Page {
+    /// resolved through the same DeckColorPalette path as a branded deck's scheme. The `theme`
+    /// selects light vs dark — only the master `ColorScheme` differs; every placeholder/decoration
+    /// references these slots symbolically (`.text1`/`.dark2`/`.accent1`), so they recolor for free.
+    public static func master(theme: DeckColorTheme = .light) -> Page {
         Page(
             objectId: masterObjectId,
             pageType: .master,
-            pageProperties: PageProperties(colorScheme: ColorScheme(colors: [
-                ThemeColorPair(type: .text1, color: RgbColor(red: 0.11, green: 0.13, blue: 0.16)),
-                ThemeColorPair(type: .dark1, color: RgbColor(red: 0.11, green: 0.13, blue: 0.16)),
-                ThemeColorPair(type: .background1, color: RgbColor(red: 1, green: 1, blue: 1)),
-                ThemeColorPair(type: .light1, color: RgbColor(red: 1, green: 1, blue: 1)),
-                ThemeColorPair(type: .accent1, color: RgbColor(red: 0.0, green: 0.47, blue: 0.56)),
-                ThemeColorPair(type: .dark2, color: RgbColor(red: 0.42, green: 0.46, blue: 0.51)),
-                ThemeColorPair(type: .light2, color: RgbColor(red: 0.93, green: 0.94, blue: 0.96)),
-            ])),
-            masterProperties: MasterProperties(displayName: "GSlides Default")
+            pageProperties: PageProperties(colorScheme: colorScheme(theme)),
+            masterProperties: MasterProperties(displayName: theme == .dark ? "GSlides Dark" : "GSlides Default")
         )
+    }
+
+    /// The master `ColorScheme` per theme — enumerating all 16 `ThemeColorType`s exactly as a real
+    /// `presentations.get` master does (`dark1`/`light1` = first dark/light, `dark2`/`light2` = second,
+    /// `accent1…6`, `hyperlink`/`followedHyperlink`). `text1`/`background1`/`text2`/`background2` are
+    /// the API's aliases — emitted with the conventional mapping (text1→dark1, background1→light1,
+    /// text2→dark2, background2→light2). The renderer reads dark1/light1 for canvas + text, accent1
+    /// for the brand accent, dark2 for muted captions; the rest complete protocol fidelity.
+    static func colorScheme(_ theme: DeckColorTheme) -> ColorScheme {
+        switch theme {
+        case .light:
+            scheme(
+                dark1: RgbColor(red: 0.11, green: 0.13, blue: 0.16),   // primary text / on-canvas
+                light1: RgbColor(red: 1, green: 1, blue: 1),           // canvas
+                dark2: RgbColor(red: 0.42, green: 0.46, blue: 0.51),   // muted captions
+                light2: RgbColor(red: 0.93, green: 0.94, blue: 0.96),  // tinted surface
+                accent1: RgbColor(red: 0.0, green: 0.47, blue: 0.56),
+                accent2: RgbColor(red: 0.91, green: 0.45, blue: 0.23),
+                accent3: RgbColor(red: 0.18, green: 0.62, blue: 0.42),
+                accent4: RgbColor(red: 0.88, green: 0.66, blue: 0.18),
+                accent5: RgbColor(red: 0.42, green: 0.36, blue: 0.65),
+                accent6: RgbColor(red: 0.78, green: 0.29, blue: 0.49),
+                hyperlink: RgbColor(red: 0.10, green: 0.45, blue: 0.91),
+                followedHyperlink: RgbColor(red: 0.42, green: 0.25, blue: 0.63)
+            )
+        case .dark:
+            // text/background swap to a near-black canvas; accents brighten for contrast on dark.
+            scheme(
+                dark1: RgbColor(red: 0.92, green: 0.94, blue: 0.96),
+                light1: RgbColor(red: 0.07, green: 0.08, blue: 0.10),
+                dark2: RgbColor(red: 0.64, green: 0.68, blue: 0.73),
+                light2: RgbColor(red: 0.16, green: 0.18, blue: 0.21),
+                accent1: RgbColor(red: 0.33, green: 0.80, blue: 0.88),
+                accent2: RgbColor(red: 1.0, green: 0.60, blue: 0.42),
+                accent3: RgbColor(red: 0.37, green: 0.83, blue: 0.61),
+                accent4: RgbColor(red: 0.95, green: 0.81, blue: 0.42),
+                accent5: RgbColor(red: 0.66, green: 0.61, blue: 0.88),
+                accent6: RgbColor(red: 0.91, green: 0.52, blue: 0.69),
+                hyperlink: RgbColor(red: 0.44, green: 0.66, blue: 1.0),
+                followedHyperlink: RgbColor(red: 0.72, green: 0.61, blue: 0.88)
+            )
+        }
+    }
+
+    /// Builds the full 16-entry `ColorScheme`, deriving the four alias slots from their concrete
+    /// counterparts (text1=dark1, background1=light1, text2=dark2, background2=light2).
+    private static func scheme(
+        dark1: RgbColor, light1: RgbColor, dark2: RgbColor, light2: RgbColor,
+        accent1: RgbColor, accent2: RgbColor, accent3: RgbColor, accent4: RgbColor,
+        accent5: RgbColor, accent6: RgbColor, hyperlink: RgbColor, followedHyperlink: RgbColor
+    ) -> ColorScheme {
+        ColorScheme(colors: [
+            ThemeColorPair(type: .dark1, color: dark1),
+            ThemeColorPair(type: .light1, color: light1),
+            ThemeColorPair(type: .dark2, color: dark2),
+            ThemeColorPair(type: .light2, color: light2),
+            ThemeColorPair(type: .accent1, color: accent1),
+            ThemeColorPair(type: .accent2, color: accent2),
+            ThemeColorPair(type: .accent3, color: accent3),
+            ThemeColorPair(type: .accent4, color: accent4),
+            ThemeColorPair(type: .accent5, color: accent5),
+            ThemeColorPair(type: .accent6, color: accent6),
+            ThemeColorPair(type: .hyperlink, color: hyperlink),
+            ThemeColorPair(type: .followedHyperlink, color: followedHyperlink),
+            ThemeColorPair(type: .text1, color: dark1),
+            ThemeColorPair(type: .background1, color: light1),
+            ThemeColorPair(type: .text2, color: dark2),
+            ThemeColorPair(type: .background2, color: light2),
+        ])
     }
 
     /// The placeholder spec for a slot, or nil if this layout doesn't define it (renderer then
@@ -105,6 +176,20 @@ public enum DeckTemplate {
 
     private static var titleBandSpec: PlaceholderSpec {
         PlaceholderSpec(x: margin, y: margin, w: contentW, h: 880_000, fontSizePt: 28, themeColor: .text1, bold: true, align: .start, vAlign: .middle)
+    }
+
+    /// Divides a body region into `count` equal-width columns (with gaps). Used when a slide carries
+    /// more than one body on a single-column layout: multiple bodies = multiple columns, so a text
+    /// body and an image body sit side by side instead of stacking in the same rect.
+    public static func columns(of spec: PlaceholderSpec, count: Int, gap: Double = 360_000) -> [PlaceholderSpec] {
+        guard count > 1 else { return [spec] }
+        let colW = (spec.w - gap * Double(count - 1)) / Double(count)
+        return (0..<count).map { i in
+            var column = spec
+            column.x = spec.x + (colW + gap) * Double(i)
+            column.w = colW
+            return column
+        }
     }
 
     // MARK: - Decorations (accent rules / bars, as filled shapes — color and structure as data)

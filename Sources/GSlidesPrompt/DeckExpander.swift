@@ -6,7 +6,10 @@ import GSlidesSchema
 /// the renderer's geometry path places and styles it), the master carries the theme, and layout
 /// pages mirror the placeholder geometry — exactly the shape a real `presentations.get` deck has.
 public enum DeckExpander {
-    public static func expand(_ deck: SemanticDeck) -> Presentation {
+    /// `theme` is the default/seed; a deck's own `theme` hint (if any) overrides it. Either way the
+    /// chosen theme is baked into the single master `ColorScheme` (the document's theme).
+    public static func expand(_ deck: SemanticDeck, theme: DeckColorTheme = .light) -> Presentation {
+        let effectiveTheme = deck.theme.flatMap(DeckColorTheme.init(rawValue:)) ?? theme
         var usedLayouts: [PredefinedLayout] = []
         var slides: [Page] = []
 
@@ -23,7 +26,7 @@ public enum DeckExpander {
             title: deck.title,
             slides: slides,
             layouts: layoutPages,
-            masters: [DeckTemplate.master()]
+            masters: [DeckTemplate.master(theme: effectiveTheme)]
         )
     }
 
@@ -51,7 +54,7 @@ public enum DeckExpander {
             subtitle: slide.subtitle.map { SlideContent.Text($0) },
             bodies: (slide.bodies ?? []).map { body in
                 SlideContent.Body(
-                    text: SlideContent.Text(body.text ?? (body.bullets ?? []).joined(separator: "\n")),
+                    text: SlideContent.Text(body.text ?? bodyMatchText(body)),
                     imageCount: body.imageUrl == nil ? 0 : 1
                 )
             }
@@ -75,11 +78,29 @@ public enum DeckExpander {
         }
         // Title / section slides are title-only by design — drop any stray image the model added.
         let allowsImages = ![.title, .sectionHeader].contains(layout)
-        for (bodyIndex, body) in (slide.bodies ?? []).enumerated() {
+        let bodies = slide.bodies ?? []
+        // Multiple bodies on a single-column layout = multiple columns (TITLE_AND_TWO_COLUMNS already
+        // carries per-index geometry; others reuse the same full rect, so divide it here). Without
+        // this, two bodies — e.g. a text body and an image body — land in the same rect and overlap.
+        let bodyRegion = DeckTemplate.spec(layout: layout, type: .body, index: 0)
+        let useColumns = bodies.count > 1 && layout != .titleAndTwoColumns && bodyRegion != nil
+        let columnSpecs = useColumns ? DeckTemplate.columns(of: bodyRegion!, count: bodies.count) : []
+        for (bodyIndex, body) in bodies.enumerated() {
             let text = bodyText(body)
             let imageUrl = allowsImages ? body.imageUrl : nil
-            guard let bodySpec = DeckTemplate.spec(layout: layout, type: .body, index: bodyIndex) else {
-                if let text { elements.append(placeholderShape(id: "\(slideId)-body-\(bodyIndex)", type: .body, index: bodyIndex, text: text)) }
+            let resolvedSpec = useColumns ? columnSpecs[bodyIndex] : DeckTemplate.spec(layout: layout, type: .body, index: bodyIndex)
+            guard let bodySpec = resolvedSpec else {
+                if let table = body.table {
+                    elements.append(tableElement(id: "\(slideId)-table-\(bodyIndex)", rect: nil, table: table))
+                } else if let text {
+                    elements.append(placeholderShape(id: "\(slideId)-body-\(bodyIndex)", type: .body, index: bodyIndex, text: text))
+                }
+                continue
+            }
+
+            // A table occupies its whole body box (text/image are mutually exclusive with it).
+            if let table = body.table {
+                elements.append(tableElement(id: "\(slideId)-table-\(bodyIndex)", rect: bodySpec, table: table))
                 continue
             }
 
@@ -180,8 +201,8 @@ public enum DeckExpander {
         if let bullets = body.bullets, !bullets.isEmpty {
             return TextContent(textElements: bullets.map { bullet in
                 TextElement(
-                    paragraphMarker: ParagraphMarker(bullet: Bullet(nestingLevel: 0, glyph: "●")),
-                    textRun: TextRun(content: bullet + "\n")
+                    paragraphMarker: ParagraphMarker(bullet: Bullet(nestingLevel: bullet.level, glyph: bulletGlyph(for: bullet.level))),
+                    textRun: TextRun(content: bullet.text + "\n")
                 )
             })
         }
@@ -189,6 +210,67 @@ public enum DeckExpander {
             return plainText(text)
         }
         return nil
+    }
+
+    /// Glyph per nesting level — a visual hierarchy for multi-level lists (renderer also indents).
+    static func bulletGlyph(for level: Int) -> String {
+        switch level {
+        case 0: "●"
+        case 1: "○"
+        default: "▪"
+        }
+    }
+
+    /// Flattened text for layout matching (bullets + table cells), so a table-bearing body still
+    /// reads as content.
+    static func bodyMatchText(_ body: SemanticBody) -> String {
+        let bullets = (body.bullets ?? []).map(\.text).joined(separator: "\n")
+        return [bullets, tableText(body.table)].filter { !$0.isEmpty }.joined(separator: "\n")
+    }
+
+    static func tableText(_ table: SemanticTable?) -> String {
+        guard let table else { return "" }
+        let rows = (table.headers.map { [$0] } ?? []) + table.rows
+        return rows.map { $0.joined(separator: " ") }.joined(separator: "\n")
+    }
+
+    /// A profile `Table` element from the semantic table: header row (if any) first and emphasized,
+    /// ragged rows padded to the widest. `rect` nil → no baked geometry (renderer flows it).
+    static func tableElement(id: String, rect: PlaceholderSpec?, table: SemanticTable) -> PageElement {
+        let allRows = (table.headers.map { [$0] } ?? []) + table.rows
+        let columns = allRows.map(\.count).max() ?? 0
+        let hasHeader = table.headers != nil
+        let tableRows: [TableRow] = allRows.enumerated().map { rowIndex, cells in
+            let isHeader = hasHeader && rowIndex == 0
+            let style = TextStyle(
+                bold: isHeader ? true : nil,
+                foregroundColor: OptionalColor(opaqueColor: OpaqueColor(themeColor: isHeader ? .accent1 : .text1))
+            )
+            // Header row gets a subtle tinted background (the renderer draws cell fills).
+            let cellProps = isHeader
+                ? TableCellProperties(tableCellBackgroundFill: TableCellBackgroundFill(
+                    solidFill: SolidFill(color: OpaqueColor(themeColor: .light2))), contentAlignment: .middle)
+                : TableCellProperties(contentAlignment: .middle)
+            let tableCells: [TableCell] = (0..<columns).map { column in
+                let content = column < cells.count ? cells[column] : ""
+                return TableCell(
+                    location: TableCellLocation(rowIndex: rowIndex, columnIndex: column),
+                    rowSpan: 1,
+                    columnSpan: 1,
+                    text: TextContent(textElements: [TextElement(
+                        paragraphMarker: ParagraphMarker(),
+                        textRun: TextRun(content: content + "\n", style: style))]),
+                    tableCellProperties: cellProps
+                )
+            }
+            return TableRow(rowHeight: nil, tableCells: tableCells)
+        }
+        return PageElement(
+            objectId: id,
+            size: rect?.size,
+            transform: rect?.transform,
+            table: Table(rows: allRows.count, columns: columns, tableRows: tableRows)
+        )
     }
 
     static func plainText(_ text: String) -> TextContent {

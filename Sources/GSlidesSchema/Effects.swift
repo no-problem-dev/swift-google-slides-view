@@ -59,7 +59,7 @@ public struct RectanglePosition: SpecEnum {
     }
 }
 
-public struct Shadow: Codable, Hashable, Sendable {
+public struct Shadow: Codable, Equatable, Sendable {
     public var type: ShadowType?
     public var transform: AffineTransform?
     public var alignment: RectanglePosition?
@@ -90,7 +90,7 @@ public struct Shadow: Codable, Hashable, Sendable {
     }
 }
 
-public struct CropProperties: Codable, Hashable, Sendable {
+public struct CropProperties: Codable, Equatable, Sendable {
     public var leftOffset: Double?
     public var rightOffset: Double?
     public var topOffset: Double?
@@ -133,7 +133,7 @@ public struct RecolorName: SpecEnum {
     }
 }
 
-public struct ColorStop: Codable, Hashable, Sendable {
+public struct ColorStop: Codable, Equatable, Sendable {
     public var color: OpaqueColor?
     public var alpha: Double?
     public var position: Double?
@@ -145,7 +145,7 @@ public struct ColorStop: Codable, Hashable, Sendable {
     }
 }
 
-public struct Recolor: Codable, Hashable, Sendable {
+public struct Recolor: Codable, Equatable, Sendable {
     public var recolorStops: [ColorStop]?
     public var name: RecolorName?
 
@@ -155,7 +155,7 @@ public struct Recolor: Codable, Hashable, Sendable {
     }
 }
 
-public struct Link: Codable, Hashable, Sendable {
+public struct Link: Codable, Equatable, Sendable {
     public var url: String?
     public var relativeLink: String?
     public var pageObjectId: String?
@@ -174,7 +174,7 @@ public struct Link: Codable, Hashable, Sendable {
     }
 }
 
-public struct WeightedFontFamily: Codable, Hashable, Sendable {
+public struct WeightedFontFamily: Codable, Equatable, Sendable {
     public var fontFamily: String?
     public var weight: Int?
 

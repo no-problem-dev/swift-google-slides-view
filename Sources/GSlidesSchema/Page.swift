@@ -11,7 +11,7 @@ public struct PageType: SpecEnum {
     public static var knownValues: [Self] { [.slide, .master, .layout, .notes, .notesMaster] }
 }
 
-public struct SlideProperties: Codable, Hashable, Sendable {
+public struct SlideProperties: Codable, Equatable, Sendable {
     public var layoutObjectId: String?
     public var masterObjectId: String?
     public var isSkipped: Bool?
@@ -32,7 +32,7 @@ public struct SlideProperties: Codable, Hashable, Sendable {
 }
 
 /// Boxes a recursive Codable value (notesPage is a full Page).
-public struct Indirect<Wrapped: Codable & Hashable & Sendable>: Codable, Hashable, Sendable {
+public struct Indirect<Wrapped: Codable & Equatable & Sendable>: Codable, Equatable, Sendable {
     private final class Box: @unchecked Sendable { let value: Wrapped; init(_ value: Wrapped) { self.value = value } }
     private let box: Box
     public var value: Wrapped { box.value }
@@ -43,10 +43,9 @@ public struct Indirect<Wrapped: Codable & Hashable & Sendable>: Codable, Hashabl
     }
     public func encode(to encoder: any Encoder) throws { try value.encode(to: encoder) }
     public static func == (lhs: Indirect, rhs: Indirect) -> Bool { lhs.value == rhs.value }
-    public func hash(into hasher: inout Hasher) { hasher.combine(value) }
 }
 
-public struct LayoutProperties: Codable, Hashable, Sendable {
+public struct LayoutProperties: Codable, Equatable, Sendable {
     public var name: String?
     public var displayName: String?
     public var masterObjectId: String?
@@ -58,7 +57,7 @@ public struct LayoutProperties: Codable, Hashable, Sendable {
     }
 }
 
-public struct Page: Codable, Hashable, Sendable {
+public struct Page: Codable, Equatable, Sendable {
     public var objectId: String
     public var pageType: PageType?
     public var pageElements: [PageElement]?

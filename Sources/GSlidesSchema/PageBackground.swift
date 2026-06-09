@@ -1,4 +1,4 @@
-public struct StretchedPictureFill: Codable, Hashable, Sendable {
+public struct StretchedPictureFill: Codable, Equatable, Sendable {
     public var contentUrl: String?
     public var size: Size?
 
@@ -8,7 +8,7 @@ public struct StretchedPictureFill: Codable, Hashable, Sendable {
     }
 }
 
-public struct PageBackgroundFill: Codable, Hashable, Sendable {
+public struct PageBackgroundFill: Codable, Equatable, Sendable {
     public var propertyState: PropertyState?
     public var solidFill: SolidFill?
     public var stretchedPictureFill: StretchedPictureFill?
@@ -24,7 +24,7 @@ public struct PageBackgroundFill: Codable, Hashable, Sendable {
     }
 }
 
-public struct PageProperties: Codable, Hashable, Sendable {
+public struct PageProperties: Codable, Equatable, Sendable {
     public var pageBackgroundFill: PageBackgroundFill?
     public var colorScheme: ColorScheme?
 

@@ -2,8 +2,8 @@ import GSlidesSchema
 
 /// Semantic slide content used for layout inference.
 /// Swift port of md2googleslides' SlideDefinition (the fields its matching rules read).
-public struct SlideContent: Hashable, Sendable {
-    public struct Text: Hashable, Sendable {
+public struct SlideContent: Equatable, Sendable {
+    public struct Text: Equatable, Sendable {
         public var rawText: String
         public var big: Bool
 
@@ -13,7 +13,7 @@ public struct SlideContent: Hashable, Sendable {
         }
     }
 
-    public struct Body: Hashable, Sendable {
+    public struct Body: Equatable, Sendable {
         public var text: Text?
         public var imageCount: Int
         public var videoCount: Int

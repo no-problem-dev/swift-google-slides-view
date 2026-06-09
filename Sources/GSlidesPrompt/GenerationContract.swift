@@ -1,4 +1,5 @@
 import Foundation
+import GSlidesLayout
 import GSlidesSchema
 
 public enum GenerationContractError: Error, Hashable {
@@ -25,6 +26,11 @@ public enum GSlidesGenerationContract {
             "type": "object",
             "properties": [
                 "title": ["type": "string", "maxLength": 100],
+                "theme": [
+                    "type": "string",
+                    "enum": DeckColorTheme.allCases.map(\.rawValue),
+                    "description": "Optional deck theme. Omit to use the caller's default (follows the app appearance).",
+                ],
                 "slides": [
                     "type": "array",
                     "minItems": 1,
@@ -51,10 +57,37 @@ public enum GSlidesGenerationContract {
                                         "text": ["type": "string"],
                                         "bullets": [
                                             "type": "array",
-                                            "items": ["type": "string", "maxLength": 120],
                                             "maxItems": 8,
+                                            "description": "Bullet lines. A string is a top-level bullet; use {text, level} to nest (level 0–2).",
+                                            "items": [
+                                                "oneOf": [
+                                                    ["type": "string", "maxLength": 120],
+                                                    [
+                                                        "type": "object",
+                                                        "properties": [
+                                                            "text": ["type": "string", "maxLength": 120],
+                                                            "level": ["type": "integer", "minimum": 0, "maximum": 2],
+                                                        ],
+                                                        "required": ["text"],
+                                                        "additionalProperties": false,
+                                                    ],
+                                                ],
+                                            ],
                                         ],
                                         "imageUrl": ["type": "string"],
+                                        "table": [
+                                            "type": "object",
+                                            "description": "A simple table: optional header row + rows of cell strings.",
+                                            "properties": [
+                                                "headers": ["type": "array", "items": ["type": "string"]],
+                                                "rows": [
+                                                    "type": "array",
+                                                    "items": ["type": "array", "items": ["type": "string"]],
+                                                ],
+                                            ],
+                                            "required": ["rows"],
+                                            "additionalProperties": false,
+                                        ],
                                     ],
                                     "additionalProperties": false,
                                 ],
@@ -90,8 +123,9 @@ public enum GSlidesGenerationContract {
         return deck
     }
 
-    /// Validated end-to-end path: model output bytes → profile presentation.
-    public static func presentation(from data: Data) throws -> Presentation {
-        DeckExpander.expand(try validate(data))
+    /// Validated end-to-end path: model output bytes → profile presentation. `theme` is the default
+    /// seed; a deck's own `theme` hint overrides it.
+    public static func presentation(from data: Data, theme: DeckColorTheme = .light) throws -> Presentation {
+        DeckExpander.expand(try validate(data), theme: theme)
     }
 }
