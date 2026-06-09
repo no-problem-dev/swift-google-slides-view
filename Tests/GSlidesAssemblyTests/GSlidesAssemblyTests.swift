@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 import GSlidesSchema
+import GSlidesRequests
 @testable import GSlidesAssembly
 
 @Suite struct GSlidesAssemblyTests {
@@ -12,6 +13,33 @@ import GSlidesSchema
     func slideChunk(_ id: String, lastChunk: Bool = false) throws -> GSlidesChunk {
         let page = Page(objectId: id, pageType: .slide)
         return GSlidesChunk(payload: try JSONEncoder().encode(page), append: true, lastChunk: lastChunk)
+    }
+
+    func textSlide(_ id: String, elementId: String, text: String, lastChunk: Bool = false) throws -> GSlidesChunk {
+        let shape = Shape(text: TextContent(textElements: [TextElement(textRun: TextRun(content: text))]))
+        let page = Page(objectId: id, pageType: .slide, pageElements: [PageElement(objectId: elementId, shape: shape)])
+        return GSlidesChunk(payload: try JSONEncoder().encode(page), append: true, lastChunk: lastChunk)
+    }
+
+    func batchUpdateChunk(_ requests: [Request], lastChunk: Bool = false) throws -> GSlidesChunk {
+        let batch = BatchUpdatePresentationRequest(requests: requests)
+        return GSlidesChunk(payload: try JSONEncoder().encode(batch), kind: .batchUpdate, lastChunk: lastChunk)
+    }
+
+    // 回帰: 生成ストリーム完了（isComplete）後に来るライブ編集 batchUpdate 差分が
+    // 完了ガードで捨てられず、現在のデッキに適用されること（画面が更新されない不具合の防止）。
+    @Test func batchUpdateAppliesAfterStreamCompletes() throws {
+        var assembler = GSlidesAssembler()
+        try assembler.apply(envelope())
+        try assembler.apply(textSlide("s1", elementId: "el-1", text: "Hello", lastChunk: true))
+        #expect(assembler.isComplete)
+
+        try assembler.apply(batchUpdateChunk([
+            .replaceAllText(ReplaceAllTextRequest(replaceText: "Edited", containsText: SubstringMatchCriteria(text: "Hello"))),
+        ]))
+        let text = assembler.presentation?.slides?.first?.pageElements?.first?
+            .shape?.text?.textElements?.first?.textRun?.content
+        #expect(text == "Edited")  // 完了後でも編集が反映される
     }
 
     @Test func envelopeThenAppendsThenComplete() throws {

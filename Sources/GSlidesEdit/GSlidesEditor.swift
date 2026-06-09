@@ -20,6 +20,19 @@ public extension Presentation {
         for request in requests { try GSlidesEditor.apply(request, to: &p) }
         return p
     }
+
+    /// Best-effort variant for live editing: apply each request independently, skipping any that
+    /// fail (unknown objectId, unsupported op) rather than aborting the whole batch. An agent that
+    /// gets one of N edits slightly wrong still sees the other N-1 take effect. Returns the result
+    /// and the skipped errors (for logging).
+    func applyingLenient(_ requests: [Request]) -> (presentation: Presentation, skipped: [Error]) {
+        var p = self
+        var skipped: [Error] = []
+        for request in requests {
+            do { try GSlidesEditor.apply(request, to: &p) } catch { skipped.append(error) }
+        }
+        return (p, skipped)
+    }
 }
 
 /// Local `batchUpdate` executor. Sits on the frozen Schema+Requests mirror; everything above

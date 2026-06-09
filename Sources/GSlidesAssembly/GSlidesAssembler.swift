@@ -55,7 +55,12 @@ public struct GSlidesAssembler: Equatable, Sendable {
     }
 
     public mutating func apply(_ chunk: GSlidesChunk) throws {
-        guard !isComplete else { throw GSlidesAssemblyError.chunkAfterCompletion }
+        // envelope/slide are stream-continuation chunks — rejected once the stream completed.
+        // batchUpdate is a post-stream live edit (an agent tweaking a finished deck) — always
+        // allowed, otherwise the diff is silently dropped and the deck never visibly updates.
+        if chunk.kind != .batchUpdate, isComplete {
+            throw GSlidesAssemblyError.chunkAfterCompletion
+        }
         let decoder = JSONDecoder()
         switch chunk.kind {
         case .envelope:
@@ -81,11 +86,9 @@ public struct GSlidesAssembler: Equatable, Sendable {
             } catch {
                 throw GSlidesAssemblyError.invalidPayload(String(describing: error))
             }
-            do {
-                presentation = try (presentation ?? Presentation()).applying(batch.requests ?? [])
-            } catch {
-                throw GSlidesAssemblyError.invalidPayload("batchUpdate: \(error)")
-            }
+            // Best-effort: a single bad edit (stale objectId, unsupported op) must not drop the whole
+            // batch — apply what's valid so the deck still visibly updates.
+            presentation = (presentation ?? Presentation()).applyingLenient(batch.requests ?? []).presentation
         }
         if chunk.lastChunk {
             isComplete = true
