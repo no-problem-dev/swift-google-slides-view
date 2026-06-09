@@ -2,7 +2,7 @@ import DesignSystem
 import GSlidesSchema
 import SwiftUI
 
-/// Horizontal carousel of slide thumbnails — the inline "deck section" representation.
+/// Horizontal carousel of slide thumbnails — the inline "presentation section" representation.
 /// Slides appear as they stream in; `isComplete == false` shows a trailing progress card.
 public struct GSlidesCarouselView: View {
     @Environment(\.colorPalette) private var colors
@@ -108,7 +108,7 @@ public struct GSlidesStackView: View {
     }
 }
 
-/// Fullscreen pager over the deck. Horizontal paging starting at `initialIndex`.
+/// Fullscreen pager over the presentation. Horizontal paging starting at `initialIndex`.
 public struct GSlidesFullScreenView: View {
     public var presentation: Presentation
     public var basePalette: (any ColorPalette)?

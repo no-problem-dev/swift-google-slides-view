@@ -1,19 +1,19 @@
 import GSlidesLayout
 import GSlidesSchema
 
-/// Expands the semantic layer into profile-conformant presentation JSON, applying `DeckTemplate`:
+/// Expands the semantic layer into profile-conformant presentation JSON, applying `PresentationTemplate`:
 /// each slide element gets the template's placeholder geometry + default text style baked in (so
 /// the renderer's geometry path places and styles it), the master carries the theme, and layout
-/// pages mirror the placeholder geometry — exactly the shape a real `presentations.get` deck has.
-public enum DeckExpander {
-    /// `theme` is the default/seed; a deck's own `theme` hint (if any) overrides it. Either way the
+/// pages mirror the placeholder geometry — exactly the shape a real `presentations.get` presentation has.
+public enum PresentationExpander {
+    /// `theme` is the default/seed; a presentation's own `theme` hint (if any) overrides it. Either way the
     /// chosen theme is baked into the single master `ColorScheme` (the document's theme).
-    public static func expand(_ deck: SemanticDeck, theme: DeckColorTheme = .light) -> Presentation {
-        let effectiveTheme = deck.theme.flatMap(DeckColorTheme.init(rawValue:)) ?? theme
+    public static func expand(_ presentation: SemanticPresentation, theme: PresentationColorTheme = .light) -> Presentation {
+        let effectiveTheme = presentation.theme.flatMap(PresentationColorTheme.init(rawValue:)) ?? theme
         var usedLayouts: [PredefinedLayout] = []
         var slides: [Page] = []
 
-        for (index, slide) in deck.slides.enumerated() {
+        for (index, slide) in presentation.slides.enumerated() {
             let layout = resolvedLayout(of: slide)
             if !usedLayouts.contains(layout) {
                 usedLayouts.append(layout)
@@ -21,12 +21,12 @@ public enum DeckExpander {
             slides.append(page(for: slide, layout: layout, index: index))
         }
 
-        let layoutPages = DeckTemplate.layoutPages(used: usedLayouts.map { ($0, slots(for: $0)) })
+        let layoutPages = PresentationTemplate.layoutPages(used: usedLayouts.map { ($0, slots(for: $0)) })
         return Presentation(
-            title: deck.title,
+            title: presentation.title,
             slides: slides,
             layouts: layoutPages,
-            masters: [DeckTemplate.master(theme: effectiveTheme)]
+            masters: [PresentationTemplate.master(theme: effectiveTheme)]
         )
     }
 
@@ -64,8 +64,8 @@ public enum DeckExpander {
     static func page(for slide: SemanticSlide, layout: PredefinedLayout, index: Int) -> Page {
         let slideId = "slide-\(index + 1)"
         // Decorations first (drawn under content): accent rules/bars + page number.
-        var elements: [PageElement] = DeckTemplate.decorations(for: layout, slideId: slideId)
-        if let footer = DeckTemplate.footer(slideId: slideId, number: index + 1, layout: layout) {
+        var elements: [PageElement] = PresentationTemplate.decorations(for: layout, slideId: slideId)
+        if let footer = PresentationTemplate.footer(slideId: slideId, number: index + 1, layout: layout) {
             elements.append(footer)
         }
 
@@ -82,13 +82,13 @@ public enum DeckExpander {
         // Multiple bodies on a single-column layout = multiple columns (TITLE_AND_TWO_COLUMNS already
         // carries per-index geometry; others reuse the same full rect, so divide it here). Without
         // this, two bodies — e.g. a text body and an image body — land in the same rect and overlap.
-        let bodyRegion = DeckTemplate.spec(layout: layout, type: .body, index: 0)
+        let bodyRegion = PresentationTemplate.spec(layout: layout, type: .body, index: 0)
         let useColumns = bodies.count > 1 && layout != .titleAndTwoColumns && bodyRegion != nil
-        let columnSpecs = useColumns ? DeckTemplate.columns(of: bodyRegion!, count: bodies.count) : []
+        let columnSpecs = useColumns ? PresentationTemplate.columns(of: bodyRegion!, count: bodies.count) : []
         for (bodyIndex, body) in bodies.enumerated() {
             let text = bodyText(body)
             let imageUrl = allowsImages ? body.imageUrl : nil
-            let resolvedSpec = useColumns ? columnSpecs[bodyIndex] : DeckTemplate.spec(layout: layout, type: .body, index: bodyIndex)
+            let resolvedSpec = useColumns ? columnSpecs[bodyIndex] : PresentationTemplate.spec(layout: layout, type: .body, index: bodyIndex)
             guard let bodySpec = resolvedSpec else {
                 if let table = body.table {
                     elements.append(tableElement(id: "\(slideId)-table-\(bodyIndex)", rect: nil, table: table))
@@ -123,7 +123,7 @@ public enum DeckExpander {
             objectId: slideId,
             pageType: .slide,
             pageElements: elements,
-            slideProperties: SlideProperties(layoutObjectId: DeckTemplate.layoutObjectId(layout), masterObjectId: DeckTemplate.masterObjectId)
+            slideProperties: SlideProperties(layoutObjectId: PresentationTemplate.layoutObjectId(layout), masterObjectId: PresentationTemplate.masterObjectId)
         )
     }
 
@@ -133,14 +133,14 @@ public enum DeckExpander {
         _ type: PlaceholderType, _ text: TextContent
     ) -> PageElement {
         let id = "\(slideId)-\(suffix)"
-        guard let spec = DeckTemplate.spec(layout: layout, type: type, index: 0) else {
+        guard let spec = PresentationTemplate.spec(layout: layout, type: type, index: 0) else {
             return placeholderShape(id: id, type: type, index: 0, text: text)
         }
         return styledShape(id: id, type: type, index: 0, spec: spec, text: text)
     }
 
     /// A fully-specified placeholder shape: geometry + default style baked in (like a flattened real
-    /// deck) so the renderer places and styles it without the semantic fallback.
+    /// presentation) so the renderer places and styles it without the semantic fallback.
     static func styledShape(id: String, type: PlaceholderType, index: Int, spec: PlaceholderSpec, text: TextContent) -> PageElement {
         PageElement(
             objectId: id,

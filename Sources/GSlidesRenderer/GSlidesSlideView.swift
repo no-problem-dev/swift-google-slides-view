@@ -8,15 +8,15 @@ import SwiftUI
 /// layout) are placed absolutely in page coordinates; semantic-tier elements
 /// without geometry fall back to a placeholder-type-driven stack layout.
 ///
-/// Colors come from the deck's theme: the master/layout/slide `ColorScheme` is
-/// projected onto a DS `ColorPalette` (`DeckColorPalette`), which drives both the
+/// Colors come from the presentation's theme: the master/layout/slide `ColorScheme` is
+/// projected onto a DS `ColorPalette` (`PresentationColorPalette`), which drives both the
 /// slide content and any DS chrome via `@Environment(\.colorPalette)`.
 public struct GSlidesSlideView: View {
     public var slide: Page
     public var presentation: Presentation
-    /// Explicit base DS palette for slots the deck doesn't define. When nil, the surrounding
-    /// app palette (`@Environment(\.colorPalette)`, e.g. the DS ThemeProvider) is used — so deck-
-    /// undefined slots and chrome follow the app's dark mode while the deck's own colors stay
+    /// Explicit base DS palette for slots the presentation doesn't define. When nil, the surrounding
+    /// app palette (`@Environment(\.colorPalette)`, e.g. the DS ThemeProvider) is used — so presentation-
+    /// undefined slots and chrome follow the app's dark mode while the presentation's own colors stay
     /// authoritative for the canvas.
     public var basePalette: (any ColorPalette)?
 
@@ -29,14 +29,14 @@ public struct GSlidesSlideView: View {
         self.basePalette = basePalette
     }
 
-    private var deckPalette: DeckColorPalette {
-        DeckColorPalette(scheme: DeckTheme.colorScheme(for: slide, in: presentation), base: basePalette ?? envPalette)
+    private var presentationPalette: PresentationColorPalette {
+        PresentationColorPalette(scheme: PresentationTheme.colorScheme(for: slide, in: presentation), base: basePalette ?? envPalette)
     }
 
     public var body: some View {
         let pageSize = PageGeometry.pageSize(of: presentation)
-        let deckPalette = deckPalette
-        let palette = GSlidesPalette(deck: deckPalette)
+        let presentationPalette = presentationPalette
+        let palette = GSlidesPalette(presentation: presentationPalette)
         GeometryReader { proxy in
             let emuScale = proxy.size.width / pageSize.width
             let pointScale = proxy.size.width / (pageSize.width / EMU.perPoint)
@@ -45,7 +45,7 @@ public struct GSlidesSlideView: View {
             let flowing = elements.filter { PageGeometry.frame(of: $0) == nil }
 
             ZStack(alignment: .topLeading) {
-                slideBackground(deckPalette)
+                slideBackground(presentationPalette)
                 ForEach(positioned, id: \.objectId) { element in
                     let frame = PageGeometry.frame(of: element)!
                     ElementView(element: element, pointScale: pointScale, palette: palette)
@@ -66,30 +66,30 @@ public struct GSlidesSlideView: View {
         .environment(\.gslidesSlideNumber, slideNumber)
         .aspectRatio(pageSize.width / pageSize.height, contentMode: .fit)
         .clipped()
-        // Chrome that reads @Environment(\.colorPalette) (DS components) shares the deck's theme.
-        .environment(\.colorPalette, deckPalette)
+        // Chrome that reads @Environment(\.colorPalette) (DS components) shares the presentation's theme.
+        .environment(\.colorPalette, presentationPalette)
     }
 
     /// The slide background: a stretched picture fill if the page defines one, otherwise the solid
     /// theme color.
     @ViewBuilder
-    private func slideBackground(_ deckPalette: DeckColorPalette) -> some View {
-        if let url = DeckTheme.backgroundFill(for: slide, in: presentation)?
+    private func slideBackground(_ presentationPalette: PresentationColorPalette) -> some View {
+        if let url = PresentationTheme.backgroundFill(for: slide, in: presentation)?
             .stretchedPictureFill?.contentUrl.flatMap(URL.init(string:)) {
             if let provided = imageProvider?.image(for: url) {
                 provided.resizable().scaledToFill()
             } else {
                 AsyncImage(url: url) { phase in
                     if case .success(let image) = phase { image.resizable().scaledToFill() }
-                    else { DeckTheme.backgroundColor(for: slide, in: presentation, palette: deckPalette) }
+                    else { PresentationTheme.backgroundColor(for: slide, in: presentation, palette: presentationPalette) }
                 }
             }
         } else {
-            DeckTheme.backgroundColor(for: slide, in: presentation, palette: deckPalette)
+            PresentationTheme.backgroundColor(for: slide, in: presentation, palette: presentationPalette)
         }
     }
 
-    /// The slide's 1-based position in the deck (for autoText SLIDE_NUMBER).
+    /// The slide's 1-based position in the presentation (for autoText SLIDE_NUMBER).
     private var slideNumber: Int? {
         (presentation.slides ?? []).firstIndex { $0.objectId == slide.objectId }.map { $0 + 1 }
     }
@@ -164,9 +164,9 @@ struct SemanticSlideLayout: View {
     }
 }
 
-/// Minimal cross-platform deck container: current slide + pager controls.
+/// Minimal cross-platform presentation container: current slide + pager controls.
 /// Apps with their own chrome should drive GSlidesSlideView directly.
-public struct GSlidesDeckView: View {
+public struct GSlidesPresentationView: View {
     public var presentation: Presentation
     public var basePalette: (any ColorPalette)?
     @State private var index = 0

@@ -7,7 +7,7 @@ public enum GSlidesEditContractError: Error, Equatable {
     case emptyBatch
 }
 
-/// Contract for the edit loop. An editing agent refines a deck by emitting **official batchUpdate
+/// Contract for the edit loop. An editing agent refines a presentation by emitting **official batchUpdate
 /// requests** — a curated subset of the same `Request` types the wire and the reducer already speak
 /// — NOT an invented vocabulary. This keeps one source of truth (no parallel edit language to drift),
 /// mirrors how real agent-editing systems work (Figma / Docs / Office emit concrete API ops), and
@@ -17,12 +17,12 @@ public enum GSlidesEditContractError: Error, Equatable {
 /// schema, examples, and validation all narrow to it, so the model is never shown a forbidden op.
 public enum GSlidesEditContract {
     /// The curated subset of the 44 batchUpdate operations offered for editing — the ones that adjust
-    /// an existing deck. Deliberately small (oversized operation sets collapse selection accuracy).
+    /// an existing presentation. Deliberately small (oversized operation sets collapse selection accuracy).
     public static let curatedOperations = [
         "updatePageElementTransform",   // move / resize an element
         "updateTextStyle",              // bold / italic / color / size of text
         "updateShapeProperties",        // fill / outline of a shape
-        "replaceAllText",               // find & replace text across the deck
+        "replaceAllText",               // find & replace text across the presentation
         "insertText",                   // insert text into an element
         "deleteText",                   // delete a text range
         "deleteObject",                 // remove an element (or slide)
@@ -63,7 +63,7 @@ public enum GSlidesEditContract {
                     "description":
                         "Edits to apply IN ORDER, each an official Google Slides batchUpdate request "
                         + "(exactly one of: \(ops.joined(separator: ", "))). "
-                        + "Reference elements by the objectId from get_deck. EMU units: 914400 = 1 inch. "
+                        + "Reference elements by the objectId from get_presentation. EMU units: 914400 = 1 inch. "
                         + "Colors are rgbColor with red/green/blue in 0..1. For update* requests you may "
                         + "omit `fields` to update exactly the attributes you set. See the EXAMPLES.",
                     "items": ["type": "object"],

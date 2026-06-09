@@ -1,10 +1,10 @@
 import GSlidesSchema
 
-/// Which baked-in theme a generated deck uses. A deck is an immutable document, so this is the
+/// Which baked-in theme a generated presentation uses. A presentation is an immutable document, so this is the
 /// document's own theme (it does NOT track the viewer's dark mode) — selected at generation time.
 /// Both variants are valid Slides `ColorScheme`s; only the master's RGB values differ, so every
 /// placeholder/decoration (which references theme colors symbolically) recolors automatically.
-public enum DeckColorTheme: String, Sendable, CaseIterable, Codable {
+public enum PresentationColorTheme: String, Sendable, CaseIterable, Codable {
     case light, dark
 }
 
@@ -33,11 +33,11 @@ public struct PlaceholderSpec: Sendable {
     }
 }
 
-/// A deck design as data: the master's theme (ColorScheme) and, per predefined layout, the
+/// A presentation design as data: the master's theme (ColorScheme) and, per predefined layout, the
 /// placeholder rectangles + default styles. This is where "見た目" lives — in the protocol's own
-/// vocabulary (layout/master pages), not in renderer code. Real `presentations.get` decks carry the
-/// same data; LLM decks borrow it via `DeckExpander`, then render through the identical geometry path.
-public enum DeckTemplate {
+/// vocabulary (layout/master pages), not in renderer code. Real `presentations.get` presentations carry the
+/// same data; LLM presentations borrow it via `PresentationExpander`, then render through the identical geometry path.
+public enum PresentationTemplate {
     // Standard 16:9 page (EMU) and a comfortable margin.
     static let pageW: Double = 9_144_000
     static let pageH: Double = 5_143_500
@@ -47,11 +47,11 @@ public enum DeckTemplate {
 
     public static let masterObjectId = "gslides-master"
 
-    /// A clean, professional default theme. Unbranded decks still get color (accent + muted captions),
-    /// resolved through the same DeckColorPalette path as a branded deck's scheme. The `theme`
+    /// A clean, professional default theme. Unbranded presentations still get color (accent + muted captions),
+    /// resolved through the same PresentationColorPalette path as a branded presentation's scheme. The `theme`
     /// selects light vs dark — only the master `ColorScheme` differs; every placeholder/decoration
     /// references these slots symbolically (`.text1`/`.dark2`/`.accent1`), so they recolor for free.
-    public static func master(theme: DeckColorTheme = .light) -> Page {
+    public static func master(theme: PresentationColorTheme = .light) -> Page {
         Page(
             objectId: masterObjectId,
             pageType: .master,
@@ -66,7 +66,7 @@ public enum DeckTemplate {
     /// the API's aliases — emitted with the conventional mapping (text1→dark1, background1→light1,
     /// text2→dark2, background2→light2). The renderer reads dark1/light1 for canvas + text, accent1
     /// for the brand accent, dark2 for muted captions; the rest complete protocol fidelity.
-    static func colorScheme(_ theme: DeckColorTheme) -> ColorScheme {
+    static func colorScheme(_ theme: PresentationColorTheme) -> ColorScheme {
         switch theme {
         case .light:
             scheme(
@@ -231,7 +231,7 @@ public enum DeckTemplate {
     }
 
     /// Page-number footer text for content slides (TITLE / SECTION get none). Baked as plain text
-    /// styled muted at bottom-right — a small "designed deck" signal.
+    /// styled muted at bottom-right — a small "designed presentation" signal.
     public static func footer(slideId: String, number: Int, layout: PredefinedLayout) -> PageElement? {
         switch layout {
         case .title, .sectionHeader: return nil

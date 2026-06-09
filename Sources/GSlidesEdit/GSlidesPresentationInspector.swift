@@ -4,7 +4,7 @@ import GSlidesSchema
 /// One addressable element, described for an editing agent: a stable `objectId` to target, plus
 /// enough context (kind, label, current text, EMU bounding box) to decide what to change. This is
 /// the "read current state" half of the edit loop — an agent calls inspect, then emits `SemanticEdit`s.
-public struct DeckElementDescriptor: Codable, Equatable, Sendable {
+public struct PresentationElementDescriptor: Codable, Equatable, Sendable {
     public var objectId: String
     public var slideIndex: Int
     public var kind: String              // text | image | line | table | shape | group | other
@@ -16,27 +16,27 @@ public struct DeckElementDescriptor: Codable, Equatable, Sendable {
     public var heightEmu: Double?
 }
 
-/// A whole deck reduced to its editable surface — what an agent sees before editing.
-public struct DeckSnapshot: Codable, Equatable, Sendable {
-    public var deckTitle: String?
+/// A whole presentation reduced to its editable surface — what an agent sees before editing.
+public struct PresentationSnapshot: Codable, Equatable, Sendable {
+    public var presentationTitle: String?
     public var slideCount: Int
     public var slideIds: [String]
-    public var elements: [DeckElementDescriptor]
+    public var elements: [PresentationElementDescriptor]
 }
 
 /// Renders a `Presentation` into the agent-facing snapshot. Pure and LLM-agnostic: the host wraps
-/// it in an `inspect_deck` tool; the package just owns the projection (objectId ↔ what it is).
-public enum GSlidesDeckInspector {
-    public static func snapshot(_ presentation: Presentation, textLimit: Int = 120) -> DeckSnapshot {
+/// it in an `inspect_presentation` tool; the package just owns the projection (objectId ↔ what it is).
+public enum GSlidesPresentationInspector {
+    public static func snapshot(_ presentation: Presentation, textLimit: Int = 120) -> PresentationSnapshot {
         let slides = presentation.slides ?? []
-        var elements: [DeckElementDescriptor] = []
+        var elements: [PresentationElementDescriptor] = []
         for (index, slide) in slides.enumerated() {
             for element in slide.pageElements ?? [] {
                 elements.append(descriptor(element, slideIndex: index, textLimit: textLimit))
             }
         }
-        return DeckSnapshot(
-            deckTitle: presentation.title,
+        return PresentationSnapshot(
+            presentationTitle: presentation.title,
             slideCount: slides.count,
             slideIds: slides.map(\.objectId),
             elements: elements)
@@ -48,8 +48,8 @@ public enum GSlidesDeckInspector {
         return try encoder.encode(snapshot(presentation, textLimit: textLimit))
     }
 
-    static func descriptor(_ element: PageElement, slideIndex: Int, textLimit: Int) -> DeckElementDescriptor {
-        DeckElementDescriptor(
+    static func descriptor(_ element: PageElement, slideIndex: Int, textLimit: Int) -> PresentationElementDescriptor {
+        PresentationElementDescriptor(
             objectId: element.objectId,
             slideIndex: slideIndex,
             kind: kind(of: element),
@@ -63,7 +63,7 @@ public enum GSlidesDeckInspector {
 
     static func kind(of element: PageElement) -> String {
         switch element.kind {
-        case .shape: "text"   // shapes are text boxes in this profile's authored decks
+        case .shape: "text"   // shapes are text boxes in this profile's authored presentations
         case .image: "image"
         case .line: "line"
         case .table: "table"

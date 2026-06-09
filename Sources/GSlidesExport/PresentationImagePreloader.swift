@@ -4,10 +4,10 @@ import GSlidesRenderer
 import GSlidesSchema
 import ImageIO
 
-/// Preloads every image a deck references into a `GSlidesImageProvider`, so the export renderers
+/// Preloads every image a presentation references into a `GSlidesImageProvider`, so the export renderers
 /// draw them synchronously (no blank `AsyncImage` snapshots). file:// loads immediately; http(s)
 /// is fetched concurrently.
-public enum DeckImagePreloader {
+public enum PresentationImagePreloader {
     public static func provider(for presentation: Presentation) async -> GSlidesImageProvider {
         let urls = imageURLs(in: presentation)
         var map: [String: CGImage] = [:]

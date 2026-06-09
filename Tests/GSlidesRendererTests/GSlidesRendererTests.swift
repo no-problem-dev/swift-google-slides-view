@@ -19,7 +19,7 @@ import GSlidesPrompt
         let json = """
         {"title": "Render Demo", "slides": [
             {"layout": "TITLE", "title": "Hello Slides", "subtitle": "Rendered by SwiftUI"},
-            {"layout": "BIG_NUMBER", "title": "42%", "big": true, "bodies": [{"text": "of decks are JSON"}]},
+            {"layout": "BIG_NUMBER", "title": "42%", "big": true, "bodies": [{"text": "of presentations are JSON"}]},
             {"title": "Why", "bodies": [{"bullets": ["schema-first", "A2A streaming", "CLI TDD"]}]}
         ]}
         """
@@ -70,14 +70,14 @@ import GSlidesPrompt
         #expect(render(GSlidesSlideView(slide: slide, presentation: presentation)) != nil)
     }
 
-    @Test func deckViewRenders() throws {
+    @Test func presentationViewRenders() throws {
         let presentation = try semanticPresentation()
-        #expect(render(GSlidesDeckView(presentation: presentation)) != nil)
+        #expect(render(GSlidesPresentationView(presentation: presentation)) != nil)
     }
 }
 
 @MainActor
-@Suite struct DeckNavigationViewTests {
+@Suite struct PresentationNavigationViewTests {
     func navPresentation() throws -> Presentation {
         let json = """
         {"title": "Nav", "slides": [
@@ -130,7 +130,7 @@ import GSlidesPrompt
         #expect(view.paragraphs.first?.plainText == "Hello world")
     }
 
-    /// The compact form DeckExpander emits (marker + run in one element) must group the same way.
+    /// The compact form PresentationExpander emits (marker + run in one element) must group the same way.
     @Test func compactParagraphFormStillGroups() {
         let tc = TextContent(textElements: [
             TextElement(
@@ -294,7 +294,7 @@ import GSlidesPrompt
     }
 
     @Test func generatedTableHeaderHasBackgroundFill() throws {
-        let p = DeckExpander.expand(SemanticDeck(title: "x", slides: [
+        let p = PresentationExpander.expand(SemanticPresentation(title: "x", slides: [
             SemanticSlide(layout: "TITLE_AND_BODY", title: "T", bodies: [
                 SemanticBody(table: SemanticTable(headers: ["A", "B"], rows: [["1", "2"]])),
             ]),

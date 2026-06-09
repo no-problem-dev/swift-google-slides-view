@@ -12,7 +12,7 @@ import UniformTypeIdentifiers
 @MainActor
 @Suite struct SnapshotDumpTests {
     @Test(.enabled(if: ProcessInfo.processInfo.environment["GSLIDES_SNAPSHOT_DIR"] != nil))
-    func dumpSemanticDeck() throws {
+    func dumpSemanticPresentation() throws {
         let directory = URL(fileURLWithPath: ProcessInfo.processInfo.environment["GSLIDES_SNAPSHOT_DIR"]!)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let json = """

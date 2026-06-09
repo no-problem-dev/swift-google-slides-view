@@ -36,7 +36,7 @@ public extension Presentation {
 }
 
 /// Local `batchUpdate` executor. Sits on the frozen Schema+Requests mirror; everything above
-/// (A2A diff delivery, the agent edit loop) drives the deck through this one entry point.
+/// (A2A diff delivery, the agent edit loop) drives the presentation through this one entry point.
 public enum GSlidesEditor {
     public static func apply(_ requests: [Request], to presentation: Presentation) throws -> Presentation {
         try presentation.applying(requests)

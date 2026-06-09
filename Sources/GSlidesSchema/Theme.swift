@@ -9,7 +9,7 @@ public struct ThemeColorPair: Codable, Equatable, Sendable {
     }
 }
 
-/// The deck's palette: theme color name → RGB. Lives on a page's properties
+/// The presentation's palette: theme color name → RGB. Lives on a page's properties
 /// (inherited master → layout → slide). This is what resolves `ACCENT1` to a real color.
 public struct ColorScheme: Codable, Equatable, Sendable {
     public var colors: [ThemeColorPair]?

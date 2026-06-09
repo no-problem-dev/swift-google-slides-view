@@ -8,10 +8,10 @@ import SwiftUI
 /// `GSlidesSlideView` into a PDF-page `CGContext`. Pure (no UIKit), so it runs on the CLI for tests.
 ///
 /// Pass an `imageProvider` (preloaded images) so pictures appear; `AsyncImage` would otherwise
-/// snapshot blank. Build one with `DeckImagePreloader`.
+/// snapshot blank. Build one with `PresentationImagePreloader`.
 @MainActor
-public enum DeckPDFRenderer {
-    /// Default page size in PostScript points for a 16:9 deck (10in × 5.625in at 96dpi-ish scale).
+public enum PresentationPDFRenderer {
+    /// Default page size in PostScript points for a 16:9 presentation (10in × 5.625in at 96dpi-ish scale).
     public static let defaultPageSize = CGSize(width: 960, height: 540)
 
     public static func pdfData(
@@ -40,7 +40,7 @@ public enum DeckPDFRenderer {
     }
 
     /// Writes the PDF to a temporary file and returns its URL (for `ShareLink` / `fileExporter`).
-    /// `filename` is sanitized; defaults to the deck title.
+    /// `filename` is sanitized; defaults to the presentation title.
     public static func pdfFile(
         _ presentation: Presentation,
         filename: String? = nil,
@@ -48,17 +48,17 @@ public enum DeckPDFRenderer {
         imageProvider: GSlidesImageProvider? = nil
     ) throws -> URL {
         let data = pdfData(presentation, pageSize: pageSize, imageProvider: imageProvider)
-        let name = DeckExportNaming.fileName(filename ?? presentation.title ?? "deck", ext: "pdf")
+        let name = PresentationExportNaming.fileName(filename ?? presentation.title ?? "presentation", ext: "pdf")
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(name)
         try data.write(to: url, options: .atomic)
         return url
     }
 }
 
-enum DeckExportNaming {
+enum PresentationExportNaming {
     static func fileName(_ raw: String, ext: String) -> String {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        let safe = trimmed.isEmpty ? "deck" : String(trimmed.prefix(60))
+        let safe = trimmed.isEmpty ? "presentation" : String(trimmed.prefix(60))
             .replacingOccurrences(of: "/", with: "-")
             .replacingOccurrences(of: ":", with: "-")
         return "\(safe).\(ext)"

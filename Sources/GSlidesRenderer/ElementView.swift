@@ -56,7 +56,7 @@ struct ElementView: View {
 
     @ViewBuilder
     private func videoView(_ video: Video) -> some View {
-        // Static deck rendering: show the thumbnail with a play affordance (no inline playback).
+        // Static presentation rendering: show the thumbnail with a play affordance (no inline playback).
         ZStack {
             if let url = video.url.flatMap(URL.init(string:)) {
                 AsyncImage(url: url) { phase in
@@ -360,9 +360,9 @@ struct ImageEffectsModifier: ViewModifier {
         case .some(.sepia):
             content.grayscale(1).colorMultiply(Color(red: 0.76, green: 0.6, blue: 0.42))
         case .some(let name) where name.rawValue.hasPrefix("DARK"):
-            content.grayscale(0.6).colorMultiply(palette.deck.onBackground)
+            content.grayscale(0.6).colorMultiply(palette.presentation.onBackground)
         case .some(let name) where name.rawValue.hasPrefix("LIGHT"):
-            content.grayscale(0.6).colorMultiply(palette.deck.background)
+            content.grayscale(0.6).colorMultiply(palette.presentation.background)
         case .some(.custom) where props?.recolor?.recolorStops?.isEmpty == false:
             // Custom duotone: grayscale tinted toward a representative stop color (approximation).
             content.grayscale(1).colorMultiply(customRecolorTint ?? .white)
@@ -919,7 +919,7 @@ struct TableElementView: View {
     }
 
     private func edge(_ border: TableBorderProperties?, from: CGPoint, to: CGPoint) -> some View {
-        let color = palette.color(border?.tableBorderFill?.solidFill) ?? palette.deck.outline.opacity(0.5)
+        let color = palette.color(border?.tableBorderFill?.solidFill) ?? palette.presentation.outline.opacity(0.5)
         let width = CGFloat(border?.weight?.pointMagnitude ?? 0.75) * pointScale
         return Path { p in p.move(to: from); p.addLine(to: to) }
             .stroke(color, style: StrokeStyle(lineWidth: width, dash: gslidesDashPattern(border?.dashStyle, scale: pointScale)))

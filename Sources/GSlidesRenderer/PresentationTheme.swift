@@ -10,7 +10,7 @@ extension RgbColor {
 
 /// Resolves the effective theme color scheme for a page, following the
 /// slide → layout → master inheritance the Slides API defines.
-public enum DeckTheme {
+public enum PresentationTheme {
     public static func colorScheme(for page: Page, in presentation: Presentation) -> GSlidesSchema.ColorScheme? {
         if let own = page.pageProperties?.colorScheme, own.colors?.isEmpty == false { return own }
         if let layoutId = page.slideProperties?.layoutObjectId,
@@ -32,7 +32,7 @@ public enum DeckTheme {
         page.pageProperties?.pageBackgroundFill ?? layoutBackground(for: page, in: presentation)
     }
 
-    public static func backgroundColor(for page: Page, in presentation: Presentation, palette: DeckColorPalette) -> Color {
+    public static func backgroundColor(for page: Page, in presentation: Presentation, palette: PresentationColorPalette) -> Color {
         let fill = backgroundFill(for: page, in: presentation)
         if let solid = fill?.solidFill, let color = palette.resolve(solid.color) {
             return color.opacity(solid.alpha ?? 1)
@@ -48,13 +48,13 @@ public enum DeckTheme {
     }
 }
 
-/// A DS `ColorPalette` synthesized from the deck's color scheme.
+/// A DS `ColorPalette` synthesized from the presentation's color scheme.
 ///
-/// This is how "render with the deck's real theme" and "drive everything through the design
-/// system" become the same thing: the deck's ACCENT1/TEXT1/BACKGROUND1 fill the DS semantic
+/// This is how "render with the presentation's real theme" and "drive everything through the design
+/// system" become the same thing: the presentation's ACCENT1/TEXT1/BACKGROUND1 fill the DS semantic
 /// slots (primary/onSurface/background…). Slide content and chrome then read one palette via
-/// `@Environment(\.colorPalette)`. Slots the deck doesn't define fall back to `base`.
-public struct DeckColorPalette: ColorPalette {
+/// `@Environment(\.colorPalette)`. Slots the presentation doesn't define fall back to `base`.
+public struct PresentationColorPalette: ColorPalette {
     let scheme: GSlidesSchema.ColorScheme?
     let base: any ColorPalette
 
@@ -63,13 +63,13 @@ public struct DeckColorPalette: ColorPalette {
         self.base = base
     }
 
-    /// The deck's RGB binding for a theme color, if the scheme defines it.
+    /// The presentation's RGB binding for a theme color, if the scheme defines it.
     public func themeColor(_ type: ThemeColorType) -> Color? {
         scheme?.rgb(for: type)?.color
     }
 
     /// Resolve a profile `OpaqueColor` to a concrete color: explicit RGB wins, theme colors
-    /// resolve through the deck scheme, otherwise map onto this palette's semantic slot.
+    /// resolve through the presentation scheme, otherwise map onto this palette's semantic slot.
     public func resolve(_ opaque: OpaqueColor?) -> Color? {
         guard let opaque else { return nil }
         if let rgb = opaque.rgbColor { return rgb.color }
@@ -77,7 +77,7 @@ public struct DeckColorPalette: ColorPalette {
         return themeColor(theme) ?? semanticSlot(for: theme)
     }
 
-    /// Fallback mapping when the deck scheme lacks a theme color: use the nearest DS slot.
+    /// Fallback mapping when the presentation scheme lacks a theme color: use the nearest DS slot.
     private func semanticSlot(for theme: ThemeColorType) -> Color {
         switch theme {
         case .accent1: primary

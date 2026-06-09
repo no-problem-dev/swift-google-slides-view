@@ -57,7 +57,7 @@ public enum GSlidesArtifactCoding {
         )
     }
 
-    /// Batch-update event: element-level edits applied to the current deck (append == true).
+    /// Batch-update event: element-level edits applied to the current presentation (append == true).
     /// Lets an agent stream "move element X / restyle Y" without resending the whole presentation.
     public static func batchUpdateEvent(
         taskId: TaskID,
@@ -128,7 +128,7 @@ public enum GSlidesArtifactCoding {
         try artifact(id: id, kind: .slide, payload: page)
     }
 
-    /// Batch-update artifact: element-level edits applied to the current deck.
+    /// Batch-update artifact: element-level edits applied to the current presentation.
     public static func batchUpdateArtifact(id: ArtifactID, requests: [Request]) throws -> Artifact {
         try artifact(id: id, kind: .batchUpdate, payload: BatchUpdatePresentationRequest(requests: requests))
     }

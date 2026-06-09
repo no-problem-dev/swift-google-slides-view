@@ -2,39 +2,39 @@ import DesignSystem
 import GSlidesSchema
 import SwiftUI
 
-/// Resolves profile colors to SwiftUI colors against a deck-derived DS palette.
-/// Theme colors resolve through the deck's scheme (fidelity); everything is expressed
-/// on the same `DeckColorPalette` the chrome uses.
+/// Resolves profile colors to SwiftUI colors against a presentation-derived DS palette.
+/// Theme colors resolve through the presentation's scheme (fidelity); everything is expressed
+/// on the same `PresentationColorPalette` the chrome uses.
 public struct GSlidesPalette: Sendable {
-    public var deck: DeckColorPalette
+    public var presentation: PresentationColorPalette
 
-    public init(deck: DeckColorPalette) {
-        self.deck = deck
+    public init(presentation: PresentationColorPalette) {
+        self.presentation = presentation
     }
 
     public init(scheme: GSlidesSchema.ColorScheme? = nil) {
-        self.deck = DeckColorPalette(scheme: scheme)
+        self.presentation = PresentationColorPalette(scheme: scheme)
     }
 
     public func color(_ opaque: OpaqueColor?) -> Color? {
-        deck.resolve(opaque)
+        presentation.resolve(opaque)
     }
 
     public func color(_ optional: OptionalColor?) -> Color? {
-        deck.resolve(optional?.opaqueColor)
+        presentation.resolve(optional?.opaqueColor)
     }
 
     public func color(_ fill: SolidFill?) -> Color? {
         guard let fill else { return nil }
-        return deck.resolve(fill.color).map { $0.opacity(fill.alpha ?? 1) }
+        return presentation.resolve(fill.color).map { $0.opacity(fill.alpha ?? 1) }
     }
 
-    /// Default on-surface text color for the deck.
-    public var defaultText: Color { deck.onSurface }
+    /// Default on-surface text color for the presentation.
+    public var defaultText: Color { presentation.onSurface }
 }
 
 /// Default typography for placeholder types — sourced from DS Typography tokens (point sizes)
-/// so the renderer's default scale matches the design system. Explicit deck font sizes win.
+/// so the renderer's default scale matches the design system. Explicit presentation font sizes win.
 enum PlaceholderTypography {
     static func defaultFontSize(for type: PlaceholderType?, big: Bool = false) -> Double {
         let token: Typography = switch type {

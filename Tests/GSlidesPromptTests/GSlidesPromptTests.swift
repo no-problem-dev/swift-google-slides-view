@@ -14,15 +14,15 @@ import GSlidesLayout
         #expect(!text.contains("PREDEFINED_LAYOUT_UNSPECIFIED"))
     }
 
-    @Test func validDeckPassesValidation() throws {
+    @Test func validPresentationPassesValidation() throws {
         let json = """
         {"title": "Demo", "slides": [
             {"layout": "TITLE", "title": "Hello", "subtitle": "World"},
             {"title": "Points", "bodies": [{"bullets": ["a", "b"]}]}
         ]}
         """
-        let deck = try GSlidesGenerationContract.validate(Data(json.utf8))
-        #expect(deck.slides.count == 2)
+        let presentation = try GSlidesGenerationContract.validate(Data(json.utf8))
+        #expect(presentation.slides.count == 2)
     }
 
     @Test func unknownLayoutIsRejected() {
@@ -34,9 +34,9 @@ import GSlidesLayout
         }
     }
 
-    @Test func emptyDeckIsRejected() {
+    @Test func emptyPresentationIsRejected() {
         let json = #"{"title": "Demo", "slides": []}"#
-        #expect(throws: GenerationContractError.emptyDeck) {
+        #expect(throws: GenerationContractError.emptyPresentation) {
             _ = try GSlidesGenerationContract.validate(Data(json.utf8))
         }
     }
@@ -48,12 +48,12 @@ import GSlidesLayout
     }
 }
 
-@Suite struct DeckExpanderTests {
+@Suite struct PresentationExpanderTests {
     @Test func titleSlideExpandsToCenteredTitlePlaceholders() throws {
-        let deck = SemanticDeck(title: "Demo", slides: [
+        let semantic = SemanticPresentation(title: "Demo", slides: [
             SemanticSlide(layout: "TITLE", title: "Hello", subtitle: "World")
         ])
-        let presentation = DeckExpander.expand(deck)
+        let presentation = PresentationExpander.expand(semantic)
         let slide = try #require(presentation.slides?.first)
         let types = (slide.pageElements ?? []).compactMap { $0.shape?.placeholder?.type }
         #expect(types == [.centeredTitle, .subtitle])
@@ -61,24 +61,24 @@ import GSlidesLayout
     }
 
     @Test func layoutIsInferredWhenOmitted() throws {
-        let deck = SemanticDeck(title: "Demo", slides: [
+        let semantic = SemanticPresentation(title: "Demo", slides: [
             SemanticSlide(title: "Section")
         ])
-        let presentation = DeckExpander.expand(deck)
+        let presentation = PresentationExpander.expand(semantic)
         #expect(presentation.slides?.first?.slideProperties?.layoutObjectId == "layout-SECTION_HEADER")
     }
 
     @Test func bigTitleInfersMainPoint() {
         let slide = SemanticSlide(title: "42%", big: true)
-        #expect(DeckExpander.resolvedLayout(of: slide) == .mainPoint)
+        #expect(PresentationExpander.resolvedLayout(of: slide) == .mainPoint)
     }
 
     @Test func usedLayoutsAreSynthesizedAsLayoutPages() throws {
-        let deck = SemanticDeck(title: "Demo", slides: [
+        let semantic = SemanticPresentation(title: "Demo", slides: [
             SemanticSlide(title: "A", bodies: [SemanticBody(bullets: ["x"])]),
             SemanticSlide(title: "B", bodies: [SemanticBody(bullets: ["y"])]),
         ])
-        let presentation = DeckExpander.expand(deck)
+        let presentation = PresentationExpander.expand(semantic)
         let layouts = presentation.layouts ?? []
         #expect(layouts.count == 1)
         #expect(layouts.first?.layoutProperties?.name == "TITLE_AND_BODY")
@@ -86,10 +86,10 @@ import GSlidesLayout
     }
 
     @Test func bulletsBecomeBulletedParagraphs() throws {
-        let deck = SemanticDeck(title: "Demo", slides: [
+        let semantic = SemanticPresentation(title: "Demo", slides: [
             SemanticSlide(title: "Points", bodies: [SemanticBody(bullets: ["one", "two"])])
         ])
-        let presentation = DeckExpander.expand(deck)
+        let presentation = PresentationExpander.expand(semantic)
         let body = try #require(
             presentation.slides?.first?.pageElements?
                 .first { $0.shape?.placeholder?.type == .body }
@@ -101,24 +101,24 @@ import GSlidesLayout
     }
 
     @Test func twoColumnBodiesGetDistinctPlaceholderIndices() throws {
-        let deck = SemanticDeck(title: "Demo", slides: [
+        let semantic = SemanticPresentation(title: "Demo", slides: [
             SemanticSlide(
                 layout: "TITLE_AND_TWO_COLUMNS",
                 title: "Compare",
                 bodies: [SemanticBody(text: "left"), SemanticBody(text: "right")]
             )
         ])
-        let presentation = DeckExpander.expand(deck)
+        let presentation = PresentationExpander.expand(semantic)
         let bodies = (presentation.slides?.first?.pageElements ?? [])
             .filter { $0.shape?.placeholder?.type == .body }
         #expect(bodies.compactMap { $0.shape?.placeholder?.index } == [0, 1])
     }
 
     @Test func imageBodyBecomesImageElement() throws {
-        let deck = SemanticDeck(title: "Demo", slides: [
+        let semantic = SemanticPresentation(title: "Demo", slides: [
             SemanticSlide(title: "Pic", bodies: [SemanticBody(imageUrl: "https://example.com/x.png")])
         ])
-        let presentation = DeckExpander.expand(deck)
+        let presentation = PresentationExpander.expand(semantic)
         let image = try #require(presentation.slides?.first?.pageElements?.first { $0.image != nil })
         #expect(image.image?.sourceUrl == "https://example.com/x.png")
         #expect(image.image?.placeholder?.type == .picture)
@@ -144,15 +144,15 @@ import GSlidesLayout
     /// The A2UI invariant: the typed example, serialized, still validates against the schema
     /// (built from the type system → guaranteed structurally valid, and re-checked here).
     @Test func exampleValidatesAgainstSchema() throws {
-        let validated = try GSlidesGenerationContract.validate(Data(GSlidesGenerationContract.exampleDeckJSON().utf8))
-        #expect(validated.slides.count == GSlidesGenerationContract.exampleDeck().slides.count)
+        let validated = try GSlidesGenerationContract.validate(Data(GSlidesGenerationContract.examplePresentationJSON().utf8))
+        #expect(validated.slides.count == GSlidesGenerationContract.examplePresentation().slides.count)
     }
 
-    /// The example is a real quality bar: a big, varied deck exercising every core layout.
+    /// The example is a real quality bar: a big, varied presentation exercising every core layout.
     @Test func exampleExercisesEveryLayout() {
-        let deck = GSlidesGenerationContract.exampleDeck()
-        #expect(deck.slides.count >= 8)
-        let layouts = Set(deck.slides.map { DeckExpander.resolvedLayout(of: $0).rawValue })
+        let presentation = GSlidesGenerationContract.examplePresentation()
+        #expect(presentation.slides.count >= 8)
+        let layouts = Set(presentation.slides.map { PresentationExpander.resolvedLayout(of: $0).rawValue })
         for expected in ["TITLE", "SECTION_HEADER", "TITLE_AND_BODY", "TITLE_AND_TWO_COLUMNS", "BIG_NUMBER", "MAIN_POINT"] {
             #expect(layouts.contains(expected), "example missing \(expected)")
         }
@@ -160,34 +160,34 @@ import GSlidesLayout
 
     /// The example expands end-to-end into a profile presentation (no dangling references).
     @Test func examplePresentationExpands() throws {
-        let deck = GSlidesGenerationContract.exampleDeck()
-        let presentation = try GSlidesGenerationContract.presentation(from: Data(GSlidesGenerationContract.exampleDeckJSON().utf8))
-        #expect(presentation.slides?.count == deck.slides.count)
+        let semantic = GSlidesGenerationContract.examplePresentation()
+        let presentation = try GSlidesGenerationContract.presentation(from: Data(GSlidesGenerationContract.examplePresentationJSON().utf8))
+        #expect(presentation.slides?.count == semantic.slides.count)
         #expect(presentation.layouts?.isEmpty == false)
     }
 
     /// JSON is deterministic (stable prompt cache): same bytes every call.
     @Test func exampleJSONIsDeterministic() {
-        #expect(GSlidesGenerationContract.exampleDeckJSON() == GSlidesGenerationContract.exampleDeckJSON())
+        #expect(GSlidesGenerationContract.examplePresentationJSON() == GSlidesGenerationContract.examplePresentationJSON())
     }
 
     /// The composed prompt block carries the schema (all layouts), the example, and A2UI-style markers.
     @Test func promptBlockContainsSchemaAndExample() {
         let block = GSlidesGenerationContract.promptBlock()
-        #expect(block.contains("SLIDE DECK SCHEMA"))
+        #expect(block.contains("SLIDE PRESENTATION SCHEMA"))
         #expect(block.contains("### Examples:"))
         #expect(block.contains("---BEGIN"))
         #expect(block.contains("---END"))
         for layout in GSlidesGenerationContract.allowedLayouts {
             #expect(block.contains(layout))
         }
-        #expect(block.contains(GSlidesGenerationContract.exampleDeck().title)) // the example title
+        #expect(block.contains(GSlidesGenerationContract.examplePresentation().title)) // the example title
     }
 }
 
-@Suite struct DeckTemplateTests {
+@Suite struct PresentationTemplateTests {
     @Test func masterCarriesThemeColorScheme() throws {
-        let p = DeckExpander.expand(SemanticDeck(title: "x", slides: [SemanticSlide(title: "A")]))
+        let p = PresentationExpander.expand(SemanticPresentation(title: "x", slides: [SemanticSlide(title: "A")]))
         let scheme = try #require(p.masters?.first?.pageProperties?.colorScheme)
         #expect(scheme.rgb(for: .accent1) != nil)
         #expect(scheme.rgb(for: .text1) != nil)
@@ -195,7 +195,7 @@ import GSlidesLayout
     }
 
     @Test func slideElementsCarryBakedGeometryAndStyle() throws {
-        let p = DeckExpander.expand(SemanticDeck(title: "x", slides: [
+        let p = PresentationExpander.expand(SemanticPresentation(title: "x", slides: [
             SemanticSlide(layout: "BIG_NUMBER", title: "42%", big: true, bodies: [SemanticBody(text: "of teams")]),
         ]))
         let title = try #require(p.slides?.first?.pageElements?.first { $0.shape?.placeholder?.type == .title })
@@ -209,24 +209,24 @@ import GSlidesLayout
     }
 
     @Test func layoutPagesReferenceMasterAndHavePlaceholders() throws {
-        let p = DeckExpander.expand(SemanticDeck(title: "x", slides: [
+        let p = PresentationExpander.expand(SemanticPresentation(title: "x", slides: [
             SemanticSlide(layout: "TITLE_AND_TWO_COLUMNS", title: "T", bodies: [SemanticBody(text: "l"), SemanticBody(text: "r")]),
         ]))
         let layout = try #require(p.layouts?.first)
-        #expect(layout.layoutProperties?.masterObjectId == DeckTemplate.masterObjectId)
+        #expect(layout.layoutProperties?.masterObjectId == PresentationTemplate.masterObjectId)
         let bodyIndices = (layout.pageElements ?? []).compactMap { $0.shape?.placeholder }.filter { $0.type == .body }.compactMap(\.index)
         #expect(Set(bodyIndices) == [0, 1])
     }
 
     @Test func slideReferencesTemplateMaster() {
-        let p = DeckExpander.expand(SemanticDeck(title: "x", slides: [SemanticSlide(title: "A")]))
-        #expect(p.slides?.first?.slideProperties?.masterObjectId == DeckTemplate.masterObjectId)
+        let p = PresentationExpander.expand(SemanticPresentation(title: "x", slides: [SemanticSlide(title: "A")]))
+        #expect(p.slides?.first?.slideProperties?.masterObjectId == PresentationTemplate.masterObjectId)
     }
 }
 
-@Suite struct DeckDecorationTests {
+@Suite struct PresentationDecorationTests {
     func slide(_ layout: String) -> Page {
-        DeckExpander.expand(SemanticDeck(title: "x", slides: [
+        PresentationExpander.expand(SemanticPresentation(title: "x", slides: [
             SemanticSlide(layout: layout, title: "T", bodies: [SemanticBody(text: "b")]),
         ])).slides!.first!
     }
@@ -253,7 +253,7 @@ import GSlidesLayout
 
 @Suite struct ImageLayoutTests {
     @Test func bodyWithTextAndImageSplitsLeftRight() throws {
-        let p = DeckExpander.expand(SemanticDeck(title: "x", slides: [
+        let p = PresentationExpander.expand(SemanticPresentation(title: "x", slides: [
             SemanticSlide(layout: "TITLE_AND_BODY", title: "T", bodies: [
                 SemanticBody(bullets: ["a", "b"], imageUrl: "https://x/i.png"),
             ]),
@@ -267,14 +267,14 @@ import GSlidesLayout
     }
 
     @Test func titleSlideDropsStrayImages() {
-        let p = DeckExpander.expand(SemanticDeck(title: "x", slides: [
+        let p = PresentationExpander.expand(SemanticPresentation(title: "x", slides: [
             SemanticSlide(layout: "TITLE", title: "T", subtitle: "s", bodies: [SemanticBody(imageUrl: "https://x/i.png")]),
         ]))
         #expect(!(p.slides!.first!.pageElements!).contains { $0.image != nil })
     }
 
     @Test func imageOnlyBodyFillsBodyArea() throws {
-        let p = DeckExpander.expand(SemanticDeck(title: "x", slides: [
+        let p = PresentationExpander.expand(SemanticPresentation(title: "x", slides: [
             SemanticSlide(layout: "TITLE_AND_BODY", title: "T", bodies: [SemanticBody(imageUrl: "https://x/i.png")]),
         ]))
         let image = try #require(p.slides!.first!.pageElements!.first { $0.image != nil })
@@ -284,7 +284,7 @@ import GSlidesLayout
     /// Regression: a model that splits bullets and image into SEPARATE bodies on a single-column
     /// layout must still get side-by-side columns, not two elements stacked in the same rect.
     @Test func separateTextAndImageBodiesDoNotOverlap() throws {
-        let p = DeckExpander.expand(SemanticDeck(title: "x", slides: [
+        let p = PresentationExpander.expand(SemanticPresentation(title: "x", slides: [
             SemanticSlide(layout: "TITLE_AND_BODY", title: "T", bodies: [
                 SemanticBody(bullets: ["a", "b", "c"]),
                 SemanticBody(imageUrl: "https://x/i.png"),
@@ -298,12 +298,12 @@ import GSlidesLayout
     }
 }
 
-@Suite struct DeckThemeTests {
+@Suite struct PresentationThemeTests {
     /// The master `ColorScheme` must mirror a real `presentations.get` master: all 16
     /// `ThemeColorType`s present, every type ⊆ the discovery enum (knownValues).
     @Test func masterEnumeratesAll16ThemeColorTypesForBothThemes() throws {
-        for theme in DeckColorTheme.allCases {
-            let colors = try #require(DeckTemplate.master(theme: theme).pageProperties?.colorScheme?.colors)
+        for theme in PresentationColorTheme.allCases {
+            let colors = try #require(PresentationTemplate.master(theme: theme).pageProperties?.colorScheme?.colors)
             let types = colors.compactMap(\.type)
             #expect(types.count == 16)
             // every emitted type is a known protocol value (no invented vocabulary)
@@ -319,8 +319,8 @@ import GSlidesLayout
 
     /// Light vs dark differ only in RGB: dark has a dark canvas (light1) and light text (dark1).
     @Test func darkThemeInvertsCanvasAndText() throws {
-        func light1(_ theme: DeckColorTheme) throws -> RgbColor {
-            let colors = try #require(DeckTemplate.master(theme: theme).pageProperties?.colorScheme?.colors)
+        func light1(_ theme: PresentationColorTheme) throws -> RgbColor {
+            let colors = try #require(PresentationTemplate.master(theme: theme).pageProperties?.colorScheme?.colors)
             return try #require(colors.first { $0.type == .light1 }?.color)
         }
         // light theme canvas (light1) is near-white; dark theme canvas is near-black
@@ -328,14 +328,14 @@ import GSlidesLayout
         #expect(try light1(.dark).red! < 0.2)
     }
 
-    @Test func deckThemeHintOverridesCallerDefault() throws {
-        let dark = DeckExpander.expand(SemanticDeck(title: "x", theme: "dark", slides: [SemanticSlide(title: "A")]), theme: .light)
+    @Test func presentationThemeHintOverridesCallerDefault() throws {
+        let dark = PresentationExpander.expand(SemanticPresentation(title: "x", theme: "dark", slides: [SemanticSlide(title: "A")]), theme: .light)
         let canvas = try #require(dark.masters?.first?.pageProperties?.colorScheme?.colors?.first { $0.type == .light1 }?.color)
         #expect(canvas.red! < 0.2) // hint "dark" wins over the .light seed
     }
 
     @Test func callerThemeUsedWhenNoHint() throws {
-        let dark = DeckExpander.expand(SemanticDeck(title: "x", slides: [SemanticSlide(title: "A")]), theme: .dark)
+        let dark = PresentationExpander.expand(SemanticPresentation(title: "x", slides: [SemanticSlide(title: "A")]), theme: .dark)
         let canvas = try #require(dark.masters?.first?.pageProperties?.colorScheme?.colors?.first { $0.type == .light1 }?.color)
         #expect(canvas.red! < 0.2)
     }
@@ -364,7 +364,7 @@ import GSlidesLayout
     }
 
     @Test func multiLevelBulletsCarryNestingLevelAndGlyph() throws {
-        let p = DeckExpander.expand(SemanticDeck(title: "x", slides: [
+        let p = PresentationExpander.expand(SemanticPresentation(title: "x", slides: [
             SemanticSlide(layout: "TITLE_AND_BODY", title: "T", bodies: [
                 SemanticBody(bullets: ["top", SemanticBullet("sub", level: 1)]),
             ]),
@@ -382,7 +382,7 @@ import GSlidesLayout
     }
 
     @Test func tableBodyExpandsToTableElement() throws {
-        let p = DeckExpander.expand(SemanticDeck(title: "x", slides: [
+        let p = PresentationExpander.expand(SemanticPresentation(title: "x", slides: [
             SemanticSlide(layout: "TITLE_AND_BODY", title: "T", bodies: [
                 SemanticBody(table: SemanticTable(headers: ["A", "B"], rows: [["1", "2"], ["3", "4"]])),
             ]),
@@ -399,7 +399,7 @@ import GSlidesLayout
     }
 
     @Test func raggedTableRowsArePaddedToWidest() throws {
-        let p = DeckExpander.expand(SemanticDeck(title: "x", slides: [
+        let p = PresentationExpander.expand(SemanticPresentation(title: "x", slides: [
             SemanticSlide(layout: "TITLE_AND_BODY", title: "T", bodies: [
                 SemanticBody(table: SemanticTable(rows: [["a", "b", "c"], ["x"]])),
             ]),
@@ -416,9 +416,9 @@ import GSlidesLayout
         #expect(text.contains("oneOf"))
     }
 
-    @Test func exampleDeckWithTableAndNestingStillValidates() throws {
+    @Test func examplePresentationWithTableAndNestingStillValidates() throws {
         // the worked example must round-trip through the validation sandwich
-        let presentation = try GSlidesGenerationContract.presentation(from: Data(GSlidesGenerationContract.exampleDeckJSON().utf8))
+        let presentation = try GSlidesGenerationContract.presentation(from: Data(GSlidesGenerationContract.examplePresentationJSON().utf8))
         #expect((presentation.slides?.count ?? 0) > 0)
         #expect(presentation.slides?.contains { ($0.pageElements ?? []).contains { $0.table != nil } } == true)
     }
@@ -426,7 +426,7 @@ import GSlidesLayout
 
 @Suite struct InlineEmphasisTests {
     @Test func parsesBoldAndAccentRuns() {
-        let runs = DeckExpander.inlineRuns("通常 **太字** と ==強調== 終わり")
+        let runs = PresentationExpander.inlineRuns("通常 **太字** と ==強調== 終わり")
         #expect(runs.map(\.content) == ["通常 ", "太字", " と ", "強調", " 終わり"])
         #expect(runs[1].style?.bold == true)
         #expect(runs[1].style?.foregroundColor == nil)                       // bold only
@@ -435,13 +435,13 @@ import GSlidesLayout
     }
 
     @Test func plainTextIsSingleRun() {
-        let runs = DeckExpander.inlineRuns("emphasis なし")
+        let runs = PresentationExpander.inlineRuns("emphasis なし")
         #expect(runs.count == 1)
         #expect(runs[0].style == nil)
     }
 
     @Test func emphasizedBulletExpandsToMultipleRunsOnOneParagraph() throws {
-        let p = DeckExpander.expand(SemanticDeck(title: "x", slides: [
+        let p = PresentationExpander.expand(SemanticPresentation(title: "x", slides: [
             SemanticSlide(layout: "TITLE_AND_BODY", title: "T", bodies: [SemanticBody(bullets: ["**重要**な点"])]),
         ]))
         let body = try #require(p.slides?.first?.pageElements?.first { $0.shape?.placeholder?.type == .body })
@@ -453,10 +453,10 @@ import GSlidesLayout
     }
 
     @Test func exampleWithEmphasisStillValidates() throws {
-        let presentation = try GSlidesGenerationContract.presentation(from: Data(GSlidesGenerationContract.exampleDeckJSON().utf8))
+        let presentation = try GSlidesGenerationContract.presentation(from: Data(GSlidesGenerationContract.examplePresentationJSON().utf8))
         #expect((presentation.slides?.count ?? 0) > 0)
         // the example's serialized JSON carries the markup for the model to learn from
-        #expect(GSlidesGenerationContract.exampleDeckJSON().contains("**"))
-        #expect(GSlidesGenerationContract.exampleDeckJSON().contains("=="))
+        #expect(GSlidesGenerationContract.examplePresentationJSON().contains("**"))
+        #expect(GSlidesGenerationContract.examplePresentationJSON().contains("=="))
     }
 }

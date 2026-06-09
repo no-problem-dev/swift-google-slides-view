@@ -10,11 +10,11 @@ import UniformTypeIdentifiers
 @MainActor
 @Suite struct ThemedSnapshotTests {
     @Test(.enabled(if: ProcessInfo.processInfo.environment["GSLIDES_SNAPSHOT_DIR"] != nil))
-    func dumpThemedDeck() throws {
+    func dumpThemedPresentation() throws {
         let dir = URL(fileURLWithPath: ProcessInfo.processInfo.environment["GSLIDES_SNAPSHOT_DIR"]!)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
 
-        // A deck with a dark, branded master color scheme.
+        // A presentation with a dark, branded master color scheme.
         let scheme = ColorScheme(colors: [
             ThemeColorPair(type: .background1, color: RgbColor(red: 0.09, green: 0.11, blue: 0.18)),
             ThemeColorPair(type: .text1, color: RgbColor(red: 0.93, green: 0.95, blue: 0.98)),
@@ -42,14 +42,14 @@ import UniformTypeIdentifiers
                         slideProperties: SlideProperties(masterObjectId: "master-1"))
         }
 
-        let deck = Presentation(title: "Themed", slides: [
+        let presentation = Presentation(title: "Themed", slides: [
             slide("s1", title: "Branded Dark Theme", big: true, bullets: [], accent: .accent1),
             slide("s2", title: "Accent colors resolve", big: false,
                   bullets: ["BACKGROUND1 → canvas", "TEXT1 → body", "ACCENT1/2 → headings"], accent: .accent2),
         ], masters: [master])
 
-        for (i, s) in (deck.slides ?? []).enumerated() {
-            let renderer = ImageRenderer(content: GSlidesSlideView(slide: s, presentation: deck).frame(width: 960))
+        for (i, s) in (presentation.slides ?? []).enumerated() {
+            let renderer = ImageRenderer(content: GSlidesSlideView(slide: s, presentation: presentation).frame(width: 960))
             renderer.proposedSize = ProposedViewSize(width: 960, height: nil)
             renderer.scale = 2
             let image = try #require(renderer.cgImage)

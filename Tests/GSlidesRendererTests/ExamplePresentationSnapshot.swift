@@ -9,12 +9,12 @@ import UniformTypeIdentifiers
 @testable import GSlidesRenderer
 
 @MainActor
-@Suite struct ExampleDeckSnapshot {
+@Suite struct ExamplePresentationSnapshot {
     @Test(.enabled(if: ProcessInfo.processInfo.environment["GSLIDES_SNAPSHOT_DIR"] != nil))
     func dumpExample() throws {
         let dir = URL(fileURLWithPath: ProcessInfo.processInfo.environment["GSLIDES_SNAPSHOT_DIR"]!)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        let presentation = try GSlidesGenerationContract.presentation(from: Data(GSlidesGenerationContract.exampleDeckJSON().utf8))
+        let presentation = try GSlidesGenerationContract.presentation(from: Data(GSlidesGenerationContract.examplePresentationJSON().utf8))
         for (i, s) in (presentation.slides ?? []).enumerated() {
             let r = ImageRenderer(content: GSlidesSlideView(slide: s, presentation: presentation).frame(width: 1024))
             r.proposedSize = ProposedViewSize(width: 1024, height: nil)

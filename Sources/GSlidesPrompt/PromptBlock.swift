@@ -1,16 +1,16 @@
 import Foundation
 
 /// Few-shot examples built **from the Swift type system** instead of hand-written JSON — the
-/// slide-deck counterpart of `A2UIExample`. A hand-authored string drifts and silently goes
+/// slide-presentation counterpart of `A2UIExample`. A hand-authored string drifts and silently goes
 /// invalid (wrong layout name, a field the schema dropped); constructing the example from typed
-/// `SemanticDeck` values and serializing guarantees it stays structurally valid, and a test pins it.
+/// `SemanticPresentation` values and serializing guarantees it stays structurally valid, and a test pins it.
 extension GSlidesGenerationContract {
 
-    /// The canonical example AND the quality bar. The model is told to MATCH this deck's variety,
+    /// The canonical example AND the quality bar. The model is told to MATCH this presentation's variety,
     /// density and layout usage rather than read prose rules — teaching by demonstration. Built
     /// from typed values; localized (the host's role prompt sets the language, the content shows it).
-    public static func exampleDeck() -> SemanticDeck {
-        SemanticDeck(title: "リモートワーク時代の生産性", slides: [
+    public static func examplePresentation() -> SemanticPresentation {
+        SemanticPresentation(title: "リモートワーク時代の生産性", slides: [
             SemanticSlide(
                 layout: "TITLE",
                 title: "リモートワーク時代の生産性",
@@ -79,11 +79,11 @@ extension GSlidesGenerationContract {
     }
 
     /// The example as deterministic JSON (sorted keys, unescaped slashes — stable prompt cache,
-    /// URL-clean), derived from the typed deck. Matches `A2UIExample.json`'s conventions.
-    public static func exampleDeckJSON() -> String {
+    /// URL-clean), derived from the typed presentation. Matches `A2UIExample.json`'s conventions.
+    public static func examplePresentationJSON() -> String {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes, .prettyPrinted]
-        return (try? encoder.encode(exampleDeck())).map { String(decoding: $0, as: UTF8.self) } ?? "{}"
+        return (try? encoder.encode(examplePresentation())).map { String(decoding: $0, as: UTF8.self) } ?? "{}"
     }
 
     /// The system-instruction block: schema (what's allowed) + the worked example wrapped in the
@@ -92,13 +92,13 @@ extension GSlidesGenerationContract {
     public static func promptBlock() -> String {
         let schema = (try? jsonSchemaData()).map { String(decoding: $0, as: UTF8.self) } ?? "{}"
         let schemaSection = """
-        ### SLIDE DECK SCHEMA:
-        The `deck_json` argument MUST validate against this JSON Schema:
+        ### SLIDE PRESENTATION SCHEMA:
+        The `presentation_json` argument MUST validate against this JSON Schema:
         \(schema)
         """
         let example = GSlidesExampleFormatter.format(
-            name: "EXAMPLE DECK (match its variety, density and layout usage — not its content)",
-            content: exampleDeckJSON()
+            name: "EXAMPLE PRESENTATION (match its variety, density and layout usage — not its content)",
+            content: examplePresentationJSON()
         )
         return "\(schemaSection)\n\n### Examples:\n\(example)"
     }

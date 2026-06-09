@@ -6,7 +6,7 @@ import GSlidesRequests
 
 @Suite struct GSlidesAssemblyTests {
     func envelope(slides: [Page] = []) throws -> GSlidesChunk {
-        let presentation = Presentation(title: "Deck", pageSize: nil, slides: slides)
+        let presentation = Presentation(title: "Presentation", pageSize: nil, slides: slides)
         return GSlidesChunk(payload: try JSONEncoder().encode(presentation))
     }
 
@@ -27,7 +27,7 @@ import GSlidesRequests
     }
 
     // 回帰: 生成ストリーム完了（isComplete）後に来るライブ編集 batchUpdate 差分が
-    // 完了ガードで捨てられず、現在のデッキに適用されること（画面が更新されない不具合の防止）。
+    // 完了ガードで捨てられず、現在のプレゼンテーションに適用されること（画面が更新されない不具合の防止）。
     @Test func batchUpdateAppliesAfterStreamCompletes() throws {
         var assembler = GSlidesAssembler()
         try assembler.apply(envelope())
@@ -49,7 +49,7 @@ import GSlidesRequests
         try assembler.apply(slideChunk("s2"))
         try assembler.apply(slideChunk("s3", lastChunk: true))
         #expect(assembler.presentation?.slides?.map(\.objectId) == ["s1", "s2", "s3"])
-        #expect(assembler.presentation?.title == "Deck")
+        #expect(assembler.presentation?.title == "Presentation")
         #expect(assembler.isComplete)
     }
 

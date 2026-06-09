@@ -4,7 +4,7 @@ import GSlidesSchema
 
 public enum GenerationContractError: Error, Hashable {
     case invalidJSON(String)
-    case emptyDeck
+    case emptyPresentation
     case unknownLayout(String, allowed: [String])
 }
 
@@ -19,7 +19,7 @@ public enum GSlidesGenerationContract {
             .map(\.rawValue)
     }
 
-    /// JSON Schema for SemanticDeck, single source: the layout enum is composed
+    /// JSON Schema for SemanticPresentation, single source: the layout enum is composed
     /// from PredefinedLayout.knownValues so it can never drift from the model types.
     public static var jsonSchema: [String: Any] {
         [
@@ -28,8 +28,8 @@ public enum GSlidesGenerationContract {
                 "title": ["type": "string", "maxLength": 100],
                 "theme": [
                     "type": "string",
-                    "enum": DeckColorTheme.allCases.map(\.rawValue),
-                    "description": "Optional deck theme. Omit to use the caller's default (follows the app appearance).",
+                    "enum": PresentationColorTheme.allCases.map(\.rawValue),
+                    "description": "Optional presentation theme. Omit to use the caller's default (follows the app appearance).",
                 ],
                 "slides": [
                     "type": "array",
@@ -108,25 +108,25 @@ public enum GSlidesGenerationContract {
     }
 
     /// Validation sandwich, receiving side: strict decode + semantic checks.
-    public static func validate(_ data: Data) throws -> SemanticDeck {
-        let deck: SemanticDeck
+    public static func validate(_ data: Data) throws -> SemanticPresentation {
+        let presentation: SemanticPresentation
         do {
-            deck = try JSONDecoder().decode(SemanticDeck.self, from: data)
+            presentation = try JSONDecoder().decode(SemanticPresentation.self, from: data)
         } catch {
             throw GenerationContractError.invalidJSON(String(describing: error))
         }
-        guard !deck.slides.isEmpty else { throw GenerationContractError.emptyDeck }
-        for slide in deck.slides {
+        guard !presentation.slides.isEmpty else { throw GenerationContractError.emptyPresentation }
+        for slide in presentation.slides {
             if let layout = slide.layout, !allowedLayouts.contains(layout) {
                 throw GenerationContractError.unknownLayout(layout, allowed: allowedLayouts)
             }
         }
-        return deck
+        return presentation
     }
 
     /// Validated end-to-end path: model output bytes → profile presentation. `theme` is the default
-    /// seed; a deck's own `theme` hint overrides it.
-    public static func presentation(from data: Data, theme: DeckColorTheme = .light) throws -> Presentation {
-        DeckExpander.expand(try validate(data), theme: theme)
+    /// seed; a presentation's own `theme` hint overrides it.
+    public static func presentation(from data: Data, theme: PresentationColorTheme = .light) throws -> Presentation {
+        PresentationExpander.expand(try validate(data), theme: theme)
     }
 }

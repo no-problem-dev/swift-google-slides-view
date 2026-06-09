@@ -3,9 +3,9 @@ import GSlidesSchema
 /// The LLM generation contract: the semantic layer of the profile.
 /// Models emit layout intent and placeholder content — never geometry.
 /// Field order mirrors generation order: layout → title → subtitle → bodies.
-public struct SemanticDeck: Codable, Equatable, Sendable {
+public struct SemanticPresentation: Codable, Equatable, Sendable {
     public var title: String
-    /// Optional deck theme hint ("light"/"dark"); omitted → caller's default. Expands to the
+    /// Optional presentation theme hint ("light"/"dark"); omitted → caller's default. Expands to the
     /// master `ColorScheme` — the protocol's own theming, not a renderer flag.
     public var theme: String?
     public var slides: [SemanticSlide]

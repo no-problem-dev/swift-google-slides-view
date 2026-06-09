@@ -9,7 +9,7 @@ import SwiftUI
 /// baseline/link), prefixed by the bullet glyph and indented by nesting level.
 ///
 /// This handles both a real `presentations.get` (marker and runs in separate elements) and the
-/// compact form `DeckExpander` emits (marker + run in one element).
+/// compact form `PresentationExpander` emits (marker + run in one element).
 struct TextContentView: View {
     var text: TextContent
     var placeholderType: PlaceholderType?
@@ -149,7 +149,7 @@ struct TextContentView: View {
         piece.font = font
 
         piece.foregroundColor = (style?.link != nil
-            ? (palette.deck.themeColor(.hyperlink) ?? palette.color(style?.foregroundColor))
+            ? (palette.presentation.themeColor(.hyperlink) ?? palette.color(style?.foregroundColor))
             : palette.color(style?.foregroundColor)) ?? palette.defaultText
         if let bg = palette.color(style?.backgroundColor) { piece.backgroundColor = bg }
         if style?.underline == true || style?.link != nil { piece.underlineStyle = .single }

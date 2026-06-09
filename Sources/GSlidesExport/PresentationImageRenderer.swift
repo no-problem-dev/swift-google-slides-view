@@ -9,7 +9,7 @@ import UniformTypeIdentifiers
 /// Exports a `Presentation` to raster images (PNG) — each slide individually, or all stacked into
 /// one tall image for social posts. Like the PDF path, pass a preloaded `imageProvider`.
 @MainActor
-public enum DeckImageRenderer {
+public enum PresentationImageRenderer {
     /// Default per-slide pixel size (1920×1080, i.e. the 16:9 page at scale 2 of 960×540).
     public static let defaultPixelSize = CGSize(width: 1920, height: 1080)
 

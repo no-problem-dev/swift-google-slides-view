@@ -6,8 +6,8 @@ import GSlidesRequests
 
 @Suite struct GSlidesEditTests {
 
-    // A one-slide deck with a single text shape ("Hello") at a known transform.
-    func deck() -> Presentation {
+    // A one-slide presentation with a single text shape ("Hello") at a known transform.
+    func presentation() -> Presentation {
         let shape = Shape(shapeType: .textBox, text: TextContent(textElements: [
             TextElement(startIndex: 0, endIndex: 5, paragraphMarker: ParagraphMarker(), textRun: TextRun(content: "Hello")),
         ]))
@@ -31,25 +31,25 @@ import GSlidesRequests
     // MARK: structural
 
     @Test func deleteObjectRemovesElement() throws {
-        let out = try deck().applying([.deleteObject(DeleteObjectRequest(objectId: "el-1"))])
+        let out = try presentation().applying([.deleteObject(DeleteObjectRequest(objectId: "el-1"))])
         #expect(out.slides?.first?.pageElements?.isEmpty == true)
     }
 
     @Test func deleteUnknownObjectThrows() {
         #expect(throws: GSlidesEditError.objectNotFound("nope")) {
-            _ = try deck().applying([.deleteObject(DeleteObjectRequest(objectId: "nope"))])
+            _ = try presentation().applying([.deleteObject(DeleteObjectRequest(objectId: "nope"))])
         }
     }
 
     @Test func createSlideInsertsBlankPage() throws {
-        let out = try deck().applying([.createSlide(CreateSlideRequest(objectId: "s2", insertionIndex: 0))])
+        let out = try presentation().applying([.createSlide(CreateSlideRequest(objectId: "s2", insertionIndex: 0))])
         #expect(out.slides?.count == 2)
         #expect(out.slides?.first?.objectId == "s2")
         #expect(out.slides?.first?.pageType == .slide)
     }
 
     @Test func duplicateObjectCopiesWithNewId() throws {
-        let out = try deck().applying([
+        let out = try presentation().applying([
             .duplicateObject(DuplicateObjectRequest(objectId: "el-1", objectIds: ["el-1": "el-2"])),
         ])
         let ids = out.slides?.first?.pageElements?.map(\.objectId)
@@ -57,7 +57,7 @@ import GSlidesRequests
     }
 
     @Test func zOrderSendToBackMovesFirst() throws {
-        var p = deck()
+        var p = presentation()
         p.slides?[0].pageElements?.append(PageElement(objectId: "el-9", shape: Shape(shapeType: .rectangle)))
         let out = try p.applying([
             .init(updatePageElementsZOrder: UpdatePageElementsZOrderRequest(
@@ -70,7 +70,7 @@ import GSlidesRequests
 
     @Test func absoluteTransformReplaces() throws {
         let t = AffineTransform(scaleX: 2, scaleY: 2, translateX: 0, translateY: 0, unit: .emu)
-        let out = try deck().applying([
+        let out = try presentation().applying([
             .updatePageElementTransform(UpdatePageElementTransformRequest(objectId: "el-1", transform: t, applyMode: .absolute)),
         ])
         let xf = out.slides?.first?.pageElements?.first?.transform
@@ -80,7 +80,7 @@ import GSlidesRequests
     @Test func relativeTransformNudges() throws {
         // A pure translate of +50 / -30, applied relative to translate(100,200) scale 1.
         let nudge = AffineTransform(scaleX: 1, scaleY: 1, translateX: 50, translateY: -30, unit: .emu)
-        let out = try deck().applying([
+        let out = try presentation().applying([
             .updatePageElementTransform(UpdatePageElementTransformRequest(objectId: "el-1", transform: nudge, applyMode: .relative)),
         ])
         let xf = out.slides?.first?.pageElements?.first?.transform
@@ -90,14 +90,14 @@ import GSlidesRequests
     // MARK: text
 
     @Test func replaceAllTextSubstitutes() throws {
-        let out = try deck().applying([
+        let out = try presentation().applying([
             .replaceAllText(ReplaceAllTextRequest(replaceText: "Goodbye", containsText: SubstringMatchCriteria(text: "Hello"))),
         ])
         #expect(plainText(out) == "Goodbye")
     }
 
     @Test func insertTextAtIndex() throws {
-        let out = try deck().applying([
+        let out = try presentation().applying([
             .init(insertText: InsertTextRequest(objectId: "el-1", text: "Oh ", insertionIndex: 0)),
         ])
         #expect(plainText(out) == "Oh Hello")
@@ -106,7 +106,7 @@ import GSlidesRequests
     }
 
     @Test func deleteTextRange() throws {
-        let out = try deck().applying([
+        let out = try presentation().applying([
             .init(deleteText: DeleteTextRequest(objectId: "el-1",
                 textRange: Range(startIndex: 0, endIndex: 2, type: .fixedRange))),
         ])
@@ -114,7 +114,7 @@ import GSlidesRequests
     }
 
     @Test func reindexAfterEdit() throws {
-        let out = try deck().applying([
+        let out = try presentation().applying([
             .init(insertText: InsertTextRequest(objectId: "el-1", text: "XY", insertionIndex: 5)),
         ])
         let el = out.slides?.first?.pageElements?.first?.shape?.text?.textElements?.first
@@ -122,7 +122,7 @@ import GSlidesRequests
     }
 
     @Test func updateTextStyleAppliesFieldMask() throws {
-        let out = try deck().applying([
+        let out = try presentation().applying([
             .updateTextStyle(UpdateTextStyleRequest(
                 objectId: "el-1",
                 style: TextStyle(bold: true),
@@ -134,7 +134,7 @@ import GSlidesRequests
 
     @Test func fieldMaskResetsUnlistedAbsentField() throws {
         // base has bold:true; patch is empty but fields names "bold" → reset (removed).
-        var p = deck()
+        var p = presentation()
         p.slides?[0].pageElements?[0].shape?.text?.textElements?[0].textRun?.style = TextStyle(bold: true)
         let out = try p.applying([
             .updateTextStyle(UpdateTextStyleRequest(objectId: "el-1", style: TextStyle(), textRange: Range(type: .all), fields: "bold")),
@@ -146,13 +146,13 @@ import GSlidesRequests
 
     @Test func unsupportedRequestThrowsWithLabel() {
         #expect(throws: GSlidesEditError.unsupportedRequest("rerouteLine")) {
-            _ = try deck().applying([.rerouteLine(RerouteLineRequest(objectId: "el-1"))])
+            _ = try presentation().applying([.rerouteLine(RerouteLineRequest(objectId: "el-1"))])
         }
     }
 }
 
 @Suite struct GSlidesEditContractTests {
-    func deck() -> Presentation {
+    func presentation() -> Presentation {
         let shape = Shape(shapeType: .textBox, text: TextContent(textElements: [
             TextElement(startIndex: 0, endIndex: 5, paragraphMarker: ParagraphMarker(), textRun: TextRun(content: "Hello")),
         ]))
@@ -175,14 +175,14 @@ import GSlidesRequests
           {"replaceAllText":{"containsText":{"text":"Hello"},"replaceText":"World"}}
         ]}
         """
-        let out = try GSlidesEditContract.apply(Data(json.utf8), to: deck())
+        let out = try GSlidesEditContract.apply(Data(json.utf8), to: presentation())
         #expect(el(out)?.transform?.translateX == 150 && el(out)?.transform?.translateY == 170)
         #expect(text(out) == "World")
     }
 
     // Omitting `fields` updates exactly the attributes provided (inferred mask) — not a wipe.
     @Test func updateTextStyleWithoutFieldsInfersMask() throws {
-        var p = deck()
+        var p = presentation()
         p.slides?[0].pageElements?[0].shape?.text?.textElements?[0].textRun?.style =
             TextStyle(fontSize: Dimension(magnitude: 18, unit: .pt))
         let json = #"{"requests":[{"updateTextStyle":{"objectId":"el-1","style":{"bold":true},"textRange":{"type":"ALL"}}}]}"#
@@ -213,7 +213,7 @@ import GSlidesRequests
           {"replaceAllText":{"containsText":{"text":"Hello"},"replaceText":"Survived"}}
         ]}
         """
-        let out = try GSlidesEditContract.apply(Data(json.utf8), to: deck())
+        let out = try GSlidesEditContract.apply(Data(json.utf8), to: presentation())
         #expect(text(out) == "Survived")
     }
 
@@ -240,7 +240,7 @@ import GSlidesRequests
         """
         let requests = try GSlidesEditContract.validate(Data(json.utf8), allowing: allowed)
         #expect(requests.count == 1)
-        let out = try GSlidesEditContract.apply(Data(json.utf8), to: deck(), allowing: allowed)
+        let out = try GSlidesEditContract.apply(Data(json.utf8), to: presentation(), allowing: allowed)
         #expect(text(out) == "Kept")
         #expect(el(out) != nil)  // el-1 NOT deleted (op was disabled)
     }
@@ -251,8 +251,8 @@ import GSlidesRequests
     }
 }
 
-@Suite struct DeckInspectorTests {
-    func deck() -> Presentation {
+@Suite struct PresentationInspectorTests {
+    func presentation() -> Presentation {
         let title = PageElement(
             objectId: "s1-title",
             size: Size(width: Dimension(magnitude: 100, unit: .pt), height: Dimension(magnitude: 50, unit: .pt)),
@@ -261,12 +261,12 @@ import GSlidesRequests
                          placeholder: Placeholder(type: .title)))
         let img = PageElement(objectId: "s1-img", image: Image(sourceUrl: "media://x"))
         let slide = Page(objectId: "s1", pageType: .slide, pageElements: [title, img])
-        return Presentation(title: "My Deck", slides: [slide])
+        return Presentation(title: "My Presentation", slides: [slide])
     }
 
     @Test func snapshotExposesObjectIdsKindsAndText() {
-        let snap = GSlidesDeckInspector.snapshot(deck())
-        #expect(snap.deckTitle == "My Deck")
+        let snap = GSlidesPresentationInspector.snapshot(presentation())
+        #expect(snap.presentationTitle == "My Presentation")
         #expect(snap.slideCount == 1 && snap.slideIds == ["s1"])
         #expect(snap.elements.map(\.objectId) == ["s1-title", "s1-img"])
         let title = snap.elements[0]
@@ -278,16 +278,16 @@ import GSlidesRequests
     }
 
     @Test func snapshotJSONIsStableAndReadable() throws {
-        let json = String(decoding: try GSlidesDeckInspector.snapshotJSON(deck()), as: UTF8.self)
+        let json = String(decoding: try GSlidesPresentationInspector.snapshotJSON(presentation()), as: UTF8.self)
         #expect(json.contains("\"objectId\":\"s1-title\""))
         #expect(json.contains("\"label\":\"TITLE\""))
     }
 
     @Test func roundTripsThroughEditByObjectId() throws {
         // The inspector's objectId is exactly what an official edit request targets.
-        let snap = GSlidesDeckInspector.snapshot(deck())
+        let snap = GSlidesPresentationInspector.snapshot(presentation())
         let id = snap.elements[0].objectId
-        let out = try deck().applying([.deleteObject(DeleteObjectRequest(objectId: id))])
+        let out = try presentation().applying([.deleteObject(DeleteObjectRequest(objectId: id))])
         #expect(out.slides?.first?.pageElements?.contains { $0.objectId == id } == false)
     }
 }
