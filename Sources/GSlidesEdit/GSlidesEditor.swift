@@ -368,7 +368,9 @@ extension GSlidesEditor {
         }
         let start = min(max(0, offset), total)
         let end = min(total, start + max(0, removing))
-        let insertElem = start < cells.count ? cells[start].elem : cells.last!.elem
+        // Inherit the run at the insertion point; fall back to the last/first run element when the
+        // shape is currently empty (e.g. after a delete-all, where a marker-bearing run remains).
+        let insertElem = start < cells.count ? cells[start].elem : (cells.last?.elem ?? runs[0].index)
         cells.removeSubrange(start..<end)
         cells.insert(contentsOf: inserting.map { ($0, insertElem) }, at: start)
         // Regroup characters back into their run elements.
