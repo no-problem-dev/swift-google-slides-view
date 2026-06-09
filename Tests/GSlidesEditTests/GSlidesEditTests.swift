@@ -226,3 +226,45 @@ import GSlidesRequests
         #expect(bytes < 2048)
     }
 }
+
+@Suite struct DeckInspectorTests {
+    func deck() -> Presentation {
+        let title = PageElement(
+            objectId: "s1-title",
+            size: Size(width: Dimension(magnitude: 100, unit: .pt), height: Dimension(magnitude: 50, unit: .pt)),
+            transform: AffineTransform(scaleX: 1, scaleY: 1, translateX: 914400, translateY: 100000, unit: .emu),
+            shape: Shape(text: TextContent(textElements: [TextElement(textRun: TextRun(content: "  Hello World  "))]),
+                         placeholder: Placeholder(type: .title)))
+        let img = PageElement(objectId: "s1-img", image: Image(sourceUrl: "media://x"))
+        let slide = Page(objectId: "s1", pageType: .slide, pageElements: [title, img])
+        return Presentation(title: "My Deck", slides: [slide])
+    }
+
+    @Test func snapshotExposesObjectIdsKindsAndText() {
+        let snap = GSlidesDeckInspector.snapshot(deck())
+        #expect(snap.deckTitle == "My Deck")
+        #expect(snap.slideCount == 1 && snap.slideIds == ["s1"])
+        #expect(snap.elements.map(\.objectId) == ["s1-title", "s1-img"])
+        let title = snap.elements[0]
+        #expect(title.kind == "text" && title.label == "TITLE")
+        #expect(title.text == "Hello World")              // trimmed
+        #expect(title.xEmu == 914400 && title.yEmu == 100000)
+        #expect(title.widthEmu == 1_270_000)              // 100pt → EMU
+        #expect(snap.elements[1].kind == "image" && snap.elements[1].label == "PICTURE")
+    }
+
+    @Test func snapshotJSONIsStableAndReadable() throws {
+        let json = String(decoding: try GSlidesDeckInspector.snapshotJSON(deck()), as: UTF8.self)
+        #expect(json.contains("\"objectId\":\"s1-title\""))
+        #expect(json.contains("\"label\":\"TITLE\""))
+    }
+
+    @Test func roundTripsThroughEditByObjectId() throws {
+        // The inspector's objectId is exactly what an edit targets.
+        let snap = GSlidesDeckInspector.snapshot(deck())
+        let id = snap.elements[0].objectId
+        let out = try deck().applying(SemanticEditBatch(edits: [SemanticEdit(op: .setText, id: id, text: "Edited")]))
+        let text = out.slides?.first?.pageElements?.first?.shape?.text?.textElements?.compactMap(\.textRun).map { $0.content ?? "" }.joined()
+        #expect(text == "Edited")
+    }
+}
