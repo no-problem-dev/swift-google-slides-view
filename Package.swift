@@ -20,6 +20,8 @@ let package = Package(
         // batchUpdate write モデル（46 Request/Response を含む Codable ミラー）。
         // 編集 API のリクエストを型安全に組み立てる。描画には不要。
         .library(name: "GSlidesRequests", targets: ["GSlidesRequests"]),
+        // ローカル batchUpdate 実行系（[Request] を Presentation に適用する純関数）。
+        .library(name: "GSlidesEdit", targets: ["GSlidesEdit"]),
         // A2A 統合アダプタ: Artifact/DataPart ⇄ GSlidesSchema coding、
         // TaskArtifactUpdateEvent → GSlidesAssembly プリミティブの写像、metadata 語彙。
         // A2A 依存はこのターゲットだけに隔離する。
@@ -50,6 +52,9 @@ let package = Package(
         .target(name: "GSlidesAssembly", dependencies: ["GSlidesSchema"]),
         .target(name: "GSlidesPrompt", dependencies: ["GSlidesSchema", "GSlidesLayout"]),
         .target(name: "GSlidesRequests", dependencies: ["GSlidesSchema"]),
+        // ローカル batchUpdate 実行系: [Request] を in-memory Presentation に適用する純関数 reducer。
+        // Google サーバ非依存（公式 Request 語彙を借りるだけ）。エージェント編集ループの土台。
+        .target(name: "GSlidesEdit", dependencies: ["GSlidesSchema", "GSlidesRequests"]),
         .target(name: "GSlidesA2A", dependencies: [
             "GSlidesSchema",
             "GSlidesAssembly",
@@ -70,6 +75,7 @@ let package = Package(
         .testTarget(name: "GSlidesAssemblyTests", dependencies: ["GSlidesAssembly"]),
         .testTarget(name: "GSlidesPromptTests", dependencies: ["GSlidesPrompt", "GSlidesLayout"]),
         .testTarget(name: "GSlidesRequestsTests", dependencies: ["GSlidesRequests"]),
+        .testTarget(name: "GSlidesEditTests", dependencies: ["GSlidesEdit", "GSlidesPrompt"]),
         .testTarget(name: "GSlidesA2ATests", dependencies: ["GSlidesA2A"]),
         .testTarget(name: "GSlidesRendererTests", dependencies: ["GSlidesRenderer", "GSlidesPrompt"]),
         .testTarget(name: "GSlidesExportTests", dependencies: ["GSlidesExport", "GSlidesPrompt"]),
