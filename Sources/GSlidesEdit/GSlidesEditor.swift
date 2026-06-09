@@ -307,7 +307,7 @@ extension GSlidesEditor {
             throw GSlidesEditError.invalidRequest("updateTextStyle")
         }
         if r.cellLocation != nil { throw GSlidesEditError.unsupportedRequest("updateTextStyle(table cell)") }
-        let fields = r.fields ?? "*"
+        let fields = r.fields ?? ""  // 省略時は FieldMask が patch の存在キーを推論
         var thrown: Error?
         try editText(id, in: &p) { els in
             let (start, end) = resolveRange(r.textRange, total: textLength(els))
@@ -418,7 +418,7 @@ extension GSlidesEditor {
         guard let id = r.objectId, let patch = r.shapeProperties else {
             throw GSlidesEditError.invalidRequest("updateShapeProperties")
         }
-        let fields = r.fields ?? "*"
+        let fields = r.fields ?? ""  // 省略時は FieldMask が patch の存在キーを推論
         var thrown: Error?
         try mutateElement(id, in: &p) { element in
             guard var shape = element.shape else { return }

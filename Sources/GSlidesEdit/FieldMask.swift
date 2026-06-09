@@ -9,14 +9,19 @@ enum FieldMask {
     /// Merge `patch` into `base` for the paths named by `fields`. `*` (or a path list containing it)
     /// replaces wholesale. A masked path missing from `patch` is removed from the result (reset).
     static func merge<T: Codable>(base: T?, patch: T, fields: String, as type: T.Type = T.self) throws -> T {
-        let paths = fields
+        let listed = fields
             .split(separator: ",")
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
-        if paths.isEmpty || paths.contains("*") { return patch }
+        if listed.contains("*") { return patch }
+
+        let source = try object(of: patch) ?? [:]
+        // Empty mask → infer it from the patch's present top-level keys, so an agent can omit
+        // `fields` and have exactly the attributes it set applied (the intuitive update semantics).
+        let paths = listed.isEmpty ? Array(source.keys) : listed
+        if paths.isEmpty { return patch }
 
         var target = try object(of: base) ?? [:]
-        let source = try object(of: patch) ?? [:]
         for path in paths {
             let comps = path.split(separator: ".").map(String.init)
             if let value = lookup(source, comps) {

@@ -151,7 +151,7 @@ import GSlidesRequests
     }
 }
 
-@Suite struct SemanticEditTests {
+@Suite struct GSlidesEditContractTests {
     func deck() -> Presentation {
         let shape = Shape(shapeType: .textBox, text: TextContent(textElements: [
             TextElement(startIndex: 0, endIndex: 5, paragraphMarker: ParagraphMarker(), textRun: TextRun(content: "Hello")),
@@ -163,67 +163,65 @@ import GSlidesRequests
         return Presentation(slides: [Page(objectId: "s1", pageType: .slide, pageElements: [el])])
     }
     func el(_ p: Presentation) -> PageElement? { p.slides?.first?.pageElements?.first }
-
-    @Test func moveExpandsToRelativeTransform() throws {
-        let out = try deck().applying(SemanticEditBatch(edits: [
-            SemanticEdit(op: .move, id: "el-1", dxEmu: 50, dyEmu: -30),
-        ]))
-        #expect(el(out)?.transform?.translateX == 150 && el(out)?.transform?.translateY == 170)
+    func text(_ p: Presentation) -> String? {
+        el(p)?.shape?.text?.textElements?.compactMap(\.textRun).map { $0.content ?? "" }.joined()
     }
 
-    @Test func setTextReplacesWholeText() throws {
-        let out = try deck().applying(SemanticEditBatch(edits: [
-            SemanticEdit(op: .setText, id: "el-1", text: "World"),
-        ]))
-        let text = el(out)?.shape?.text?.textElements?.compactMap(\.textRun).map { $0.content ?? "" }.joined()
-        #expect(text == "World")
-    }
-
-    @Test func restyleBuildsFieldMask() throws {
-        let reqs = EditExpander.requests(for: SemanticEdit(op: .restyle, id: "el-1", bold: true, colorHex: "#FF0000", fontSizePt: 24))
-        guard case .updateTextStyle(let r) = reqs.first?.kind else { Issue.record("not updateTextStyle"); return }
-        #expect(r.fields == "bold,foregroundColor,fontSize")
-        #expect(r.style?.bold == true)
-        #expect(r.style?.fontSize?.magnitude == 24)
-        #expect(r.style?.foregroundColor?.opaqueColor?.rgbColor?.red == 1)
-    }
-
-    @Test func restyleAppliesEndToEnd() throws {
-        let out = try deck().applying(SemanticEditBatch(edits: [
-            SemanticEdit(op: .restyle, id: "el-1", bold: true),
-        ]))
-        #expect(el(out)?.shape?.text?.textElements?.first?.textRun?.style?.bold == true)
-    }
-
-    @Test func deleteAndDuplicateAndOrder() throws {
-        var p = deck()
-        p.slides?[0].pageElements?.append(PageElement(objectId: "el-2", shape: Shape(shapeType: .rectangle)))
-        let dup = try p.applying(SemanticEditBatch(edits: [SemanticEdit(op: .duplicate, id: "el-1", newId: "el-1b")]))
-        #expect(dup.slides?.first?.pageElements?.contains { $0.objectId == "el-1b" } == true)
-        let ordered = try p.applying(SemanticEditBatch(edits: [SemanticEdit(op: .order, id: "el-2", order: .back)]))
-        #expect(ordered.slides?.first?.pageElements?.first?.objectId == "el-2")
-        let deleted = try p.applying(SemanticEditBatch(edits: [SemanticEdit(op: .delete, id: "el-1")]))
-        #expect(deleted.slides?.first?.pageElements?.contains { $0.objectId == "el-1" } == false)
-    }
-
-    @Test func contractValidatesAndAppliesFromJSON() throws {
-        let json = #"{"edits":[{"op":"move","id":"el-1","dxEmu":10,"dyEmu":0},{"op":"setText","id":"el-1","text":"Hi"}]}"#
+    // The agent emits OFFICIAL batchUpdate request JSON — no invented vocabulary.
+    @Test func appliesOfficialBatchUpdateJSON() throws {
+        let json = """
+        {"requests":[
+          {"updatePageElementTransform":{"objectId":"el-1","applyMode":"RELATIVE","transform":{"scaleX":1,"scaleY":1,"translateX":50,"translateY":-30,"unit":"EMU"}}},
+          {"replaceAllText":{"containsText":{"text":"Hello"},"replaceText":"World"}}
+        ]}
+        """
         let out = try GSlidesEditContract.apply(Data(json.utf8), to: deck())
-        #expect(el(out)?.transform?.translateX == 110)
-        let text = el(out)?.shape?.text?.textElements?.compactMap(\.textRun).map { $0.content ?? "" }.joined()
-        #expect(text == "Hi")
+        #expect(el(out)?.transform?.translateX == 150 && el(out)?.transform?.translateY == 170)
+        #expect(text(out) == "World")
+    }
+
+    // Omitting `fields` updates exactly the attributes provided (inferred mask) — not a wipe.
+    @Test func updateTextStyleWithoutFieldsInfersMask() throws {
+        var p = deck()
+        p.slides?[0].pageElements?[0].shape?.text?.textElements?[0].textRun?.style =
+            TextStyle(fontSize: Dimension(magnitude: 18, unit: .pt))
+        let json = #"{"requests":[{"updateTextStyle":{"objectId":"el-1","style":{"bold":true},"textRange":{"type":"ALL"}}}]}"#
+        let out = try GSlidesEditContract.apply(Data(json.utf8), to: p)
+        let style = el(out)?.shape?.text?.textElements?.first?.textRun?.style
+        #expect(style?.bold == true)                 // applied
+        #expect(style?.fontSize?.magnitude == 18)    // preserved (not wiped)
+    }
+
+    @Test func validateAcceptsBareArray() throws {
+        let json = #"[{"deleteObject":{"objectId":"el-1"}}]"#
+        let requests = try GSlidesEditContract.validate(Data(json.utf8))
+        #expect(requests.count == 1)
+        guard case .deleteObject = requests.first?.kind else { Issue.record("not deleteObject"); return }
     }
 
     @Test func emptyBatchRejected() {
         #expect(throws: GSlidesEditContractError.emptyBatch) {
-            _ = try GSlidesEditContract.validate(Data(#"{"edits":[]}"#.utf8))
+            _ = try GSlidesEditContract.validate(Data(#"{"requests":[]}"#.utf8))
         }
     }
 
-    @Test func schemaIsCompact() throws {
-        // Guard the token-economy property: the edit schema stays small (≪ the 44-request wire schema).
-        let bytes = try GSlidesEditContract.jsonSchemaData().count
-        #expect(bytes < 2048)
+    // One bad edit (stale objectId) must not drop the rest (best-effort).
+    @Test func lenientSkipsBadEdit() throws {
+        let json = """
+        {"requests":[
+          {"deleteObject":{"objectId":"does-not-exist"}},
+          {"replaceAllText":{"containsText":{"text":"Hello"},"replaceText":"Survived"}}
+        ]}
+        """
+        let out = try GSlidesEditContract.apply(Data(json.utf8), to: deck())
+        #expect(text(out) == "Survived")
+    }
+
+    @Test func promptBlockListsCuratedOpsAndExamples() {
+        let block = GSlidesEditContract.promptBlock()
+        #expect(block.contains("updatePageElementTransform"))
+        #expect(block.contains("EDIT EXAMPLES"))
+        #expect(GSlidesEditContract.curatedOperations.count == 9)
     }
 }
 
@@ -260,11 +258,10 @@ import GSlidesRequests
     }
 
     @Test func roundTripsThroughEditByObjectId() throws {
-        // The inspector's objectId is exactly what an edit targets.
+        // The inspector's objectId is exactly what an official edit request targets.
         let snap = GSlidesDeckInspector.snapshot(deck())
         let id = snap.elements[0].objectId
-        let out = try deck().applying(SemanticEditBatch(edits: [SemanticEdit(op: .setText, id: id, text: "Edited")]))
-        let text = out.slides?.first?.pageElements?.first?.shape?.text?.textElements?.compactMap(\.textRun).map { $0.content ?? "" }.joined()
-        #expect(text == "Edited")
+        let out = try deck().applying([.deleteObject(DeleteObjectRequest(objectId: id))])
+        #expect(out.slides?.first?.pageElements?.contains { $0.objectId == id } == false)
     }
 }
