@@ -54,16 +54,22 @@ import Testing
         #expect(element.kind == .unknown)
     }
 
-    @Test func outOfProfileEnumValueRoundTrips() throws {
+    @Test func unknownEnumValueRoundTripsLosslessly() throws {
+        // A future value not in the (now complete) discovery mirror still survives decode→encode.
         let json = """
-        {"shapeType": "FLOW_CHART_DECISION"}
+        {"shapeType": "SOME_FUTURE_SHAPE_9999"}
         """
         let shape = try JSONDecoder().decode(Shape.self, from: Data(json.utf8))
-        #expect(shape.shapeType?.rawValue == "FLOW_CHART_DECISION")
+        #expect(shape.shapeType?.rawValue == "SOME_FUTURE_SHAPE_9999")
         #expect(ShapeType.knownValues.contains(shape.shapeType!) == false)
         let encoded = try JSONEncoder().encode(shape)
         let again = try JSONDecoder().decode(Shape.self, from: encoded)
-        #expect(again.shapeType?.rawValue == "FLOW_CHART_DECISION")
+        #expect(again.shapeType?.rawValue == "SOME_FUTURE_SHAPE_9999")
+    }
+
+    @Test func discoveryShapeTypeIsNowKnown() {
+        // FLOW_CHART_DECISION is a real discovery value — the complete mirror knows it.
+        #expect(ShapeType.knownValues.contains(ShapeType(rawValue: "FLOW_CHART_DECISION")))
     }
 }
 
@@ -165,5 +171,39 @@ import Testing
             spaceBelow: Dimension(magnitude: 6, unit: .pt), direction: .leftToRight, spacingMode: .neverCollapse)
         let data = try JSONEncoder().encode(style)
         #expect(try JSONDecoder().decode(ParagraphStyle.self, from: data) == style)
+    }
+}
+
+@Suite struct CompleteSchemaTests {
+    func roundTrip<T: Codable & Equatable>(_ v: T) throws -> T {
+        try JSONDecoder().decode(T.self, from: JSONEncoder().encode(v))
+    }
+
+    @Test func lineWithTypeCategoryAndConnectionsRoundTrips() throws {
+        let line = Line(
+            lineProperties: LineProperties(
+                weight: Dimension(magnitude: 2, unit: .pt),
+                startArrow: .fillArrow, endArrow: .openCircle,
+                startConnection: LineConnection(connectedObjectId: "shape-1", connectionSiteIndex: 0),
+                endConnection: LineConnection(connectedObjectId: "shape-2", connectionSiteIndex: 3)),
+            lineType: .bentConnector3, lineCategory: .bent)
+        #expect(try roundTrip(line) == line)
+    }
+
+    @Test func tableWithBordersRoundTrips() throws {
+        let border = TableBorderProperties(
+            tableBorderFill: TableBorderFill(solidFill: SolidFill(color: OpaqueColor(themeColor: .dark2))),
+            weight: Dimension(magnitude: 1, unit: .pt), dashStyle: .solid)
+        let table = Table(
+            rows: 1, columns: 1,
+            tableRows: [TableRow(tableCells: [TableCell(text: TextContent(textElements: []))])],
+            horizontalBorderRows: [TableBorderRow(tableBorderCells: [TableBorderCell(location: TableCellLocation(rowIndex: 0, columnIndex: 0), tableBorderProperties: border)])],
+            verticalBorderRows: [TableBorderRow(tableBorderCells: [TableBorderCell(tableBorderProperties: border)])])
+        #expect(try roundTrip(table) == table)
+    }
+
+    @Test func thumbnailDecodes() throws {
+        let t = try JSONDecoder().decode(Thumbnail.self, from: Data(#"{"width":1600,"height":900,"contentUrl":"https://t/x.png"}"#.utf8))
+        #expect(t.width == 1600 && t.height == 900)
     }
 }

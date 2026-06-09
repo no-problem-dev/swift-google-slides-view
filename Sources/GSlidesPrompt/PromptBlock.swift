@@ -19,9 +19,9 @@ extension GSlidesGenerationContract {
             SemanticSlide(layout: "SECTION_HEADER", title: "なぜ今、働き方なのか"),
             SemanticSlide(layout: "TITLE_AND_BODY", title: "変化を後押しする3つの力", bodies: [
                 SemanticBody(bullets: [
-                    "技術：高速回線とクラウドでどこでも仕事ができる",
-                    "人材：優秀な人ほど柔軟な働き方を選ぶ",
-                    "コスト：オフィス縮小で固定費を大きく削減",
+                    "**技術**：高速回線とクラウドでどこでも仕事ができる",
+                    "**人材**：優秀な人ほど柔軟な働き方を選ぶ",
+                    "**コスト**：オフィス縮小で固定費を==大きく削減==",
                 ]),
             ]),
             SemanticSlide(layout: "BIG_NUMBER", title: "77%", big: true, bodies: [
@@ -73,7 +73,7 @@ extension GSlidesGenerationContract {
                 ]),
             ]),
             SemanticSlide(layout: "MAIN_POINT", title: "働き方は、もう元には戻らない", bodies: [
-                SemanticBody(text: "問われているのは可否ではなく、いかに使いこなすか。"),
+                SemanticBody(text: "問われているのは可否ではなく、==いかに使いこなすか==。"),
             ]),
         ])
     }

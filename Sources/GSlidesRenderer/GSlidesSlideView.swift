@@ -63,6 +63,7 @@ public struct GSlidesSlideView: View {
                 }
             }
         }
+        .environment(\.gslidesSlideNumber, slideNumber)
         .aspectRatio(pageSize.width / pageSize.height, contentMode: .fit)
         .clipped()
         // Chrome that reads @Environment(\.colorPalette) (DS components) shares the deck's theme.
@@ -86,6 +87,11 @@ public struct GSlidesSlideView: View {
         } else {
             DeckTheme.backgroundColor(for: slide, in: presentation, palette: deckPalette)
         }
+    }
+
+    /// The slide's 1-based position in the deck (for autoText SLIDE_NUMBER).
+    private var slideNumber: Int? {
+        (presentation.slides ?? []).firstIndex { $0.objectId == slide.objectId }.map { $0 + 1 }
     }
 
     private var layoutName: PredefinedLayout? {

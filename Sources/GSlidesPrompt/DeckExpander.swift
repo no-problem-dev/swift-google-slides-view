@@ -175,6 +175,9 @@ public enum DeckExpander {
     }
 
     /// Applies the spec's default text style + alignment to runs/paragraphs that don't set their own.
+    /// Only fills nil fields, so inline emphasis (bold / accent runs) is preserved. Paragraph style
+    /// is set only on elements that already open a paragraph — run-only elements (extra inline runs)
+    /// are left as runs so the renderer keeps them on the same line.
     static func styled(_ text: TextContent, with spec: PlaceholderSpec) -> TextContent {
         var text = text
         text.textElements = text.textElements?.map { element in
@@ -187,11 +190,12 @@ public enum DeckExpander {
                 run.style = style
                 element.textRun = run
             }
-            var marker = element.paragraphMarker ?? ParagraphMarker()
-            var pStyle = marker.style ?? ParagraphStyle()
-            if pStyle.alignment == nil { pStyle.alignment = spec.align }
-            marker.style = pStyle
-            element.paragraphMarker = marker
+            if var marker = element.paragraphMarker {
+                var pStyle = marker.style ?? ParagraphStyle()
+                if pStyle.alignment == nil { pStyle.alignment = spec.align }
+                marker.style = pStyle
+                element.paragraphMarker = marker
+            }
             return element
         }
         return text
@@ -199,10 +203,10 @@ public enum DeckExpander {
 
     static func bodyText(_ body: SemanticBody) -> TextContent? {
         if let bullets = body.bullets, !bullets.isEmpty {
-            return TextContent(textElements: bullets.map { bullet in
-                TextElement(
-                    paragraphMarker: ParagraphMarker(bullet: Bullet(nestingLevel: bullet.level, glyph: bulletGlyph(for: bullet.level))),
-                    textRun: TextRun(content: bullet.text + "\n")
+            return TextContent(textElements: bullets.flatMap { bullet in
+                paragraphElements(
+                    marker: ParagraphMarker(bullet: Bullet(nestingLevel: bullet.level, glyph: bulletGlyph(for: bullet.level))),
+                    runs: inlineRuns(bullet.text)
                 )
             })
         }
@@ -274,9 +278,54 @@ public enum DeckExpander {
     }
 
     static func plainText(_ text: String) -> TextContent {
-        TextContent(textElements: [
-            TextElement(paragraphMarker: ParagraphMarker(), textRun: TextRun(content: text + "\n"))
-        ])
+        TextContent(textElements: paragraphElements(marker: ParagraphMarker(), runs: inlineRuns(text)))
+    }
+
+    /// One paragraph's elements: the marker opens it (carrying the first run, compact form), and any
+    /// further inline runs follow as run-only elements on the same line. The trailing newline marks
+    /// the paragraph end.
+    static func paragraphElements(marker: ParagraphMarker, runs: [TextRun]) -> [TextElement] {
+        guard var last = runs.last else { return [TextElement(paragraphMarker: marker)] }
+        var runs = runs
+        last.content = (last.content ?? "") + "\n"
+        runs[runs.count - 1] = last
+        var elements = [TextElement(paragraphMarker: marker, textRun: runs[0])]
+        elements.append(contentsOf: runs.dropFirst().map { TextElement(textRun: $0) })
+        return elements
+    }
+
+    /// Parses lightweight inline markup into styled runs: `**bold**` → bold, `==accent==` → an
+    /// accent-colored emphasis. Plain spans carry no style (the placeholder default fills them).
+    static func inlineRuns(_ text: String) -> [TextRun] {
+        enum Emphasis { case none, bold, accent }
+        func style(_ e: Emphasis) -> TextStyle? {
+            switch e {
+            case .none: nil
+            case .bold: TextStyle(bold: true)
+            case .accent: TextStyle(bold: true, foregroundColor: OptionalColor(opaqueColor: OpaqueColor(themeColor: .accent1)))
+            }
+        }
+        var runs: [TextRun] = []
+        var buffer = ""
+        var emphasis: Emphasis = .none
+        func flush() {
+            if !buffer.isEmpty { runs.append(TextRun(content: buffer, style: style(emphasis))); buffer = "" }
+        }
+        var index = text.startIndex
+        while index < text.endIndex {
+            let rest = text[index...]
+            if rest.hasPrefix("**") {
+                flush(); emphasis = emphasis == .bold ? .none : .bold
+                index = text.index(index, offsetBy: 2)
+            } else if rest.hasPrefix("==") {
+                flush(); emphasis = emphasis == .accent ? .none : .accent
+                index = text.index(index, offsetBy: 2)
+            } else {
+                buffer.append(text[index]); index = text.index(after: index)
+            }
+        }
+        flush()
+        return runs.isEmpty ? [TextRun(content: "")] : runs
     }
 
     static func placeholderShape(

@@ -2,13 +2,15 @@ import Foundation
 import Testing
 @testable import GSlidesSchema
 
-/// Every SpecEnum's known values must be a subset of the corresponding enum in the
-/// vendored discovery document — the profile never invents vocabulary.
+/// Every SpecEnum's known values must EQUAL the corresponding enum in the vendored discovery
+/// document — the model is a complete, exact mirror (no invented values, no missing values).
 @Suite struct EnumParityTests {
     static let registry: [(values: [String], schema: String, property: String)] = [
         (Unit.knownValues.map(\.rawValue), "Dimension", "unit"),
         (ThemeColorType.knownValues.map(\.rawValue), "OpaqueColor", "themeColor"),
         (Alignment.knownValues.map(\.rawValue), "ParagraphStyle", "alignment"),
+        (TextDirection.knownValues.map(\.rawValue), "ParagraphStyle", "direction"),
+        (SpacingMode.knownValues.map(\.rawValue), "ParagraphStyle", "spacingMode"),
         (BaselineOffset.knownValues.map(\.rawValue), "TextStyle", "baselineOffset"),
         (PageType.knownValues.map(\.rawValue), "Page", "pageType"),
         (PlaceholderType.knownValues.map(\.rawValue), "Placeholder", "type"),
@@ -22,6 +24,9 @@ import Testing
         (RecolorName.knownValues.map(\.rawValue), "Recolor", "name"),
         (ContentAlignment.knownValues.map(\.rawValue), "ShapeProperties", "contentAlignment"),
         (AutoTextType.knownValues.map(\.rawValue), "AutoText", "type"),
+        (ArrowStyle.knownValues.map(\.rawValue), "LineProperties", "startArrow"),
+        (LineType.knownValues.map(\.rawValue), "Line", "lineType"),
+        (LineCategory.knownValues.map(\.rawValue), "Line", "lineCategory"),
     ]
 
     static func discoveryEnum(schema: String, property: String) throws -> Set<String> {
@@ -36,11 +41,12 @@ import Testing
     }
 
     @Test(arguments: registry.indices)
-    func knownValuesAreSubsetOfDiscovery(index: Int) throws {
+    func knownValuesEqualDiscovery(index: Int) throws {
         let entry = Self.registry[index]
         let discovery = try Self.discoveryEnum(schema: entry.schema, property: entry.property)
-        let unknown = Set(entry.values).subtracting(discovery)
-        #expect(unknown.isEmpty, "\(entry.schema).\(entry.property): invented values \(unknown)")
+        let ours = Set(entry.values)
+        #expect(ours.subtracting(discovery).isEmpty, "\(entry.schema).\(entry.property): invented values \(ours.subtracting(discovery))")
+        #expect(discovery.subtracting(ours).isEmpty, "\(entry.schema).\(entry.property): MISSING values \(discovery.subtracting(ours))")
     }
 
     @Test func knownValuesAreUniquePerType() {

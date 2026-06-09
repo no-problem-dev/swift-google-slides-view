@@ -21,6 +21,8 @@ struct TextContentView: View {
     /// Shape autofit: points to subtract from inter-line spacing.
     var lineSpacingReduction: Double = 0
 
+    @Environment(\.gslidesSlideNumber) private var slideNumber
+
     var body: some View {
         VStack(alignment: .leading, spacing: 2 * pointScale) {
             ForEach(Array(paragraphs.enumerated()), id: \.offset) { _, paragraph in
@@ -58,16 +60,26 @@ struct TextContentView: View {
                 current = Paragraph(marker: marker, runs: [])
                 // Compact form: the same element may also carry the first run / auto text.
                 appendRun(element.textRun?.content, element.textRun?.style)
-                appendRun(element.autoText?.content, element.autoText?.style)
+                appendRun(autoTextContent(element.autoText), element.autoText?.style)
             } else if let run = element.textRun {
                 appendRun(run.content, run.style)
             } else if let auto = element.autoText {
-                appendRun(auto.content, auto.style)
+                appendRun(autoTextContent(auto), auto.style)
             }
         }
         if let open = current { result.append(open) }
         // Drop paragraphs that carry no visible text.
         return result.filter { !$0.plainText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+    }
+
+    /// AutoText content — SLIDE_NUMBER fields arrive with empty content (resolved at present time),
+    /// so substitute the injected slide number.
+    private func autoTextContent(_ auto: AutoText?) -> String? {
+        guard let auto else { return nil }
+        if auto.type == .slideNumber, (auto.content ?? "").isEmpty, let number = slideNumber {
+            return String(number)
+        }
+        return auto.content
     }
 
     @ViewBuilder

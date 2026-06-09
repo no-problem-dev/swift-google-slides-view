@@ -51,10 +51,11 @@ public enum GSlidesGenerationContract {
                             "bodies": [
                                 "type": "array",
                                 "maxItems": 2,
+                                // All text supports inline emphasis: **bold** and ==accent== (brand-colored).
                                 "items": [
                                     "type": "object",
                                     "properties": [
-                                        "text": ["type": "string"],
+                                        "text": ["type": "string", "description": "Body text. Inline emphasis: **bold**, ==accent==."],
                                         "bullets": [
                                             "type": "array",
                                             "maxItems": 8,

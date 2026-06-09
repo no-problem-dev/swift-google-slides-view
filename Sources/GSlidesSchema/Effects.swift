@@ -112,27 +112,6 @@ public struct CropProperties: Codable, Equatable, Sendable {
     }
 }
 
-public struct RecolorName: SpecEnum {
-    public var rawValue: String
-    public init(rawValue: String) { self.rawValue = rawValue }
-
-    public static let none = Self(rawValue: "NONE")
-    public static let grayscale = Self(rawValue: "GRAYSCALE")
-    public static let negative = Self(rawValue: "NEGATIVE")
-    public static let sepia = Self(rawValue: "SEPIA")
-    public static let custom = Self(rawValue: "CUSTOM")
-    public static let light1 = Self(rawValue: "LIGHT1")
-    public static let dark1 = Self(rawValue: "DARK1")
-
-    public static var knownValues: [Self] {
-        // LIGHT1..LIGHT10 / DARK1..DARK10 plus the named modes.
-        var values: [Self] = [.none, .grayscale, .negative, .sepia, .custom]
-        for i in 1...10 { values.append(Self(rawValue: "LIGHT\(i)")) }
-        for i in 1...10 { values.append(Self(rawValue: "DARK\(i)")) }
-        return values
-    }
-}
-
 public struct ColorStop: Codable, Equatable, Sendable {
     public var color: OpaqueColor?
     public var alpha: Double?

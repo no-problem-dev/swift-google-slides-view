@@ -505,3 +505,106 @@ import GSlidesPrompt
         #expect(ImageRenderer(content: view.frame(width: 400)).cgImage != nil)
     }
 }
+
+@MainActor
+@Suite struct TableEngineTests {
+    @Test func mergedCellsAndBordersRender() {
+        // header spanning 2 columns + a normal row, with explicit borders
+        func cell(_ s: String, rowSpan: Int = 1, columnSpan: Int = 1, bg: ThemeColorType? = nil) -> TableCell {
+            TableCell(rowSpan: rowSpan, columnSpan: columnSpan,
+                      text: TextContent(textElements: [TextElement(textRun: TextRun(content: s + "\n"))]),
+                      tableCellProperties: bg.map { TableCellProperties(tableCellBackgroundFill: TableCellBackgroundFill(solidFill: SolidFill(color: OpaqueColor(themeColor: $0)))) })
+        }
+        let border = TableBorderProperties(tableBorderFill: TableBorderFill(solidFill: SolidFill(color: OpaqueColor(themeColor: .accent1))), weight: Dimension(magnitude: 1.5, unit: .pt))
+        let borderRow2 = TableBorderRow(tableBorderCells: [TableBorderCell(tableBorderProperties: border), TableBorderCell(tableBorderProperties: border)])
+        let table = Table(
+            rows: 2, columns: 2,
+            tableRows: [
+                TableRow(tableCells: [cell("Merged header", columnSpan: 2, bg: .light2)]),
+                TableRow(tableCells: [cell("A"), cell("B")]),
+            ],
+            tableColumns: [TableColumnProperties(columnWidth: Dimension(magnitude: 2, unit: .emu)), TableColumnProperties(columnWidth: Dimension(magnitude: 1, unit: .emu))],
+            horizontalBorderRows: [borderRow2, borderRow2, borderRow2])
+        let r = ImageRenderer(content: TableElementView(table: table, pointScale: 1, palette: GSlidesPalette()).frame(width: 300, height: 120))
+        #expect(r.cgImage != nil)
+    }
+
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["GSLIDES_SNAPSHOT_DIR"] != nil))
+    func dump() throws {
+        let dir = URL(fileURLWithPath: ProcessInfo.processInfo.environment["GSLIDES_SNAPSHOT_DIR"]!)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        func cell(_ s: String, rowSpan: Int = 1, columnSpan: Int = 1, bg: ThemeColorType? = nil) -> TableCell {
+            TableCell(rowSpan: rowSpan, columnSpan: columnSpan,
+                      text: TextContent(textElements: [TextElement(paragraphMarker: ParagraphMarker(), textRun: TextRun(content: s + "\n", style: bg != nil ? TextStyle(bold: true) : TextStyle()))]),
+                      tableCellProperties: TableCellProperties(tableCellBackgroundFill: bg.map { TableCellBackgroundFill(solidFill: SolidFill(color: OpaqueColor(themeColor: $0))) }, contentAlignment: .middle))
+        }
+        let table = Table(
+            rows: 3, columns: 3,
+            tableRows: [
+                TableRow(tableCells: [cell("四半期業績", columnSpan: 3, bg: .accent1)]),
+                TableRow(tableCells: [cell("項目", bg: .light2), cell("Q1", bg: .light2), cell("Q2", bg: .light2)]),
+                TableRow(tableCells: [cell("売上"), cell("120"), cell("145")]),
+            ],
+            tableColumns: [TableColumnProperties(columnWidth: Dimension(magnitude: 2, unit: .emu)), TableColumnProperties(columnWidth: Dimension(magnitude: 1, unit: .emu)), TableColumnProperties(columnWidth: Dimension(magnitude: 1, unit: .emu))])
+        let view = TableElementView(table: table, pointScale: 1.3, palette: GSlidesPalette()).frame(width: 460, height: 200).padding(24).background(Color.white)
+        let r = ImageRenderer(content: view); r.scale = 2
+        let image = try #require(r.cgImage)
+        let dest = try #require(CGImageDestinationCreateWithURL(dir.appendingPathComponent("table-engine.png") as CFURL, UTType.png.identifier as CFString, 1, nil))
+        CGImageDestinationAddImage(dest, image, nil)
+        #expect(CGImageDestinationFinalize(dest))
+    }
+}
+
+@MainActor
+@Suite struct ExpandedShapesSnapshot {
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["GSLIDES_SNAPSHOT_DIR"] != nil))
+    func dump() throws {
+        let dir = URL(fileURLWithPath: ProcessInfo.processInfo.environment["GSLIDES_SNAPSHOT_DIR"]!)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        func el(_ raw: String) -> PageElement {
+            PageElement(objectId: raw, size: Size(width: Dimension(magnitude: 900000, unit: .emu), height: Dimension(magnitude: 900000, unit: .emu)), transform: AffineTransform(scaleX: 1, scaleY: 1, translateX: 0, translateY: 0, unit: .emu),
+                shape: Shape(shapeType: ShapeType(rawValue: raw), shapeProperties: ShapeProperties(shapeBackgroundFill: ShapeBackgroundFill(solidFill: SolidFill(color: OpaqueColor(themeColor: .accent1))))))
+        }
+        let types = ["PENTAGON","HEXAGON","OCTAGON","DODECAGON","STAR_4","STAR_6","STAR_8","STAR_12","PARALLELOGRAM","TRAPEZOID","RIGHT_TRIANGLE","PLUS","HOME_PLATE","CHEVRON","TRIANGLE","DIAMOND"]
+        let grid = LazyVGrid(columns: Array(repeating: GridItem(.fixed(86)), count: 4), spacing: 14) {
+            ForEach(types, id: \.self) { t in
+                VStack(spacing: 3) {
+                    ElementView(element: el(t), pointScale: 1, palette: GSlidesPalette()).frame(width: 74, height: 74)
+                    Text(t).font(.system(size: 8))
+                }
+            }
+        }.padding(20).frame(width: 420).background(Color.white)
+        let r = ImageRenderer(content: grid); r.scale = 2
+        let image = try #require(r.cgImage)
+        let dest = try #require(CGImageDestinationCreateWithURL(dir.appendingPathComponent("shapes2.png") as CFURL, UTType.png.identifier as CFString, 1, nil))
+        CGImageDestinationAddImage(dest, image, nil)
+        #expect(CGImageDestinationFinalize(dest))
+    }
+}
+
+@MainActor
+@Suite struct MathMiscShapesSnapshot {
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["GSLIDES_SNAPSHOT_DIR"] != nil))
+    func dump() throws {
+        let dir = URL(fileURLWithPath: ProcessInfo.processInfo.environment["GSLIDES_SNAPSHOT_DIR"]!)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        func el(_ raw: String) -> PageElement {
+            PageElement(objectId: raw, size: Size(width: Dimension(magnitude: 900000, unit: .emu), height: Dimension(magnitude: 900000, unit: .emu)), transform: AffineTransform(scaleX: 1, scaleY: 1, translateX: 0, translateY: 0, unit: .emu),
+                shape: Shape(shapeType: ShapeType(rawValue: raw), shapeProperties: ShapeProperties(shapeBackgroundFill: ShapeBackgroundFill(solidFill: SolidFill(color: OpaqueColor(themeColor: .accent1))))))
+        }
+        let types = ["MATH_PLUS","MATH_MINUS","MATH_MULTIPLY","MATH_DIVIDE","MATH_EQUAL","DONUT","FRAME","HALF_FRAME","PIE","CHORD","TEARDROP","BEVEL","CUBE","FOLDED_CORNER","DIAGONAL_STRIPE","LIGHTNING_BOLT"]
+        let grid = LazyVGrid(columns: Array(repeating: GridItem(.fixed(86)), count: 4), spacing: 14) {
+            ForEach(types, id: \.self) { t in
+                VStack(spacing: 3) {
+                    ElementView(element: el(t), pointScale: 1, palette: GSlidesPalette()).frame(width: 74, height: 74)
+                    Text(t).font(.system(size: 8))
+                }
+            }
+        }.padding(20).frame(width: 420).background(Color.white)
+        let r = ImageRenderer(content: grid); r.scale = 2
+        let image = try #require(r.cgImage)
+        let dest = try #require(CGImageDestinationCreateWithURL(dir.appendingPathComponent("shapes3.png") as CFURL, UTType.png.identifier as CFString, 1, nil))
+        CGImageDestinationAddImage(dest, image, nil)
+        #expect(CGImageDestinationFinalize(dest))
+    }
+}

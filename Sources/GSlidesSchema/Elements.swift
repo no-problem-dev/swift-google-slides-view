@@ -120,34 +120,6 @@ public struct Placeholder: Codable, Equatable, Sendable {
     }
 }
 
-public struct ShapeType: SpecEnum {
-    public var rawValue: String
-    public init(rawValue: String) { self.rawValue = rawValue }
-
-    public static let unspecified = Self(rawValue: "TYPE_UNSPECIFIED")
-    public static let textBox = Self(rawValue: "TEXT_BOX")
-    public static let rectangle = Self(rawValue: "RECTANGLE")
-    public static let roundRectangle = Self(rawValue: "ROUND_RECTANGLE")
-    public static let ellipse = Self(rawValue: "ELLIPSE")
-    public static let triangle = Self(rawValue: "TRIANGLE")
-    public static let diamond = Self(rawValue: "DIAMOND")
-    public static let rightArrow = Self(rawValue: "RIGHT_ARROW")
-    public static let leftArrow = Self(rawValue: "LEFT_ARROW")
-    public static let upArrow = Self(rawValue: "UP_ARROW")
-    public static let downArrow = Self(rawValue: "DOWN_ARROW")
-    public static let star5 = Self(rawValue: "STAR_5")
-    public static let cloud = Self(rawValue: "CLOUD")
-    public static let heart = Self(rawValue: "HEART")
-
-    public static var knownValues: [Self] {
-        [
-            .unspecified, .textBox, .rectangle, .roundRectangle, .ellipse,
-            .triangle, .diamond, .rightArrow, .leftArrow, .upArrow, .downArrow,
-            .star5, .cloud, .heart,
-        ]
-    }
-}
-
 public struct AutofitType: SpecEnum {
     public var rawValue: String
     public init(rawValue: String) { self.rawValue = rawValue }
@@ -437,6 +409,8 @@ public struct LineProperties: Codable, Equatable, Sendable {
     public var dashStyle: DashStyle?
     public var startArrow: ArrowStyle?
     public var endArrow: ArrowStyle?
+    public var startConnection: LineConnection?
+    public var endConnection: LineConnection?
     public var link: Link?
 
     public init(
@@ -445,6 +419,8 @@ public struct LineProperties: Codable, Equatable, Sendable {
         dashStyle: DashStyle? = nil,
         startArrow: ArrowStyle? = nil,
         endArrow: ArrowStyle? = nil,
+        startConnection: LineConnection? = nil,
+        endConnection: LineConnection? = nil,
         link: Link? = nil
     ) {
         self.lineFill = lineFill
@@ -452,6 +428,8 @@ public struct LineProperties: Codable, Equatable, Sendable {
         self.dashStyle = dashStyle
         self.startArrow = startArrow
         self.endArrow = endArrow
+        self.startConnection = startConnection
+        self.endConnection = endConnection
         self.link = link
     }
 }
@@ -464,11 +442,26 @@ public struct LineFill: Codable, Equatable, Sendable {
     }
 }
 
+/// A connection of a line to another page element (start/end connection sites).
+public struct LineConnection: Codable, Equatable, Sendable {
+    public var connectedObjectId: String?
+    public var connectionSiteIndex: Int?
+
+    public init(connectedObjectId: String? = nil, connectionSiteIndex: Int? = nil) {
+        self.connectedObjectId = connectedObjectId
+        self.connectionSiteIndex = connectionSiteIndex
+    }
+}
+
 public struct Line: Codable, Equatable, Sendable {
     public var lineProperties: LineProperties?
+    public var lineType: LineType?
+    public var lineCategory: LineCategory?
 
-    public init(lineProperties: LineProperties? = nil) {
+    public init(lineProperties: LineProperties? = nil, lineType: LineType? = nil, lineCategory: LineCategory? = nil) {
         self.lineProperties = lineProperties
+        self.lineType = lineType
+        self.lineCategory = lineCategory
     }
 }
 
@@ -540,17 +533,80 @@ public struct TableColumnProperties: Codable, Equatable, Sendable {
     }
 }
 
+public struct TableBorderFill: Codable, Equatable, Sendable {
+    public var solidFill: SolidFill?
+
+    public init(solidFill: SolidFill? = nil) {
+        self.solidFill = solidFill
+    }
+}
+
+public struct TableBorderProperties: Codable, Equatable, Sendable {
+    public var tableBorderFill: TableBorderFill?
+    public var weight: Dimension?
+    public var dashStyle: DashStyle?
+
+    public init(tableBorderFill: TableBorderFill? = nil, weight: Dimension? = nil, dashStyle: DashStyle? = nil) {
+        self.tableBorderFill = tableBorderFill
+        self.weight = weight
+        self.dashStyle = dashStyle
+    }
+}
+
+public struct TableBorderCell: Codable, Equatable, Sendable {
+    public var location: TableCellLocation?
+    public var tableBorderProperties: TableBorderProperties?
+
+    public init(location: TableCellLocation? = nil, tableBorderProperties: TableBorderProperties? = nil) {
+        self.location = location
+        self.tableBorderProperties = tableBorderProperties
+    }
+}
+
+public struct TableBorderRow: Codable, Equatable, Sendable {
+    public var tableBorderCells: [TableBorderCell]?
+
+    public init(tableBorderCells: [TableBorderCell]? = nil) {
+        self.tableBorderCells = tableBorderCells
+    }
+}
+
 public struct Table: Codable, Equatable, Sendable {
     public var rows: Int?
     public var columns: Int?
     public var tableRows: [TableRow]?
     public var tableColumns: [TableColumnProperties]?
+    public var horizontalBorderRows: [TableBorderRow]?
+    public var verticalBorderRows: [TableBorderRow]?
 
-    public init(rows: Int? = nil, columns: Int? = nil, tableRows: [TableRow]? = nil, tableColumns: [TableColumnProperties]? = nil) {
+    public init(
+        rows: Int? = nil,
+        columns: Int? = nil,
+        tableRows: [TableRow]? = nil,
+        tableColumns: [TableColumnProperties]? = nil,
+        horizontalBorderRows: [TableBorderRow]? = nil,
+        verticalBorderRows: [TableBorderRow]? = nil
+    ) {
         self.rows = rows
         self.columns = columns
         self.tableRows = tableRows
         self.tableColumns = tableColumns
+        self.horizontalBorderRows = horizontalBorderRows
+        self.verticalBorderRows = verticalBorderRows
+    }
+}
+
+/// Response of `presentations.pages.getThumbnail` — a rendered page image. Standalone (not part of
+/// a `Presentation`), modeled for a complete API surface.
+public struct Thumbnail: Codable, Equatable, Sendable {
+    public var width: Int?
+    public var height: Int?
+    public var contentUrl: String?
+
+    public init(width: Int? = nil, height: Int? = nil, contentUrl: String? = nil) {
+        self.width = width
+        self.height = height
+        self.contentUrl = contentUrl
     }
 }
 

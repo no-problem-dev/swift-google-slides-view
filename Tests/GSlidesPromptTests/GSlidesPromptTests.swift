@@ -423,3 +423,40 @@ import GSlidesLayout
         #expect(presentation.slides?.contains { ($0.pageElements ?? []).contains { $0.table != nil } } == true)
     }
 }
+
+@Suite struct InlineEmphasisTests {
+    @Test func parsesBoldAndAccentRuns() {
+        let runs = DeckExpander.inlineRuns("通常 **太字** と ==強調== 終わり")
+        #expect(runs.map(\.content) == ["通常 ", "太字", " と ", "強調", " 終わり"])
+        #expect(runs[1].style?.bold == true)
+        #expect(runs[1].style?.foregroundColor == nil)                       // bold only
+        #expect(runs[3].style?.bold == true)
+        #expect(runs[3].style?.foregroundColor?.opaqueColor?.themeColor == .accent1) // accent
+    }
+
+    @Test func plainTextIsSingleRun() {
+        let runs = DeckExpander.inlineRuns("emphasis なし")
+        #expect(runs.count == 1)
+        #expect(runs[0].style == nil)
+    }
+
+    @Test func emphasizedBulletExpandsToMultipleRunsOnOneParagraph() throws {
+        let p = DeckExpander.expand(SemanticDeck(title: "x", slides: [
+            SemanticSlide(layout: "TITLE_AND_BODY", title: "T", bodies: [SemanticBody(bullets: ["**重要**な点"])]),
+        ]))
+        let body = try #require(p.slides?.first?.pageElements?.first { $0.shape?.placeholder?.type == .body })
+        let elements = try #require(body.shape?.text?.textElements)
+        // one paragraph: marker+first run, then run-only elements (no extra markers)
+        #expect(elements.filter { $0.paragraphMarker != nil }.count == 1)
+        #expect(elements.first?.textRun?.style?.bold == true)               // "重要" bold
+        #expect(elements.contains { $0.textRun?.content?.contains("な点") == true })
+    }
+
+    @Test func exampleWithEmphasisStillValidates() throws {
+        let presentation = try GSlidesGenerationContract.presentation(from: Data(GSlidesGenerationContract.exampleDeckJSON().utf8))
+        #expect((presentation.slides?.count ?? 0) > 0)
+        // the example's serialized JSON carries the markup for the model to learn from
+        #expect(GSlidesGenerationContract.exampleDeckJSON().contains("**"))
+        #expect(GSlidesGenerationContract.exampleDeckJSON().contains("=="))
+    }
+}

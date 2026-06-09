@@ -31,3 +31,16 @@ public extension EnvironmentValues {
         set { self[GSlidesImageProviderKey.self] = newValue }
     }
 }
+
+private struct GSlidesSlideNumberKey: EnvironmentKey {
+    static let defaultValue: Int? = nil
+}
+
+public extension EnvironmentValues {
+    /// The current slide's 1-based number, used to resolve `autoText` SLIDE_NUMBER fields whose
+    /// content the API leaves empty (resolved at presentation time).
+    var gslidesSlideNumber: Int? {
+        get { self[GSlidesSlideNumberKey.self] }
+        set { self[GSlidesSlideNumberKey.self] = newValue }
+    }
+}
