@@ -49,7 +49,7 @@ let package = Package(
             resources: [.copy("Resources/Spec")]
         ),
         .target(name: "GSlidesLayout", dependencies: ["GSlidesSchema"]),
-        .target(name: "GSlidesAssembly", dependencies: ["GSlidesSchema"]),
+        .target(name: "GSlidesAssembly", dependencies: ["GSlidesSchema", "GSlidesRequests", "GSlidesEdit"]),
         .target(name: "GSlidesPrompt", dependencies: ["GSlidesSchema", "GSlidesLayout"]),
         .target(name: "GSlidesRequests", dependencies: ["GSlidesSchema"]),
         // ローカル batchUpdate 実行系: [Request] を in-memory Presentation に適用する純関数 reducer。
@@ -57,6 +57,7 @@ let package = Package(
         .target(name: "GSlidesEdit", dependencies: ["GSlidesSchema", "GSlidesRequests"]),
         .target(name: "GSlidesA2A", dependencies: [
             "GSlidesSchema",
+            "GSlidesRequests",
             "GSlidesAssembly",
             .product(name: "A2ACore", package: "swift-a2a"),
         ]),

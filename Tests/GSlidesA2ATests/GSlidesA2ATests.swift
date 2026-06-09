@@ -2,6 +2,7 @@ import A2ACore
 import Foundation
 import Testing
 import GSlidesSchema
+import GSlidesRequests
 import GSlidesAssembly
 @testable import GSlidesA2A
 
@@ -51,6 +52,28 @@ import GSlidesAssembly
         #expect(text == "Hello")
     }
 
+    @Test func batchUpdateDiffEventAppliesOverWire() throws {
+        // Envelope a deck with one text element, then stream an element-level edit as a diff event.
+        let envelope = try GSlidesArtifactCoding.envelopeEvent(
+            taskId: "task-1", contextId: "ctx-1", artifactId: "deck-1",
+            presentation: Presentation(title: "Deck", slides: [slide("s1")])
+        )
+        let diff = try GSlidesArtifactCoding.batchUpdateEvent(
+            taskId: "task-1", contextId: "ctx-1", artifactId: "deck-1",
+            requests: [.replaceAllText(ReplaceAllTextRequest(
+                replaceText: "Bonjour", containsText: SubstringMatchCriteria(text: "Hello")))],
+            lastChunk: true
+        )
+        var assembler = GSlidesArtifactAssembler()
+        for event in [envelope, diff] {
+            #expect(try assembler.apply(wireRoundTrip(event)))
+        }
+        #expect(assembler.isComplete)
+        let text = assembler.presentation?.slides?.first?.pageElements?.first?
+            .shape?.text?.textElements?.first?.textRun?.content
+        #expect(text == "Bonjour")
+    }
+
     @Test func foreignArtifactsAreIgnored() throws {
         let foreign = TaskArtifactUpdateEvent(
             taskId: "task-1", contextId: "ctx-1",
@@ -89,6 +112,7 @@ import GSlidesAssembly
     @Test func completeArtifactDecodesDirectly() throws {
         let artifact = try GSlidesArtifactCoding.artifact(
             id: "deck-1",
+            kind: .envelope,
             payload: Presentation(title: "One Shot", slides: [slide("s1")])
         )
         let presentation = try GSlidesArtifactCoding.presentation(from: artifact)

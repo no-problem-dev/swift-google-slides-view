@@ -1,6 +1,7 @@
 import A2ACore
 import Foundation
 import GSlidesAssembly
+import GSlidesRequests
 import GSlidesSchema
 import StructuredDataCore
 
@@ -10,6 +11,8 @@ public enum GSlidesA2AVocabulary {
     public static let schemaKey = "gslides.schema"
     public static let schemaURI = "https://github.com/no-problem-dev/swift-google-slides-view/schema/v1"
     public static let mediaType = "application/json"
+    /// Declares the payload shape (envelope / slide / batchUpdate). Absent → inferred from `append`.
+    public static let kindKey = "gslides.kind"
 }
 
 public enum GSlidesA2AError: Error, Hashable {
@@ -31,7 +34,7 @@ public enum GSlidesArtifactCoding {
         TaskArtifactUpdateEvent(
             taskId: taskId,
             contextId: contextId,
-            artifact: try artifact(id: artifactId, payload: presentation),
+            artifact: try artifact(id: artifactId, kind: .envelope, payload: presentation),
             append: false,
             lastChunk: lastChunk
         )
@@ -48,7 +51,25 @@ public enum GSlidesArtifactCoding {
         TaskArtifactUpdateEvent(
             taskId: taskId,
             contextId: contextId,
-            artifact: try artifact(id: artifactId, payload: page),
+            artifact: try artifact(id: artifactId, kind: .slide, payload: page),
+            append: true,
+            lastChunk: lastChunk
+        )
+    }
+
+    /// Batch-update event: element-level edits applied to the current deck (append == true).
+    /// Lets an agent stream "move element X / restyle Y" without resending the whole presentation.
+    public static func batchUpdateEvent(
+        taskId: TaskID,
+        contextId: ContextID,
+        artifactId: ArtifactID,
+        requests: [Request],
+        lastChunk: Bool = false
+    ) throws -> TaskArtifactUpdateEvent {
+        TaskArtifactUpdateEvent(
+            taskId: taskId,
+            contextId: contextId,
+            artifact: try artifact(id: artifactId, kind: .batchUpdate, payload: BatchUpdatePresentationRequest(requests: requests)),
             append: true,
             lastChunk: lastChunk
         )
@@ -66,13 +87,24 @@ public enum GSlidesArtifactCoding {
         guard isGSlides(event.artifact) else { return [] }
         let payloads = try dataPayloads(of: event.artifact)
         guard !payloads.isEmpty else { throw GSlidesA2AError.noDataPart }
+        let kind = chunkKind(of: event)
         return payloads.enumerated().map { index, payload in
             GSlidesChunk(
                 payload: payload,
-                append: event.append,
+                kind: kind,
                 lastChunk: event.lastChunk && index == payloads.count - 1
             )
         }
+    }
+
+    /// The declared payload kind, falling back to the legacy append-flag inference for artifacts
+    /// emitted before the kind metadata existed.
+    static func chunkKind(of event: TaskArtifactUpdateEvent) -> GSlidesChunk.Kind {
+        if let raw = event.artifact.metadata?[GSlidesA2AVocabulary.kindKey]?.stringValue,
+           let kind = GSlidesChunk.Kind(rawValue: raw) {
+            return kind
+        }
+        return event.append ? .slide : .envelope
     }
 
     /// Decodes a complete (non-streamed) gslides artifact.
@@ -88,23 +120,31 @@ public enum GSlidesArtifactCoding {
 
     /// Envelope artifact: the full presentation as one DataPart.
     public static func envelopeArtifact(id: ArtifactID, presentation: Presentation) throws -> Artifact {
-        try artifact(id: id, payload: presentation)
+        try artifact(id: id, kind: .envelope, payload: presentation)
     }
 
     /// Single-slide artifact for append events.
     public static func slideArtifact(id: ArtifactID, page: Page) throws -> Artifact {
-        try artifact(id: id, payload: page)
+        try artifact(id: id, kind: .slide, payload: page)
+    }
+
+    /// Batch-update artifact: element-level edits applied to the current deck.
+    public static func batchUpdateArtifact(id: ArtifactID, requests: [Request]) throws -> Artifact {
+        try artifact(id: id, kind: .batchUpdate, payload: BatchUpdatePresentationRequest(requests: requests))
     }
 
     // MARK: Coding helpers
 
-    static func artifact(id: ArtifactID, payload: some Encodable) throws -> Artifact {
+    static func artifact(id: ArtifactID, kind: GSlidesChunk.Kind, payload: some Encodable) throws -> Artifact {
         let data = try JSONEncoder().encode(payload)
         let value = try JSONDecoder().decode(StructuredValue.self, from: data)
         return Artifact(
             artifactId: id,
             parts: [.data(value, mediaType: GSlidesA2AVocabulary.mediaType)],
-            metadata: [GSlidesA2AVocabulary.schemaKey: .string(GSlidesA2AVocabulary.schemaURI)]
+            metadata: [
+                GSlidesA2AVocabulary.schemaKey: .string(GSlidesA2AVocabulary.schemaURI),
+                GSlidesA2AVocabulary.kindKey: .string(kind.rawValue),
+            ]
         )
     }
 

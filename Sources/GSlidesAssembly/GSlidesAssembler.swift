@@ -1,17 +1,34 @@
 import Foundation
+import GSlidesEdit
+import GSlidesRequests
 import GSlidesSchema
 
 /// Transport-agnostic chunk primitive. Adapters (e.g. GSlidesA2A) map their
 /// protocol's stream events onto this — the reducer never sees protocol types.
 public struct GSlidesChunk: Equatable, Sendable {
+    /// What the payload carries — the three deck-stream shapes.
+    public enum Kind: String, Equatable, Sendable {
+        case envelope     // a full `Presentation` — replaces the state
+        case slide        // a single `Page` — appended to `slides`
+        case batchUpdate  // a `BatchUpdatePresentationRequest` — applied to the current state
+    }
+
     public var payload: Data
-    public var append: Bool
+    public var kind: Kind
     public var lastChunk: Bool
 
-    public init(payload: Data, append: Bool = false, lastChunk: Bool = false) {
+    /// Wire append-semantics: a chunk builds on prior state unless it's a full envelope.
+    public var append: Bool { kind != .envelope }
+
+    public init(payload: Data, kind: Kind = .envelope, lastChunk: Bool = false) {
         self.payload = payload
-        self.append = append
+        self.kind = kind
         self.lastChunk = lastChunk
+    }
+
+    /// Back-compat: `append == false` → envelope, `append == true` → slide.
+    public init(payload: Data, append: Bool, lastChunk: Bool = false) {
+        self.init(payload: payload, kind: append ? .slide : .envelope, lastChunk: lastChunk)
     }
 }
 
@@ -21,10 +38,11 @@ public enum GSlidesAssemblyError: Error, Hashable {
 }
 
 /// Pure reducer over chunk sequences:
-/// - `append == false`: payload is a full `Presentation` — replaces the state.
-/// - `append == true`: payload is a single `Page` — appended to `slides`.
-///   An append before any envelope creates an implicit empty presentation,
-///   so streams that lead with slides still assemble.
+/// - `.envelope`: payload is a full `Presentation` — replaces the state.
+/// - `.slide`: payload is a single `Page` — appended to `slides`. A slide before any
+///   envelope creates an implicit empty presentation, so slide-led streams still assemble.
+/// - `.batchUpdate`: payload is a `BatchUpdatePresentationRequest` — applied to the current
+///   state via the local reducer (element-level live edits without resending the deck).
 /// - `lastChunk == true`: completes the stream; further chunks are an error.
 /// A throwing apply leaves the state unchanged.
 public struct GSlidesAssembler: Equatable, Sendable {
@@ -39,7 +57,14 @@ public struct GSlidesAssembler: Equatable, Sendable {
     public mutating func apply(_ chunk: GSlidesChunk) throws {
         guard !isComplete else { throw GSlidesAssemblyError.chunkAfterCompletion }
         let decoder = JSONDecoder()
-        if chunk.append {
+        switch chunk.kind {
+        case .envelope:
+            do {
+                presentation = try decoder.decode(Presentation.self, from: chunk.payload)
+            } catch {
+                throw GSlidesAssemblyError.invalidPayload(String(describing: error))
+            }
+        case .slide:
             let page: Page
             do {
                 page = try decoder.decode(Page.self, from: chunk.payload)
@@ -49,11 +74,17 @@ public struct GSlidesAssembler: Equatable, Sendable {
             var current = presentation ?? Presentation()
             current.slides = (current.slides ?? []) + [page]
             presentation = current
-        } else {
+        case .batchUpdate:
+            let batch: BatchUpdatePresentationRequest
             do {
-                presentation = try decoder.decode(Presentation.self, from: chunk.payload)
+                batch = try decoder.decode(BatchUpdatePresentationRequest.self, from: chunk.payload)
             } catch {
                 throw GSlidesAssemblyError.invalidPayload(String(describing: error))
+            }
+            do {
+                presentation = try (presentation ?? Presentation()).applying(batch.requests ?? [])
+            } catch {
+                throw GSlidesAssemblyError.invalidPayload("batchUpdate: \(error)")
             }
         }
         if chunk.lastChunk {
