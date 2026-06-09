@@ -26,12 +26,38 @@ import GSlidesSchema
         #expect(shape.objectId == "o")
     }
 
-    @Test func unmodeledRequestStillRoundTrips() throws {
-        // A request the typed Kind accessor doesn't enumerate (rerouteLine) still encodes/decodes.
-        let r = Request(rerouteLine: RerouteLineRequest(objectId: "line-1"))
+    @Test func everyDiscoveryRequestKindIsTyped() throws {
+        // Parity: the typed Kind accessor must cover EVERY batchUpdate request the spec defines.
+        // Decode `{"<kind>":{}}` for each discovery `Request` property and assert it maps to a
+        // concrete case — never `.other`. This pins the write-side protocol == the discovery doc.
+        let kinds = try Self.discoveryRequestKinds()
+        #expect(kinds.count == 44, "discovery defines \(kinds.count) request kinds")
+        for name in kinds {
+            let r = try JSONDecoder().decode(Request.self, from: Data("{\"\(name)\":{}}".utf8))
+            #expect(r.kind != .other, "Request.Kind has no case for \(name)")
+        }
+    }
+
+    @Test func emptyRequestMapsToOther() {
+        // `.other` now means exactly "no member set" (or a kind newer than this mirror).
+        #expect(Request().kind == .other)
+    }
+
+    @Test func rerouteLineIsNowFirstClass() throws {
+        let r = Request.rerouteLine(RerouteLineRequest(objectId: "line-1"))
         let back = try roundTrip(r)
         #expect(back.rerouteLine?.objectId == "line-1")
-        #expect(back.kind == .other)
+        guard case .rerouteLine(let line) = back.kind else { Issue.record("not rerouteLine"); return }
+        #expect(line.objectId == "line-1")
+    }
+
+    static func discoveryRequestKinds() throws -> [String] {
+        let data = try GSlidesSpec.discoveryDocument()
+        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        let schemas = json?["schemas"] as? [String: Any]
+        let request = schemas?["Request"] as? [String: Any]
+        let props = request?["properties"] as? [String: Any]
+        return Array(props?.keys ?? [:].keys)
     }
 
     @Test func wireShapeMatchesOfficialFieldNames() throws {

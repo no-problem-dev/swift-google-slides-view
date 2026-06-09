@@ -1,10 +1,6 @@
 // Generated from the Google Slides API discovery document (batchUpdate write model).
 // Field-faithful Codable mirror; all properties optional for resilient decoding.
 import GSlidesSchema
-import StructuredDataCore
-
-/// Escape hatch for free-form JSON values in a few request fields.
-public typealias StructuredJSON = StructuredValue
 
 public struct CreateLineRequestCategory: SpecEnum {
     public var rawValue: String
@@ -1583,4 +1579,153 @@ public struct TableBorderFill: Codable, Equatable, Sendable {
     ) {
         self.solidFill = solidFill
     }
+}
+
+/// Typed accessor over the `Request` oneof — mirrors `PageElement.Kind`: exactly one member is
+/// set. Generated from the discovery `Request` schema, so its case set EQUALS the wire protocol
+/// (a parity test pins it). Unknown/empty requests map to `.other` and still round-trip via the
+/// stored optional fields.
+extension Request {
+    public enum Kind: Equatable, Sendable {
+        case createSlide(CreateSlideRequest)
+        case createShape(CreateShapeRequest)
+        case createTable(CreateTableRequest)
+        case insertText(InsertTextRequest)
+        case insertTableRows(InsertTableRowsRequest)
+        case insertTableColumns(InsertTableColumnsRequest)
+        case deleteTableRow(DeleteTableRowRequest)
+        case deleteTableColumn(DeleteTableColumnRequest)
+        case replaceAllText(ReplaceAllTextRequest)
+        case deleteObject(DeleteObjectRequest)
+        case updatePageElementTransform(UpdatePageElementTransformRequest)
+        case updateSlidesPosition(UpdateSlidesPositionRequest)
+        case deleteText(DeleteTextRequest)
+        case createImage(CreateImageRequest)
+        case createVideo(CreateVideoRequest)
+        case createSheetsChart(CreateSheetsChartRequest)
+        case createLine(CreateLineRequest)
+        case refreshSheetsChart(RefreshSheetsChartRequest)
+        case updateShapeProperties(UpdateShapePropertiesRequest)
+        case updateImageProperties(UpdateImagePropertiesRequest)
+        case updateVideoProperties(UpdateVideoPropertiesRequest)
+        case updatePageProperties(UpdatePagePropertiesRequest)
+        case updateTableCellProperties(UpdateTableCellPropertiesRequest)
+        case updateLineProperties(UpdateLinePropertiesRequest)
+        case createParagraphBullets(CreateParagraphBulletsRequest)
+        case replaceAllShapesWithImage(ReplaceAllShapesWithImageRequest)
+        case duplicateObject(DuplicateObjectRequest)
+        case updateTextStyle(UpdateTextStyleRequest)
+        case replaceAllShapesWithSheetsChart(ReplaceAllShapesWithSheetsChartRequest)
+        case deleteParagraphBullets(DeleteParagraphBulletsRequest)
+        case updateParagraphStyle(UpdateParagraphStyleRequest)
+        case updateTableBorderProperties(UpdateTableBorderPropertiesRequest)
+        case updateTableColumnProperties(UpdateTableColumnPropertiesRequest)
+        case updateTableRowProperties(UpdateTableRowPropertiesRequest)
+        case mergeTableCells(MergeTableCellsRequest)
+        case unmergeTableCells(UnmergeTableCellsRequest)
+        case groupObjects(GroupObjectsRequest)
+        case ungroupObjects(UngroupObjectsRequest)
+        case updatePageElementAltText(UpdatePageElementAltTextRequest)
+        case replaceImage(ReplaceImageRequest)
+        case updateSlideProperties(UpdateSlidePropertiesRequest)
+        case updatePageElementsZOrder(UpdatePageElementsZOrderRequest)
+        case updateLineCategory(UpdateLineCategoryRequest)
+        case rerouteLine(RerouteLineRequest)
+        /// No member set (an empty request), or a kind newer than this generated mirror.
+        case other
+    }
+
+    /// The first set member as a typed case.
+    public var kind: Kind {
+        if let r = createSlide { return .createSlide(r) }
+        if let r = createShape { return .createShape(r) }
+        if let r = createTable { return .createTable(r) }
+        if let r = insertText { return .insertText(r) }
+        if let r = insertTableRows { return .insertTableRows(r) }
+        if let r = insertTableColumns { return .insertTableColumns(r) }
+        if let r = deleteTableRow { return .deleteTableRow(r) }
+        if let r = deleteTableColumn { return .deleteTableColumn(r) }
+        if let r = replaceAllText { return .replaceAllText(r) }
+        if let r = deleteObject { return .deleteObject(r) }
+        if let r = updatePageElementTransform { return .updatePageElementTransform(r) }
+        if let r = updateSlidesPosition { return .updateSlidesPosition(r) }
+        if let r = deleteText { return .deleteText(r) }
+        if let r = createImage { return .createImage(r) }
+        if let r = createVideo { return .createVideo(r) }
+        if let r = createSheetsChart { return .createSheetsChart(r) }
+        if let r = createLine { return .createLine(r) }
+        if let r = refreshSheetsChart { return .refreshSheetsChart(r) }
+        if let r = updateShapeProperties { return .updateShapeProperties(r) }
+        if let r = updateImageProperties { return .updateImageProperties(r) }
+        if let r = updateVideoProperties { return .updateVideoProperties(r) }
+        if let r = updatePageProperties { return .updatePageProperties(r) }
+        if let r = updateTableCellProperties { return .updateTableCellProperties(r) }
+        if let r = updateLineProperties { return .updateLineProperties(r) }
+        if let r = createParagraphBullets { return .createParagraphBullets(r) }
+        if let r = replaceAllShapesWithImage { return .replaceAllShapesWithImage(r) }
+        if let r = duplicateObject { return .duplicateObject(r) }
+        if let r = updateTextStyle { return .updateTextStyle(r) }
+        if let r = replaceAllShapesWithSheetsChart { return .replaceAllShapesWithSheetsChart(r) }
+        if let r = deleteParagraphBullets { return .deleteParagraphBullets(r) }
+        if let r = updateParagraphStyle { return .updateParagraphStyle(r) }
+        if let r = updateTableBorderProperties { return .updateTableBorderProperties(r) }
+        if let r = updateTableColumnProperties { return .updateTableColumnProperties(r) }
+        if let r = updateTableRowProperties { return .updateTableRowProperties(r) }
+        if let r = mergeTableCells { return .mergeTableCells(r) }
+        if let r = unmergeTableCells { return .unmergeTableCells(r) }
+        if let r = groupObjects { return .groupObjects(r) }
+        if let r = ungroupObjects { return .ungroupObjects(r) }
+        if let r = updatePageElementAltText { return .updatePageElementAltText(r) }
+        if let r = replaceImage { return .replaceImage(r) }
+        if let r = updateSlideProperties { return .updateSlideProperties(r) }
+        if let r = updatePageElementsZOrder { return .updatePageElementsZOrder(r) }
+        if let r = updateLineCategory { return .updateLineCategory(r) }
+        if let r = rerouteLine { return .rerouteLine(r) }
+        return .other
+    }
+
+    public static func createSlide(_ r: CreateSlideRequest) -> Request { Request(createSlide: r) }
+    public static func createShape(_ r: CreateShapeRequest) -> Request { Request(createShape: r) }
+    public static func createTable(_ r: CreateTableRequest) -> Request { Request(createTable: r) }
+    public static func insertText(_ r: InsertTextRequest) -> Request { Request(insertText: r) }
+    public static func insertTableRows(_ r: InsertTableRowsRequest) -> Request { Request(insertTableRows: r) }
+    public static func insertTableColumns(_ r: InsertTableColumnsRequest) -> Request { Request(insertTableColumns: r) }
+    public static func deleteTableRow(_ r: DeleteTableRowRequest) -> Request { Request(deleteTableRow: r) }
+    public static func deleteTableColumn(_ r: DeleteTableColumnRequest) -> Request { Request(deleteTableColumn: r) }
+    public static func replaceAllText(_ r: ReplaceAllTextRequest) -> Request { Request(replaceAllText: r) }
+    public static func deleteObject(_ r: DeleteObjectRequest) -> Request { Request(deleteObject: r) }
+    public static func updatePageElementTransform(_ r: UpdatePageElementTransformRequest) -> Request { Request(updatePageElementTransform: r) }
+    public static func updateSlidesPosition(_ r: UpdateSlidesPositionRequest) -> Request { Request(updateSlidesPosition: r) }
+    public static func deleteText(_ r: DeleteTextRequest) -> Request { Request(deleteText: r) }
+    public static func createImage(_ r: CreateImageRequest) -> Request { Request(createImage: r) }
+    public static func createVideo(_ r: CreateVideoRequest) -> Request { Request(createVideo: r) }
+    public static func createSheetsChart(_ r: CreateSheetsChartRequest) -> Request { Request(createSheetsChart: r) }
+    public static func createLine(_ r: CreateLineRequest) -> Request { Request(createLine: r) }
+    public static func refreshSheetsChart(_ r: RefreshSheetsChartRequest) -> Request { Request(refreshSheetsChart: r) }
+    public static func updateShapeProperties(_ r: UpdateShapePropertiesRequest) -> Request { Request(updateShapeProperties: r) }
+    public static func updateImageProperties(_ r: UpdateImagePropertiesRequest) -> Request { Request(updateImageProperties: r) }
+    public static func updateVideoProperties(_ r: UpdateVideoPropertiesRequest) -> Request { Request(updateVideoProperties: r) }
+    public static func updatePageProperties(_ r: UpdatePagePropertiesRequest) -> Request { Request(updatePageProperties: r) }
+    public static func updateTableCellProperties(_ r: UpdateTableCellPropertiesRequest) -> Request { Request(updateTableCellProperties: r) }
+    public static func updateLineProperties(_ r: UpdateLinePropertiesRequest) -> Request { Request(updateLineProperties: r) }
+    public static func createParagraphBullets(_ r: CreateParagraphBulletsRequest) -> Request { Request(createParagraphBullets: r) }
+    public static func replaceAllShapesWithImage(_ r: ReplaceAllShapesWithImageRequest) -> Request { Request(replaceAllShapesWithImage: r) }
+    public static func duplicateObject(_ r: DuplicateObjectRequest) -> Request { Request(duplicateObject: r) }
+    public static func updateTextStyle(_ r: UpdateTextStyleRequest) -> Request { Request(updateTextStyle: r) }
+    public static func replaceAllShapesWithSheetsChart(_ r: ReplaceAllShapesWithSheetsChartRequest) -> Request { Request(replaceAllShapesWithSheetsChart: r) }
+    public static func deleteParagraphBullets(_ r: DeleteParagraphBulletsRequest) -> Request { Request(deleteParagraphBullets: r) }
+    public static func updateParagraphStyle(_ r: UpdateParagraphStyleRequest) -> Request { Request(updateParagraphStyle: r) }
+    public static func updateTableBorderProperties(_ r: UpdateTableBorderPropertiesRequest) -> Request { Request(updateTableBorderProperties: r) }
+    public static func updateTableColumnProperties(_ r: UpdateTableColumnPropertiesRequest) -> Request { Request(updateTableColumnProperties: r) }
+    public static func updateTableRowProperties(_ r: UpdateTableRowPropertiesRequest) -> Request { Request(updateTableRowProperties: r) }
+    public static func mergeTableCells(_ r: MergeTableCellsRequest) -> Request { Request(mergeTableCells: r) }
+    public static func unmergeTableCells(_ r: UnmergeTableCellsRequest) -> Request { Request(unmergeTableCells: r) }
+    public static func groupObjects(_ r: GroupObjectsRequest) -> Request { Request(groupObjects: r) }
+    public static func ungroupObjects(_ r: UngroupObjectsRequest) -> Request { Request(ungroupObjects: r) }
+    public static func updatePageElementAltText(_ r: UpdatePageElementAltTextRequest) -> Request { Request(updatePageElementAltText: r) }
+    public static func replaceImage(_ r: ReplaceImageRequest) -> Request { Request(replaceImage: r) }
+    public static func updateSlideProperties(_ r: UpdateSlidePropertiesRequest) -> Request { Request(updateSlideProperties: r) }
+    public static func updatePageElementsZOrder(_ r: UpdatePageElementsZOrderRequest) -> Request { Request(updatePageElementsZOrder: r) }
+    public static func updateLineCategory(_ r: UpdateLineCategoryRequest) -> Request { Request(updateLineCategory: r) }
+    public static func rerouteLine(_ r: RerouteLineRequest) -> Request { Request(rerouteLine: r) }
 }

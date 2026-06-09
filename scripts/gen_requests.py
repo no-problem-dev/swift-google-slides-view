@@ -77,7 +77,7 @@ while _queue:
         st = field_type(name, fname, prop)
         fields.append((fname, st))
     # emit struct
-    lines = [f"public struct {name}: Codable, Hashable, Sendable {{"]
+    lines = [f"public struct {name}: Codable, Equatable, Sendable {{"]
     for fname, st in fields:
         lines.append(f"    public var {fname}: {st}?")
     if fields:
@@ -94,6 +94,15 @@ while _queue:
     lines.append("}")
     generated[name] = "\n".join(lines)
     order.append(name)
+
+# Fully-typed invariant: the write model must describe every field concretely — never an `any`-style
+# escape hatch. If discovery ever introduces a genuinely free-form field, fail loudly so we model it
+# by hand instead of silently degrading to a dynamic value.
+offenders = [n for n in order if "StructuredJSON" in generated[n]]
+if offenders:
+    sys.stderr.write("ERROR: free-form (StructuredJSON) fields would be emitted — model these concretely: "
+                     + ", ".join(offenders) + "\n")
+    sys.exit(1)
 
 # Emit enums
 enum_code = []
@@ -119,11 +128,39 @@ for ename in sorted(enums):
 
 print("// Generated from the Google Slides API discovery document (batchUpdate write model).")
 print("// Field-faithful Codable mirror; all properties optional for resilient decoding.")
-print("import GSlidesSchema\nimport StructuredDataCore\n")
-print("/// Escape hatch for free-form JSON values in a few request fields.")
-print("public typealias StructuredJSON = StructuredValue\n")
+print("import GSlidesSchema\n")
 print("\n\n".join(enum_code))
 print()
 print("\n\n".join(generated[n] for n in order))
-sys.stderr.write(f"generated {len(order)} structs, {len(enums)} enums\n")
+
+# Typed union over the `Request` oneof — generated from the discovery `Request` schema so the case
+# set can never drift from the wire protocol. Every member field gets a Kind case + a factory.
+req_kinds = [(f, p["$ref"]) for f, p in schemas["Request"]["properties"].items() if "$ref" in p]
+union = []
+union.append("")
+union.append("/// Typed accessor over the `Request` oneof — mirrors `PageElement.Kind`: exactly one member is")
+union.append("/// set. Generated from the discovery `Request` schema, so its case set EQUALS the wire protocol")
+union.append("/// (a parity test pins it). Unknown/empty requests map to `.other` and still round-trip via the")
+union.append("/// stored optional fields.")
+union.append("extension Request {")
+union.append("    public enum Kind: Equatable, Sendable {")
+for f, t in req_kinds:
+    union.append(f"        case {f}({t})")
+union.append("        /// No member set (an empty request), or a kind newer than this generated mirror.")
+union.append("        case other")
+union.append("    }")
+union.append("")
+union.append("    /// The first set member as a typed case.")
+union.append("    public var kind: Kind {")
+for f, _ in req_kinds:
+    union.append(f"        if let r = {f} {{ return .{f}(r) }}")
+union.append("        return .other")
+union.append("    }")
+union.append("")
+for f, t in req_kinds:
+    union.append(f"    public static func {f}(_ r: {t}) -> Request {{ Request({f}: r) }}")
+union.append("}")
+print("\n".join(union))
+
+sys.stderr.write(f"generated {len(order)} structs, {len(enums)} enums, {len(req_kinds)} request kinds\n")
 sys.stderr.write("structs: " + " ".join(order) + "\n")

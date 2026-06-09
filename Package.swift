@@ -49,10 +49,7 @@ let package = Package(
         .target(name: "GSlidesLayout", dependencies: ["GSlidesSchema"]),
         .target(name: "GSlidesAssembly", dependencies: ["GSlidesSchema"]),
         .target(name: "GSlidesPrompt", dependencies: ["GSlidesSchema", "GSlidesLayout"]),
-        .target(name: "GSlidesRequests", dependencies: [
-            "GSlidesSchema",
-            .product(name: "StructuredDataCore", package: "swift-structured-data"),
-        ]),
+        .target(name: "GSlidesRequests", dependencies: ["GSlidesSchema"]),
         .target(name: "GSlidesA2A", dependencies: [
             "GSlidesSchema",
             "GSlidesAssembly",
