@@ -223,6 +223,32 @@ import GSlidesRequests
         #expect(block.contains("EDIT EXAMPLES"))
         #expect(GSlidesEditContract.curatedOperations.count == 9)
     }
+
+    // Disabling an operation removes it from the offered set, the prompt, and validation.
+    @Test func allowingNarrowsOperations() throws {
+        let allowed: Set<String> = ["updateTextStyle", "replaceAllText"]  // delete NOT allowed
+        let block = GSlidesEditContract.promptBlock(allowing: allowed)
+        #expect(block.contains("updateTextStyle"))
+        #expect(!block.contains("deleteObject"))
+
+        // A deleteObject request is dropped (not offered); the allowed edit still applies.
+        let json = """
+        {"requests":[
+          {"deleteObject":{"objectId":"el-1"}},
+          {"replaceAllText":{"containsText":{"text":"Hello"},"replaceText":"Kept"}}
+        ]}
+        """
+        let requests = try GSlidesEditContract.validate(Data(json.utf8), allowing: allowed)
+        #expect(requests.count == 1)
+        let out = try GSlidesEditContract.apply(Data(json.utf8), to: deck(), allowing: allowed)
+        #expect(text(out) == "Kept")
+        #expect(el(out) != nil)  // el-1 NOT deleted (op was disabled)
+    }
+
+    @Test func operationNameReadsTheSetMember() {
+        let r = Request.deleteObject(DeleteObjectRequest(objectId: "x"))
+        #expect(GSlidesEditContract.operationName(of: r) == "deleteObject")
+    }
 }
 
 @Suite struct DeckInspectorTests {
