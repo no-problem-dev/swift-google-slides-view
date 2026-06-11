@@ -26,11 +26,6 @@ public enum GSlidesGenerationContract {
             "type": "object",
             "properties": [
                 "title": ["type": "string", "maxLength": 100],
-                "theme": [
-                    "type": "string",
-                    "enum": PresentationColorTheme.allCases.map(\.rawValue),
-                    "description": "Optional presentation theme. Omit to use the caller's default (follows the app appearance).",
-                ],
                 "slides": [
                     "type": "array",
                     "minItems": 1,
@@ -124,9 +119,10 @@ public enum GSlidesGenerationContract {
         return presentation
     }
 
-    /// Validated end-to-end path: model output bytes → profile presentation. `theme` is the default
-    /// seed; a presentation's own `theme` hint overrides it.
-    public static func presentation(from data: Data, theme: PresentationColorTheme = .light) throws -> Presentation {
-        PresentationExpander.expand(try validate(data), theme: theme)
+    /// Validated end-to-end path: model output bytes → profile presentation, baked with `themeSpec`
+    /// (the design intent — default light). Theme is supplied separately (e.g. by
+    /// `GSlidesThemeContract`), never inferred from the content.
+    public static func presentation(from data: Data, themeSpec: ThemeSpec = .light) throws -> Presentation {
+        PresentationExpander.expand(try validate(data), themeSpec: themeSpec)
     }
 }

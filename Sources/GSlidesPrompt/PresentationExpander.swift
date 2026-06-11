@@ -6,10 +6,11 @@ import GSlidesSchema
 /// the renderer's geometry path places and styles it), the master carries the theme, and layout
 /// pages mirror the placeholder geometry — exactly the shape a real `presentations.get` presentation has.
 public enum PresentationExpander {
-    /// `theme` is the default/seed; a presentation's own `theme` hint (if any) overrides it. Either way the
-    /// chosen theme is baked into the single master `ColorScheme` (the document's theme).
-    public static func expand(_ presentation: SemanticPresentation, theme: PresentationColorTheme = .light) -> Presentation {
-        let effectiveTheme = presentation.theme.flatMap(PresentationColorTheme.init(rawValue:)) ?? theme
+    /// Expands the semantic content with a design intent (`ThemeSpec`): the palette bakes directly
+    /// into the single master `ColorScheme`, and every placeholder/decoration references those slots
+    /// symbolically, so the whole deck recolors to it. Theme is always supplied explicitly (default
+    /// light) — never inferred from content.
+    public static func expand(_ presentation: SemanticPresentation, themeSpec: ThemeSpec = .light) -> Presentation {
         var usedLayouts: [PredefinedLayout] = []
         var slides: [Page] = []
 
@@ -26,7 +27,7 @@ public enum PresentationExpander {
             title: presentation.title,
             slides: slides,
             layouts: layoutPages,
-            masters: [PresentationTemplate.master(theme: effectiveTheme)]
+            masters: [PresentationTemplate.master(theme: themeSpec)]
         )
     }
 

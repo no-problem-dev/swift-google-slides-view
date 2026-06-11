@@ -8,6 +8,25 @@ public struct RgbColor: Codable, Equatable, Sendable {
         self.green = green
         self.blue = blue
     }
+
+    /// Build from a `#RRGGBB` / `RRGGBB` hex string. The Slides API stores each component as a float
+    /// "from 0.0 to 1.0" (discovery: `RgbColor.red/green/blue`), so each byte is divided by 255 — the
+    /// conversion the human-facing hex form requires. Returns nil for non-6-digit-hex input.
+    public init?(hex: String) {
+        var s = hex.trimmingCharacters(in: .whitespaces)
+        if s.hasPrefix("#") { s.removeFirst() }
+        guard s.count == 6, let value = Int(s, radix: 16) else { return nil }
+        self.init(
+            red: Double((value >> 16) & 0xFF) / 255,
+            green: Double((value >> 8) & 0xFF) / 255,
+            blue: Double(value & 0xFF) / 255)
+    }
+
+    /// Whether every set component lies in the API's documented 0.0–1.0 range. Unset components pass
+    /// (they're simply absent), matching the field-optional decoding model.
+    public var componentsInRange: Bool {
+        [red, green, blue].allSatisfy { $0.map { (0.0...1.0).contains($0) } ?? true }
+    }
 }
 
 public struct ThemeColorType: SpecEnum {
@@ -39,6 +58,21 @@ public struct ThemeColorType: SpecEnum {
             .hyperlink, .followedHyperlink, .text1, .background1, .text2, .background2,
         ]
     }
+
+    /// The 12 ThemeColorTypes whose concrete colors are editable via the API, in discovery enum
+    /// order. Per the spec, ONLY these can be set, ONLY on a `Master` page, and ALL 12 must be
+    /// provided when updating a color scheme; the remaining four (TEXT1, BACKGROUND1, TEXT2,
+    /// BACKGROUND2) are ignored on update. (catalog: theme-color-scheme-editable)
+    public static var editableSlots: [Self] {
+        [
+            .dark1, .light1, .dark2, .light2,
+            .accent1, .accent2, .accent3, .accent4, .accent5, .accent6,
+            .hyperlink, .followedHyperlink,
+        ]
+    }
+
+    /// Whether this slot's concrete color is editable via the API (one of the first 12).
+    public var isEditableSlot: Bool { Self.editableSlots.contains { $0.rawValue == rawValue } }
 }
 
 public struct OpaqueColor: Codable, Equatable, Sendable {

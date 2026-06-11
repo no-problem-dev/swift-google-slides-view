@@ -302,8 +302,8 @@ import GSlidesLayout
     /// The master `ColorScheme` must mirror a real `presentations.get` master: all 16
     /// `ThemeColorType`s present, every type ⊆ the discovery enum (knownValues).
     @Test func masterEnumeratesAll16ThemeColorTypesForBothThemes() throws {
-        for theme in PresentationColorTheme.allCases {
-            let colors = try #require(PresentationTemplate.master(theme: theme).pageProperties?.colorScheme?.colors)
+        for spec in [ThemeSpec.light, ThemeSpec.dark] {
+            let colors = try #require(PresentationTemplate.master(theme: spec).pageProperties?.colorScheme?.colors)
             let types = colors.compactMap(\.type)
             #expect(types.count == 16)
             // every emitted type is a known protocol value (no invented vocabulary)
@@ -319,8 +319,8 @@ import GSlidesLayout
 
     /// Light vs dark differ only in RGB: dark has a dark canvas (light1) and light text (dark1).
     @Test func darkThemeInvertsCanvasAndText() throws {
-        func light1(_ theme: PresentationColorTheme) throws -> RgbColor {
-            let colors = try #require(PresentationTemplate.master(theme: theme).pageProperties?.colorScheme?.colors)
+        func light1(_ spec: ThemeSpec) throws -> RgbColor {
+            let colors = try #require(PresentationTemplate.master(theme: spec).pageProperties?.colorScheme?.colors)
             return try #require(colors.first { $0.type == .light1 }?.color)
         }
         // light theme canvas (light1) is near-white; dark theme canvas is near-black
@@ -328,23 +328,17 @@ import GSlidesLayout
         #expect(try light1(.dark).red! < 0.2)
     }
 
-    @Test func presentationThemeHintOverridesCallerDefault() throws {
-        let dark = PresentationExpander.expand(SemanticPresentation(title: "x", theme: "dark", slides: [SemanticSlide(title: "A")]), theme: .light)
-        let canvas = try #require(dark.masters?.first?.pageProperties?.colorScheme?.colors?.first { $0.type == .light1 }?.color)
-        #expect(canvas.red! < 0.2) // hint "dark" wins over the .light seed
-    }
-
-    @Test func callerThemeUsedWhenNoHint() throws {
-        let dark = PresentationExpander.expand(SemanticPresentation(title: "x", slides: [SemanticSlide(title: "A")]), theme: .dark)
+    /// The design intent (ThemeSpec) bakes into the master, independent of content.
+    @Test func themeSpecBakesIntoMaster() throws {
+        let dark = PresentationExpander.expand(SemanticPresentation(title: "x", slides: [SemanticSlide(title: "A")]), themeSpec: .dark)
         let canvas = try #require(dark.masters?.first?.pageProperties?.colorScheme?.colors?.first { $0.type == .light1 }?.color)
         #expect(canvas.red! < 0.2)
     }
 
-    @Test func schemaExposesThemeEnum() throws {
+    /// The content schema must NOT carry a theme field — theme is a separate, authoritative tool.
+    @Test func contentSchemaHasNoThemeField() throws {
         let text = String(decoding: try GSlidesGenerationContract.jsonSchemaData(), as: UTF8.self)
-        #expect(text.contains("\"theme\""))
-        #expect(text.contains("light"))
-        #expect(text.contains("dark"))
+        #expect(!text.contains("\"theme\""))
     }
 }
 

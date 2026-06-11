@@ -22,6 +22,29 @@ public struct ColorScheme: Codable, Equatable, Sendable {
     public func rgb(for themeColor: ThemeColorType) -> RgbColor? {
         colors?.first { $0.type == themeColor }?.color
     }
+
+    /// The editable slots (of the 12) that this scheme leaves unbound. Must be EMPTY for an API
+    /// color-scheme update, which requires all 12 first ThemeColorTypes. (catalog:
+    /// theme-color-scheme-editable)
+    public var missingEditableSlots: [ThemeColorType] {
+        let bound = Set((colors ?? []).compactMap { $0.type?.rawValue })
+        return ThemeColorType.editableSlots.filter { !bound.contains($0.rawValue) }
+    }
+
+    /// Bound colors whose RGB components fall outside the documented 0.0–1.0 range, paired with the
+    /// offending slot.
+    public var outOfRangeSlots: [ThemeColorType] {
+        (colors ?? []).compactMap { pair in
+            guard let type = pair.type, let color = pair.color, !color.componentsInRange else { return nil }
+            return type
+        }
+    }
+
+    /// Whether this scheme is a valid, settable color scheme: all 12 editable slots bound and every
+    /// bound color in range.
+    public var isCompleteEditableScheme: Bool {
+        missingEditableSlots.isEmpty && outOfRangeSlots.isEmpty
+    }
 }
 
 public struct MasterProperties: Codable, Equatable, Sendable {

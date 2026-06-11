@@ -5,14 +5,10 @@ import GSlidesSchema
 /// Field order mirrors generation order: layout → title → subtitle → bodies.
 public struct SemanticPresentation: Codable, Equatable, Sendable {
     public var title: String
-    /// Optional presentation theme hint ("light"/"dark"); omitted → caller's default. Expands to the
-    /// master `ColorScheme` — the protocol's own theming, not a renderer flag.
-    public var theme: String?
     public var slides: [SemanticSlide]
 
-    public init(title: String, theme: String? = nil, slides: [SemanticSlide]) {
+    public init(title: String, slides: [SemanticSlide]) {
         self.title = title
-        self.theme = theme
         self.slides = slides
     }
 }

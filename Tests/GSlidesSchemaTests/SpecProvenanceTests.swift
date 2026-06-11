@@ -44,6 +44,33 @@ import Testing
         #expect(catalog.contains("discovery_revision: \"\(GSlidesSpec.pinnedRevision)\""))
         #expect(catalog.contains("id: object-id-format"))
         #expect(catalog.contains("id: page-bounds"))
+        #expect(catalog.contains("id: theme-color-scheme-editable"))
+    }
+
+    @Test func themeColorSchemeProseIsUnchanged() throws {
+        // The exact sentence ThemeColorType.editableSlots and the theme conformance rules derive from.
+        let doc = try discoveryString()
+        #expect(doc.contains("Only the concrete colors of the first 12 ThemeColorTypes are editable"))
+        #expect(doc.contains("only the color scheme on `Master` pages can be updated"))
+    }
+
+    @Test func rgbColorRangeProseIsUnchanged() throws {
+        #expect(try discoveryString().contains("The red component of the color, from 0.0 to 1.0"))
+    }
+
+    /// `ThemeColorType.editableSlots` must equal the discovery `ThemeColorType` enum's first 12
+    /// values (after the UNSPECIFIED sentinel) — the spec's "first 12 ThemeColorTypes". If Google
+    /// reorders or extends the enum, this fails and forces a human to re-derive the editable set.
+    @Test func editableSlotsMatchDiscoveryFirstTwelve() throws {
+        let root = try JSONSerialization.jsonObject(with: try GSlidesSpec.discoveryDocument()) as? [String: Any]
+        let schemas = try #require(root?["schemas"] as? [String: Any])
+        let pair = try #require(schemas["ThemeColorPair"] as? [String: Any])
+        let props = try #require(pair["properties"] as? [String: Any])
+        let typeProp = try #require(props["type"] as? [String: Any])
+        let values = try #require(typeProp["enum"] as? [String])
+        // Drop the leading THEME_COLOR_TYPE_UNSPECIFIED sentinel, take the first 12.
+        let firstTwelve = Array(values.dropFirst().prefix(12))
+        #expect(ThemeColorType.editableSlots.map(\.rawValue) == firstTwelve)
     }
 
     @Test func objectIdValidatorMatchesTheProse() {

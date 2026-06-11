@@ -171,3 +171,54 @@ constraints:
     quote: >
       To reset a property to its default value, include its field name in the field mask but leave
       the field itself unset. A single "*" can be used as short-hand for listing every field.
+
+  # ── Theme / color scheme (the standard "design intent" responsibility) ────────────────────────
+
+  - id: theme-color-scheme-editable
+    tier: A
+    enforced_by: api
+    applies_to: [updatePageProperties]
+    rule: >
+      A presentation's visual "theme" is the master's ColorScheme (a list of ThemeColorPair: a
+      ThemeColorType mapped to a concrete RgbColor) plus master->layout->slide placeholder
+      inheritance. Of the 17 ThemeColorTypes, only the FIRST 12 are editable (DARK1, LIGHT1, DARK2,
+      LIGHT2, ACCENT1-6, HYPERLINK, FOLLOWED_HYPERLINK); only a Master page's color scheme can be
+      updated; and an update must provide ALL 12 mappings (partial updates are rejected). The
+      remaining four (TEXT1, BACKGROUND1, TEXT2, BACKGROUND2) are ignored on update. There is NO API
+      to create masters/layouts/themes — the live flow is to copy a themed template (Drive
+      files.copy) and replaceAllText. (This package is an offline reproduction, so it synthesizes a
+      spec-conformant master ColorScheme directly via ThemeSpec.)
+    source: discovery
+    source_ref: "schemas.PageProperties.properties.colorScheme.description"
+    quote: >
+      Only the concrete colors of the first 12 ThemeColorTypes are editable. In addition, only the
+      color scheme on `Master` pages can be updated. To update the field, a color scheme containing
+      mappings from all the first 12 ThemeColorTypes to their concrete colors must be provided.
+      Colors for the remaining ThemeColorTypes will be ignored.
+
+  - id: rgb-color-range
+    tier: A
+    enforced_by: api
+    applies_to: [all]
+    rule: >
+      RgbColor components are floats from 0.0 to 1.0 (NOT 0-255). A hex color must be converted by
+      dividing each byte by 255. (Note: the Apps Script RgbColor class is 0-255 — a different API
+      layer; the REST batchUpdate model is 0.0-1.0.)
+    source: discovery
+    source_ref: "schemas.RgbColor.properties.red.description"
+    quote: "The red component of the color, from 0.0 to 1.0."
+
+  - id: weighted-font-family-weight
+    tier: A
+    enforced_by: api
+    applies_to: [updateTextStyle]
+    rule: >
+      Typography is NOT theme-able in the Slides API (there is no font scheme / major-minor theme
+      font; OOXML's a:fontScheme has no API counterpart). Fonts are set per TextStyle via fontFamily
+      or weightedFontFamily. A WeightedFontFamily.weight must be a multiple of 100 in [100, 900];
+      >= 700 is bold; default 400.
+    source: discovery
+    source_ref: "schemas.WeightedFontFamily.properties.weight.description"
+    quote: >
+      This field can have any value that is a multiple of `100` between `100` and `900`, inclusive.
+      ... Weights greater than or equal to `700` are considered bold
