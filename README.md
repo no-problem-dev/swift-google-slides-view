@@ -16,13 +16,24 @@ Google Slides API の presentation スキーマ（のセマンティック・サ
 
 | ターゲット | 責務 | 依存 |
 |---|---|---|
-| `GSlidesSchema` | プロファイルの Codable モデル + vendored discovery doc（SSOT） | swift-structured-data |
+| `GSlidesSchema` | プロファイルの Codable モデル + vendored discovery doc + 制約カタログ（SSOT） | swift-structured-data |
 | `GSlidesLayout` | コンテンツ → predefinedLayout マッチング、placeholder 解決、EMU 計算 | GSlidesSchema |
 | `GSlidesAssembly` | チャンク列 `(payload, append, lastChunk)` → presentation 状態の純関数 reducer | GSlidesSchema |
 | `GSlidesPrompt` | LLM 構造化出力スキーマ + few-shot 例（契約の提供のみ） | GSlidesSchema |
 | `GSlidesA2A` | A2A Artifact/DataPart ⇄ schema coding、ストリームイベント写像 | + A2ACore |
 | `GSlidesRequests` | batchUpdate write モデル（44 Request + Response の型安全ミラー） | GSlidesSchema |
+| `GSlidesEdit` | ローカル batchUpdate 実行 reducer + 2 層バリデーション（preflight + atomic apply） | GSlidesRequests |
 | `GSlidesRenderer` | SwiftUI レンダラ（16:9 キャンバス、EMU→pt、デッキテーマ → DS ColorPalette） | + DesignSystem |
+| `GSlidesExport` | Presentation → PDF / PNG（ImageRenderer + CGContext） | GSlidesRenderer |
+
+## 編集とバリデーション（GSlidesEdit）
+
+編集エージェントは独自語彙ではなく **公式 batchUpdate リクエスト**（`Request` 型のキュレートされた部分集合）を直接 emit する。適用は **decode → preflight → atomic apply** の 3 段で、本家 API のセマンティクスに忠実：
+
+- **2 層構造**: 下層（`Presentation.applying`）は本家同様 **all-or-nothing**（「1 件でも不正ならバッチ全体が失敗し、何も適用されない」）。上層（`PreflightValidator`）は送信前に **全違反を一括収集**し、エージェントが 1 パスで全部直せるようにする（サーバ往復を 1 回の判定に畳む）。
+- **権威ある制約**: バリデーション規則は `Sources/GSlidesSchema/Resources/Spec/constraints-catalog.yaml`（一次仕様から逐語引用 + 出典 URL）が SSOT。objectId 正規表現/長さ/一意性、enum 網羅、oneof「ちょうど 1 つ」、field mask、テキスト範囲は **(A) API が弾く制約**として、ページ境界外への移動・退化変形（scale=0）は **(B) API が弾かないため呼び出し側が担保する制約**として検証する。
+- **エラーモデル**: 拒否は `google.rpc.Status` + `BadRequest.FieldViolation` を再現した `BatchUpdateError` で返す。`field`（リクエストへの dotted path）・`reason`（`OBJECT_NOT_FOUND` 等の安定コード）・`description` を持ち、`promptFeedback(for:)` で LLM 自己修正用に整形できる。
+- **仕様の凍結と drift 検出**: discovery doc は `scripts/fetch-discovery.sh` で取得し revision をピン。`SpecProvenanceTests` が revision と検証が依存する逐語プローズの不変を保証する。詳細は `Resources/Spec/PROVENANCE.md`。
 
 ## テーマ
 

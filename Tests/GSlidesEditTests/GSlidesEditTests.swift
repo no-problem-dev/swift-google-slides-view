@@ -35,10 +35,11 @@ import GSlidesRequests
         #expect(out.slides?.first?.pageElements?.isEmpty == true)
     }
 
-    @Test func deleteUnknownObjectThrows() {
-        #expect(throws: GSlidesEditError.objectNotFound("nope")) {
+    @Test func deleteUnknownObjectThrows() throws {
+        let error = try #require(throws: BatchUpdateError.self) {
             _ = try presentation().applying([.deleteObject(DeleteObjectRequest(objectId: "nope"))])
         }
+        #expect(error.fieldViolations.first?.reason == .objectNotFound)
     }
 
     @Test func createSlideInsertsBlankPage() throws {
@@ -144,10 +145,13 @@ import GSlidesRequests
 
     // MARK: unsupported
 
-    @Test func unsupportedRequestThrowsWithLabel() {
-        #expect(throws: GSlidesEditError.unsupportedRequest("rerouteLine")) {
+    @Test func unsupportedRequestThrowsWithLabel() throws {
+        let error = try #require(throws: BatchUpdateError.self) {
             _ = try presentation().applying([.rerouteLine(RerouteLineRequest(objectId: "el-1"))])
         }
+        let violation = try #require(error.fieldViolations.first)
+        #expect(violation.reason == .unsupportedOperation)
+        #expect(violation.field == "requests[0].rerouteLine")
     }
 }
 
@@ -192,57 +196,98 @@ import GSlidesRequests
         #expect(style?.fontSize?.magnitude == 18)    // preserved (not wiped)
     }
 
-    @Test func validateAcceptsBareArray() throws {
+    @Test func decodeAcceptsBareArray() throws {
         let json = #"[{"deleteObject":{"objectId":"el-1"}}]"#
-        let requests = try GSlidesEditContract.validate(Data(json.utf8))
+        let requests = try GSlidesEditContract.decode(Data(json.utf8))
         #expect(requests.count == 1)
         guard case .deleteObject = requests.first?.kind else { Issue.record("not deleteObject"); return }
     }
 
-    @Test func emptyBatchRejected() {
-        #expect(throws: GSlidesEditContractError.emptyBatch) {
-            _ = try GSlidesEditContract.validate(Data(#"{"requests":[]}"#.utf8))
+    @Test func emptyBatchRejected() throws {
+        let error = try #require(throws: BatchUpdateError.self) {
+            _ = try GSlidesEditContract.decode(Data(#"{"requests":[]}"#.utf8))
         }
+        #expect(error.fieldViolations.first?.field == "requests")
+        #expect(error.code == 400)
     }
 
-    // One bad edit (stale objectId) must not drop the rest (best-effort).
-    @Test func lenientSkipsBadEdit() throws {
+    @Test func malformedJSONRejected() throws {
+        let error = try #require(throws: BatchUpdateError.self) {
+            _ = try GSlidesEditContract.decode(Data("not json".utf8))
+        }
+        #expect(error.status == "INVALID_ARGUMENT")
+    }
+
+    // Atomic, like the real API: one bad edit (stale objectId) rejects the WHOLE batch — nothing
+    // is applied, and every violation is reported at once.
+    @Test func atomicRejectsWholeBatchOnBadEdit() throws {
         let json = """
         {"requests":[
           {"deleteObject":{"objectId":"does-not-exist"}},
           {"replaceAllText":{"containsText":{"text":"Hello"},"replaceText":"Survived"}}
         ]}
         """
-        let out = try GSlidesEditContract.apply(Data(json.utf8), to: presentation())
-        #expect(text(out) == "Survived")
+        let error = try #require(throws: BatchUpdateError.self) {
+            _ = try GSlidesEditContract.apply(Data(json.utf8), to: presentation())
+        }
+        let violation = try #require(error.fieldViolations.first { $0.reason == .objectNotFound })
+        #expect(violation.field == "requests[0].deleteObject.objectId")
+        // The good edit was NOT applied — the original presentation is untouched.
+        #expect(text(presentation()) == "Hello")
     }
 
-    @Test func promptBlockListsCuratedOpsAndExamples() {
+    @Test func promptBlockListsRulesOpsAndExamples() {
         let block = GSlidesEditContract.promptBlock()
         #expect(block.contains("updatePageElementTransform"))
         #expect(block.contains("EDIT EXAMPLES"))
+        #expect(block.contains("EDIT RULES"))            // constraint guidance injected
+        #expect(block.contains("UPPER-LEFT corner"))     // page-bounds rule surfaced to the agent
         #expect(GSlidesEditContract.curatedOperations.count == 9)
     }
 
-    // Disabling an operation removes it from the offered set, the prompt, and validation.
-    @Test func allowingNarrowsOperations() throws {
+    // Disabling an operation removes it from the offered set + prompt, and a request using it is
+    // reported as an OPERATION_NOT_PERMITTED violation (atomic reject), not silently dropped.
+    @Test func allowingReportsDisallowedOperation() throws {
         let allowed: Set<String> = ["updateTextStyle", "replaceAllText"]  // delete NOT allowed
         let block = GSlidesEditContract.promptBlock(allowing: allowed)
         #expect(block.contains("updateTextStyle"))
         #expect(!block.contains("deleteObject"))
 
-        // A deleteObject request is dropped (not offered); the allowed edit still applies.
         let json = """
         {"requests":[
           {"deleteObject":{"objectId":"el-1"}},
           {"replaceAllText":{"containsText":{"text":"Hello"},"replaceText":"Kept"}}
         ]}
         """
-        let requests = try GSlidesEditContract.validate(Data(json.utf8), allowing: allowed)
+        let error = try #require(throws: BatchUpdateError.self) {
+            _ = try GSlidesEditContract.apply(Data(json.utf8), to: presentation(), allowing: allowed)
+        }
+        #expect(error.fieldViolations.contains { $0.reason == .operationNotPermitted })
+        #expect(el(presentation()) != nil)  // el-1 NOT deleted (nothing applied)
+    }
+
+    // A clean batch validates and applies in full.
+    @Test func validReturnsRequestsAndApplies() throws {
+        let json = #"{"requests":[{"replaceAllText":{"containsText":{"text":"Hello"},"replaceText":"Hi"}}]}"#
+        let requests = try GSlidesEditContract.validate(Data(json.utf8), against: presentation())
         #expect(requests.count == 1)
-        let out = try GSlidesEditContract.apply(Data(json.utf8), to: presentation(), allowing: allowed)
-        #expect(text(out) == "Kept")
-        #expect(el(out) != nil)  // el-1 NOT deleted (op was disabled)
+        let out = try GSlidesEditContract.apply(Data(json.utf8), to: presentation())
+        #expect(text(out) == "Hi")
+    }
+
+    // The rejection is rendered as Google's wire error JSON and wrapped for agent self-correction.
+    @Test func rejectionRendersAsWireJSONAndFeedback() throws {
+        let json = #"{"requests":[{"deleteObject":{"objectId":"ghost"}}]}"#
+        let error = try #require(throws: BatchUpdateError.self) {
+            _ = try GSlidesEditContract.apply(Data(json.utf8), to: presentation())
+        }
+        let wire = error.wireJSON()
+        #expect(wire.contains("\"status\" : \"INVALID_ARGUMENT\""))
+        #expect(wire.contains("google.rpc.BadRequest"))
+        #expect(wire.contains("OBJECT_NOT_FOUND"))
+        let feedback = GSlidesEditContract.promptFeedback(for: error)
+        #expect(feedback.contains("EDIT REJECTED"))
+        #expect(feedback.contains("fieldViolation"))
     }
 
     @Test func operationNameReadsTheSetMember() {

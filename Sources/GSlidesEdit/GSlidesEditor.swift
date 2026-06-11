@@ -2,42 +2,42 @@ import Foundation
 import GSlidesRequests
 import GSlidesSchema
 
-public enum GSlidesEditError: Error, Equatable, Sendable {
-    case objectNotFound(String)
-    /// A request kind the local reducer doesn't execute yet (it still round-trips on the wire).
-    case unsupportedRequest(String)
-    case invalidRequest(String)
-}
-
 public extension Presentation {
     /// Apply a sequence of batchUpdate requests to this presentation, returning the new value.
     /// Pure (no I/O, no Google dependency): the official `Request` vocabulary, executed locally.
+    ///
+    /// **Atomic, exactly like the real API** — "if any request is not valid, then the entire request
+    /// will fail and nothing will be applied" (catalog: batch-atomicity). The reducer works on a
+    /// copy and only the fully-applied result is returned; a failure throws `BatchUpdateError` and
+    /// leaves `self` untouched. (Rich up-front validation that collects ALL violations lives in
+    /// `PreflightValidator`; this reducer is the execution + last-line safety net.)
+    ///
     /// Index convention for text edits: positions count `textRun` content only; paragraph markers
-    /// and auto-text are zero-width. This is the reducer's own, internally-consistent convention —
-    /// the agent reads our indices and edits against them, so no Google round-trip is involved.
+    /// and auto-text are zero-width — the reducer's own, internally-consistent convention.
     func applying(_ requests: [Request]) throws -> Presentation {
         var p = self
-        for request in requests { try GSlidesEditor.apply(request, to: &p) }
-        return p
-    }
-
-    /// Best-effort variant for live editing: apply each request independently, skipping any that
-    /// fail (unknown objectId, unsupported op) rather than aborting the whole batch. An agent that
-    /// gets one of N edits slightly wrong still sees the other N-1 take effect. Returns the result
-    /// and the skipped errors (for logging).
-    func applyingLenient(_ requests: [Request]) -> (presentation: Presentation, skipped: [Error]) {
-        var p = self
-        var skipped: [Error] = []
-        for request in requests {
-            do { try GSlidesEditor.apply(request, to: &p) } catch { skipped.append(error) }
+        for (i, request) in requests.enumerated() {
+            do { try GSlidesEditor.apply(request, to: &p) }
+            catch let violation as FieldViolation {
+                throw BatchUpdateError.invalidArgument([violation.prefixed(byRequestIndex: i)])
+            }
         }
-        return (p, skipped)
+        return p
     }
 }
 
 /// Local `batchUpdate` executor. Sits on the frozen Schema+Requests mirror; everything above
 /// (A2A diff delivery, the agent edit loop) drives the presentation through this one entry point.
 public enum GSlidesEditor {
+    /// The operations the local reducer actually executes — the SSOT for "supported" used by the
+    /// `PreflightValidator`. Mirrors the `apply(_:to:)` switch below; `supportedOperationsCoverSwitch`
+    /// in the tests keeps the two in lockstep.
+    public static let supportedOperations: Set<String> = [
+        "deleteObject", "updatePageElementTransform", "updatePageElementsZOrder", "duplicateObject",
+        "createSlide", "replaceAllText", "insertText", "deleteText", "updateTextStyle",
+        "updateShapeProperties",
+    ]
+
     public static func apply(_ requests: [Request], to presentation: Presentation) throws -> Presentation {
         try presentation.applying(requests)
     }
@@ -54,9 +54,28 @@ public enum GSlidesEditor {
         case .deleteText(let r): try deleteText(r, &p)
         case .updateTextStyle(let r): try updateTextStyle(r, &p)
         case .updateShapeProperties(let r): try updateShapeProperties(r, &p)
-        case .other: throw GSlidesEditError.invalidRequest("empty request (no member set)")
-        default: throw GSlidesEditError.unsupportedRequest(label(request))
+        case .other:
+            throw FieldViolation(field: "", description: "Request has no operation set.", reason: .emptyRequest)
+        default:
+            throw FieldViolation(field: label(request),
+                description: "Operation '\(label(request))' is not supported by the local edit engine.",
+                reason: .unsupportedOperation)
         }
+    }
+
+    // MARK: Reducer-local violations (safety net; PreflightValidator reports these up front)
+
+    static func notFound(_ id: String) -> FieldViolation {
+        FieldViolation(field: "objectId", description: "No object with objectId '\(id)' exists.",
+                       reason: .objectNotFound)
+    }
+    static func missing(_ field: String) -> FieldViolation {
+        FieldViolation(field: field, description: "Required field '\(field)' is missing.",
+                       reason: .requiredFieldMissing)
+    }
+    static func unsupported(_ what: String) -> FieldViolation {
+        FieldViolation(field: what, description: "\(what) is not supported by the local edit engine.",
+                       reason: .unsupportedOperation)
     }
 
     /// The wire field name of a request's set member (for diagnostics) — data-driven, no 44-case switch.
@@ -85,7 +104,7 @@ extension GSlidesEditor {
                 return
             }
         }
-        throw GSlidesEditError.objectNotFound(id)
+        throw notFound(id)
     }
 
     static func withElement(_ id: String, in elements: inout [PageElement], _ body: (inout PageElement) -> Void) -> Bool {
@@ -124,7 +143,7 @@ extension GSlidesEditor {
 
 extension GSlidesEditor {
     static func deleteObject(_ r: DeleteObjectRequest, _ p: inout Presentation) throws {
-        guard let id = r.objectId else { throw GSlidesEditError.invalidRequest("deleteObject.objectId") }
+        guard let id = r.objectId else { throw missing("deleteObject.objectId") }
         var slides = p.slides ?? []
         for s in slides.indices {
             var elements = slides[s].pageElements ?? []
@@ -139,7 +158,7 @@ extension GSlidesEditor {
             p.slides = slides
             return
         }
-        throw GSlidesEditError.objectNotFound(id)
+        throw notFound(id)
     }
 
     static func createSlide(_ r: CreateSlideRequest, _ p: inout Presentation) throws {
@@ -152,7 +171,7 @@ extension GSlidesEditor {
     }
 
     static func duplicate(_ r: DuplicateObjectRequest, _ p: inout Presentation) throws {
-        guard let id = r.objectId else { throw GSlidesEditError.invalidRequest("duplicateObject.objectId") }
+        guard let id = r.objectId else { throw missing("duplicateObject.objectId") }
         var slides = p.slides ?? []
         for s in slides.indices {
             var elements = slides[s].pageElements ?? []
@@ -164,7 +183,7 @@ extension GSlidesEditor {
             p.slides = slides
             return
         }
-        throw GSlidesEditError.objectNotFound(id)
+        throw notFound(id)
     }
 
     static func updateZOrder(_ r: UpdatePageElementsZOrderRequest, _ p: inout Presentation) throws {
@@ -192,7 +211,7 @@ extension GSlidesEditor {
             p.slides = slides
             return
         }
-        throw GSlidesEditError.objectNotFound(ids.joined(separator: ","))
+        throw notFound(ids.joined(separator: ","))
     }
 }
 
@@ -201,7 +220,7 @@ extension GSlidesEditor {
 extension GSlidesEditor {
     static func updateTransform(_ r: UpdatePageElementTransformRequest, _ p: inout Presentation) throws {
         guard let id = r.objectId, let t = r.transform else {
-            throw GSlidesEditError.invalidRequest("updatePageElementTransform")
+            throw missing("updatePageElementTransform")
         }
         let mode = r.applyMode ?? .absolute
         try mutateElement(id, in: &p) { element in
@@ -284,17 +303,17 @@ extension GSlidesEditor {
 
     static func insertText(_ r: InsertTextRequest, _ p: inout Presentation) throws {
         guard let id = r.objectId, let text = r.text, !text.isEmpty else {
-            throw GSlidesEditError.invalidRequest("insertText")
+            throw missing("insertText")
         }
-        if r.cellLocation != nil { throw GSlidesEditError.unsupportedRequest("insertText(table cell)") }
+        if r.cellLocation != nil { throw unsupported("insertText(table cell)") }
         try editText(id, in: &p) { els in
             splice(&els, at: r.insertionIndex ?? 0, removing: 0, inserting: text)
         }
     }
 
     static func deleteText(_ r: DeleteTextRequest, _ p: inout Presentation) throws {
-        guard let id = r.objectId else { throw GSlidesEditError.invalidRequest("deleteText") }
-        if r.cellLocation != nil { throw GSlidesEditError.unsupportedRequest("deleteText(table cell)") }
+        guard let id = r.objectId else { throw missing("deleteText") }
+        if r.cellLocation != nil { throw unsupported("deleteText(table cell)") }
         try editText(id, in: &p) { els in
             let (start, end) = resolveRange(r.textRange, total: textLength(els))
             guard end > start else { return }
@@ -304,9 +323,9 @@ extension GSlidesEditor {
 
     static func updateTextStyle(_ r: UpdateTextStyleRequest, _ p: inout Presentation) throws {
         guard let id = r.objectId, let style = r.style else {
-            throw GSlidesEditError.invalidRequest("updateTextStyle")
+            throw missing("updateTextStyle")
         }
-        if r.cellLocation != nil { throw GSlidesEditError.unsupportedRequest("updateTextStyle(table cell)") }
+        if r.cellLocation != nil { throw unsupported("updateTextStyle(table cell)") }
         let fields = r.fields ?? ""  // 省略時は FieldMask が patch の存在キーを推論
         var thrown: Error?
         try editText(id, in: &p) { els in
@@ -416,7 +435,7 @@ extension GSlidesEditor {
 extension GSlidesEditor {
     static func updateShapeProperties(_ r: UpdateShapePropertiesRequest, _ p: inout Presentation) throws {
         guard let id = r.objectId, let patch = r.shapeProperties else {
-            throw GSlidesEditError.invalidRequest("updateShapeProperties")
+            throw missing("updateShapeProperties")
         }
         let fields = r.fields ?? ""  // 省略時は FieldMask が patch の存在キーを推論
         var thrown: Error?

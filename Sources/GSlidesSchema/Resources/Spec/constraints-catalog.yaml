@@ -1,0 +1,173 @@
+# Google Slides API — authoritative constraints catalog
+#
+# The discovery document (slides-api-discovery-v1.json) is machine-readable for TYPES and ENUMS,
+# but the constraints that matter most for validating agent-emitted batchUpdate requests live in
+# PROSE — either in a field's `description` string inside the discovery doc, or in the official
+# REST reference / API Improvement Proposals. This file is the SSOT for those prose-derived
+# constraints: each entry is quoted VERBATIM from an authoritative source, with the source URL and
+# the retrieval date, so the PreflightValidator is grounded in fact, not inference.
+#
+# Drift detection: SpecProvenanceTests pins `discovery_revision` and asserts the vendored discovery
+# doc still contains each `quote` marked `source: discovery`. If Google changes the wording, the
+# test fails and forces a human to re-derive the affected rule rather than letting it rot silently.
+
+discovery_revision: "20260601"
+retrieved: "2026-06-11"
+discovery_url: "https://slides.googleapis.com/$discovery/rest?version=v1"
+
+constraints:
+  # ── (A) Constraints the Google API ITSELF enforces (a violation → HTTP 400) ──────────────────
+
+  - id: object-id-format
+    tier: A
+    enforced_by: api
+    applies_to: [createSlide, createShape, createTable, createImage, createVideo, createLine,
+                 createSheetsChart, duplicateObject]
+    rule: >
+      User-supplied object IDs must start with [a-zA-Z0-9_], may then contain [a-zA-Z0-9_-:],
+      and be 5–50 characters inclusive.
+    source: discovery
+    source_ref: "schemas.CreateShapeRequest.properties.objectId.description"
+    quote: >
+      A user-supplied object ID. If you specify an ID, it must be unique among all pages and page
+      elements in the presentation. The ID must start with an alphanumeric character or an
+      underscore (matches regex `[a-zA-Z0-9_]`); remaining characters may include those as well as
+      a hyphen or colon (matches regex `[a-zA-Z0-9_-:]`). The length of the ID must not be less
+      than 5 or greater than 50. If empty, a unique identifier will be generated.
+
+  - id: object-id-uniqueness
+    tier: A
+    enforced_by: api
+    applies_to: [createSlide, createShape, createTable, createImage, createVideo, createLine,
+                 createSheetsChart, duplicateObject]
+    rule: >
+      A user-supplied object ID must be unique across the COMBINED namespace of all Page and
+      PageElement object IDs in the presentation (they share one namespace).
+    source: discovery
+    source_ref: "schemas.PageElement.properties.objectId.description"
+    quote: >
+      The object ID for this page element. Object IDs used by google.apps.slides.v1.Page and
+      google.apps.slides.v1.PageElement share the same namespace.
+
+  - id: object-reference-existence
+    tier: A
+    enforced_by: api
+    applies_to: [deleteObject, updatePageElementTransform, updateTextStyle, updateShapeProperties,
+                 insertText, deleteText, duplicateObject, updatePageElementsZOrder, replaceAllText]
+    rule: >
+      Any objectId referenced by an update/delete/duplicate request must already exist in the
+      presentation. The API validates every request before applying; a dangling reference fails
+      the whole batch.
+    source: rest_reference
+    source_url: "https://developers.google.com/workspace/slides/api/reference/rest/v1/presentations/request"
+
+  - id: request-exactly-one-kind
+    tier: A
+    enforced_by: api
+    applies_to: [all]
+    rule: >
+      Each Request object must set exactly one sub-request (the `kind` union). Zero or multiple
+      set members is invalid.
+    source: rest_reference
+    source_url: "https://developers.google.com/workspace/slides/api/reference/rest/v1/presentations/request"
+    quote: "Union field kind. The kind of update. Exactly one field is required."
+
+  - id: batch-atomicity
+    tier: A
+    enforced_by: api
+    applies_to: [all]
+    rule: >
+      batchUpdate is all-or-nothing. Every request is validated BEFORE anything is applied; if any
+      request is invalid the entire batch fails and nothing is written. Partial application never
+      happens. (This is why the package validates the whole batch up front and rejects atomically.)
+    source: discovery
+    source_ref: "resources.presentations.methods.batchUpdate.description"
+    quote: >
+      Applies one or more updates to the presentation. Each request is validated before being
+      applied. If any request is not valid, then the entire request will fail and nothing will be
+      applied.
+
+  - id: write-control-revision
+    tier: A
+    enforced_by: api
+    applies_to: [batchUpdate]
+    rule: >
+      Optimistic locking via WriteControl.requiredRevisionId: if it doesn't match the
+      presentation's current revisionId, the request is rejected with HTTP 400 and nothing is
+      applied. The response carries the post-write revision ID.
+    source: discovery
+    source_ref: "schemas.WriteControl.properties.requiredRevisionId.description"
+    quote: >
+      The revision ID of the presentation required for the write request. If specified and the
+      required revision ID doesn't match the presentation's current revision ID, the request is
+      not processed and returns a 400 bad request error. When a required revision ID is returned in
+      a response, it indicates the revision ID of the document after the request was applied.
+
+  - id: enum-values-closed
+    tier: A
+    enforced_by: api
+    applies_to: [all]
+    rule: >
+      Every enum-typed field accepts only the values enumerated in the discovery document. An
+      unknown value is rejected (HTTP 400 / INVALID_ARGUMENT). The vendored discovery doc is the
+      SSOT for the allowed set; EnumParityTests keep the Swift mirror in exact sync.
+    source: discovery
+    source_ref: "schemas.*.properties.*.enum"
+
+  # ── (B) Constraints the API does NOT enforce — the caller MUST guard them ─────────────────────
+
+  - id: page-bounds
+    tier: B
+    enforced_by: caller
+    applies_to: [updatePageElementTransform]
+    rule: >
+      The API does NOT reject off-page positions. AffineTransform translate elements are doubles
+      with no documented bound, and no reference page describes a bounds check. An element can be
+      moved entirely off the slide and the API accepts it. To stop an agent from "losing" an
+      element off-screen, the caller must compare the element's resulting bounding box against
+      Presentation.pageSize. translate is the element's UPPER-LEFT corner, not its center.
+    source: rest_reference
+    source_url: "https://developers.google.com/workspace/slides/api/guides/transform"
+    quote: >
+      The translation parameters specify the position of the element's upper-left corner, not its
+      center.
+
+  - id: emu-conversion
+    tier: B
+    enforced_by: caller
+    applies_to: [all]
+    rule: >
+      Units must be normalized consistently. 1 inch = 914400 EMU; 1 point = 12700 EMU. Mixing EMU
+      and PT without conversion produces silent ~72x position/size errors that the API will not
+      catch.
+    source: discovery
+    source_ref: "schemas.Unit / schemas.Dimension.properties.unit.description"
+
+  - id: degenerate-transform
+    tier: B
+    enforced_by: caller
+    applies_to: [updatePageElementTransform]
+    rule: >
+      scaleX or scaleY of 0 collapses an element to zero size (effectively invisible); huge scales
+      explode it. The API accepts these. The caller should flag a zero/degenerate scale as almost
+      certainly unintended.
+    source: derived
+    note: "Derived from AffineTransform semantics; not an API-enforced rule."
+
+  # ── Field masks (semantics the caller must honor; partly API-enforced) ────────────────────────
+
+  - id: field-mask-semantics
+    tier: A
+    enforced_by: api
+    applies_to: [updateTextStyle, updateShapeProperties, updateImageProperties,
+                 updateVideoProperties, updatePageProperties, updateParagraphStyle,
+                 updateLineProperties, updateTableCellProperties, updateSlideProperties]
+    rule: >
+      `fields` is a comma-separated list of dotted paths naming exactly which fields to apply. A
+      single "*" is shorthand for every field. A path present in the mask but unset in the patch
+      resets that field to its default. "*" must not be combined with other paths.
+    source: rest_reference
+    source_url: "https://developers.google.com/workspace/slides/api/reference/rest/v1/presentations/request"
+    quote: >
+      To reset a property to its default value, include its field name in the field mask but leave
+      the field itself unset. A single "*" can be used as short-hand for listing every field.

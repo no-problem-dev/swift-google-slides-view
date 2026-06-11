@@ -2,19 +2,20 @@ import Foundation
 import GSlidesRequests
 import GSlidesSchema
 
-public enum GSlidesEditContractError: Error, Equatable {
-    case invalidJSON(String)
-    case emptyBatch
-}
-
 /// Contract for the edit loop. An editing agent refines a presentation by emitting **official batchUpdate
 /// requests** — a curated subset of the same `Request` types the wire and the reducer already speak
 /// — NOT an invented vocabulary. This keeps one source of truth (no parallel edit language to drift),
 /// mirrors how real agent-editing systems work (Figma / Docs / Office emit concrete API ops), and
 /// reuses the typed, tested request model. The schema + worked examples teach the shape.
 ///
+/// The flow is **decode → preflight → atomic apply**, faithful to the real API: the whole batch is
+/// validated up front (`PreflightValidator`) and, if anything is wrong, NOTHING is applied and a
+/// `BatchUpdateError` carrying every `FieldViolation` is thrown — the agent fixes them all in one
+/// pass (`promptFeedback`) instead of one server round-trip at a time.
+///
 /// `allowing:` restricts the offered operations to a subset (e.g. a user disabling "delete"): the
-/// schema, examples, and validation all narrow to it, so the model is never shown a forbidden op.
+/// schema, examples, and prompt all narrow to it, and a request using a forbidden op is reported as
+/// an `OPERATION_NOT_PERMITTED` violation.
 public enum GSlidesEditContract {
     /// The curated subset of the 44 batchUpdate operations offered for editing — the ones that adjust
     /// an existing presentation. Deliberately small (oversized operation sets collapse selection accuracy).
@@ -49,6 +50,84 @@ public enum GSlidesEditContract {
         curatedOperations.filter { allowed?.contains($0) ?? true }
     }
 
+    // MARK: - Decode → preflight → atomic apply
+
+    /// Structural decode of the official batch + non-empty check. Accepts `{"requests":[…]}` or a
+    /// bare `[…]`. Throws `BatchUpdateError` (HTTP 400) on malformed JSON or an empty batch — the
+    /// same shape the real API returns, so a host can relay it to the agent unchanged.
+    public static func decode(_ data: Data) throws -> [Request] {
+        let decoded: [Request]
+        do {
+            if let batch = try? JSONDecoder().decode(BatchUpdatePresentationRequest.self, from: data),
+               let r = batch.requests {
+                decoded = r
+            } else {
+                decoded = try JSONDecoder().decode([Request].self, from: data)
+            }
+        } catch {
+            throw BatchUpdateError.invalidJSON(String(describing: error))
+        }
+        guard !decoded.isEmpty else {
+            throw BatchUpdateError.invalidArgument([FieldViolation(
+                field: "requests", description: "The batch must contain at least one request.",
+                reason: .requiredFieldMissing)])
+        }
+        return decoded
+    }
+
+    /// Decode + full preflight against `presentation`. Returns the validated requests if the batch
+    /// is safe to apply, or throws `BatchUpdateError` listing **every** violation (nothing applied).
+    @discardableResult
+    public static func validate(
+        _ data: Data, against presentation: Presentation,
+        allowing allowed: Set<String>? = nil, policy: PreflightValidator.Policy = .default
+    ) throws -> [Request] {
+        let requests = try decode(data)
+        let violations = PreflightValidator.violations(
+            in: requests, against: presentation, allowing: allowed, policy: policy)
+        if !violations.isEmpty { throw BatchUpdateError.invalidArgument(violations) }
+        return requests
+    }
+
+    /// Validated end-to-end path: model output bytes → official requests → updated presentation.
+    /// **Atomic**: if preflight finds any violation the whole batch is rejected and `presentation`
+    /// is returned unchanged via the thrown error — nothing is partially applied (catalog:
+    /// batch-atomicity).
+    public static func apply(
+        _ data: Data, to presentation: Presentation,
+        allowing allowed: Set<String>? = nil, policy: PreflightValidator.Policy = .default
+    ) throws -> Presentation {
+        let requests = try validate(data, against: presentation, allowing: allowed, policy: policy)
+        return try presentation.applying(requests)
+    }
+
+    /// LLM-facing feedback for a rejected batch: the API-shaped error JSON plus a short instruction
+    /// to fix every listed violation and resend. Hand this back to the agent to drive self-correction.
+    public static func promptFeedback(for error: BatchUpdateError) -> String {
+        """
+        ### EDIT REJECTED (nothing was applied — the batch is atomic):
+        \(error.wireJSON())
+
+        Fix EVERY fieldViolation above (each `field` is a path into your requests array) and resend
+        the corrected batch. Do not resend the un-fixed requests.
+        """
+    }
+
+    // MARK: - Request introspection
+
+    /// The wire operation name of a request (its single set member), or nil if none — public so a
+    /// host can label or filter requests by operation.
+    public static func operationName(of request: Request) -> String? {
+        for child in Mirror(reflecting: request).children {
+            if let name = child.label, Mirror(reflecting: child.value).children.first != nil {
+                return name
+            }
+        }
+        return nil
+    }
+
+    // MARK: - LLM teaching material (schema + examples + constraints)
+
     /// JSON Schema for the tool argument: `{ "requests": [ <one curated batchUpdate request> … ] }`.
     /// The item shape is intentionally permissive (one key per request, mirroring the wire union);
     /// the operation list + worked EXAMPLES carry the precise shape.
@@ -63,7 +142,7 @@ public enum GSlidesEditContract {
                     "description":
                         "Edits to apply IN ORDER, each an official Google Slides batchUpdate request "
                         + "(exactly one of: \(ops.joined(separator: ", "))). "
-                        + "Reference elements by the objectId from get_presentation. EMU units: 914400 = 1 inch. "
+                        + "Reference elements by the objectId from inspect_presentation. EMU units: 914400 = 1 inch. "
                         + "Colors are rgbColor with red/green/blue in 0..1. For update* requests you may "
                         + "omit `fields` to update exactly the attributes you set. See the EXAMPLES.",
                     "items": ["type": "object"],
@@ -86,10 +165,25 @@ public enum GSlidesEditContract {
         return "{\"requests\":[\n  \(items)\n]}"
     }
 
-    /// System-instruction block: schema (what's allowed) + worked examples (the exact shape).
+    /// The hard constraints the validator enforces, stated for the agent so it gets edits right the
+    /// first time instead of learning them from rejections. Grounded in `constraints-catalog.yaml`.
+    public static let constraintRules = """
+    ### EDIT RULES (enforced — a violation rejects the WHOLE batch, applying nothing):
+    - Reference only objectIds that exist in the current presentation (from inspect_presentation).
+    - Each request sets exactly ONE operation.
+    - Coordinates are EMU (914400 = 1 inch; 12700 = 1 point); translateX/Y is the element's
+      UPPER-LEFT corner. Keep elements on the slide — do not move them entirely off-page.
+    - Do not use scaleX/scaleY of 0 (it makes the element vanish).
+    - Enum fields accept only their documented values; rgbColor components are 0..1.
+    - In `fields`, list exactly the attributes you set; use "*" alone (never mixed with paths).
+    """
+
+    /// System-instruction block: rules (what's enforced) + schema (what's allowed) + worked examples.
     public static func promptBlock(allowing allowed: Set<String>? = nil) -> String {
         let schema = (try? jsonSchemaData(allowing: allowed)).map { String(decoding: $0, as: UTF8.self) } ?? "{}"
         return """
+        \(constraintRules)
+
         ### EDIT SCHEMA:
         The `requests_json` argument MUST validate against this JSON Schema:
         \(schema)
@@ -97,42 +191,5 @@ public enum GSlidesEditContract {
         ### EDIT EXAMPLES (official batchUpdate shape — match this):
         \(examplesJSON(allowing: allowed))
         """
-    }
-
-    /// The wire operation name of a request (its single set member), or nil if none — public so a
-    /// host can label or filter requests by operation.
-    public static func operationName(of request: Request) -> String? {
-        for child in Mirror(reflecting: request).children {
-            if let name = child.label, Mirror(reflecting: child.value).children.first != nil {
-                return name
-            }
-        }
-        return nil
-    }
-
-    /// Validation sandwich, receiving side: strict decode of the official batch + non-empty check.
-    /// Accepts `{"requests":[…]}` or a bare `[…]`. When `allowed` is set, requests using a
-    /// non-permitted operation are dropped (the agent was only shown the permitted ones).
-    public static func validate(_ data: Data, allowing allowed: Set<String>? = nil) throws -> [Request] {
-        let decoded: [Request]
-        do {
-            if let batch = try? JSONDecoder().decode(BatchUpdatePresentationRequest.self, from: data),
-               let r = batch.requests {
-                decoded = r
-            } else {
-                decoded = try JSONDecoder().decode([Request].self, from: data)
-            }
-        } catch {
-            throw GSlidesEditContractError.invalidJSON(String(describing: error))
-        }
-        guard !decoded.isEmpty else { throw GSlidesEditContractError.emptyBatch }
-        guard let allowed else { return decoded }
-        return decoded.filter { operationName(of: $0).map(allowed.contains) ?? false }
-    }
-
-    /// Validated end-to-end path: model output bytes → official requests → updated presentation.
-    /// Best-effort: a single bad request (stale objectId, unsupported op) is skipped, not fatal.
-    public static func apply(_ data: Data, to presentation: Presentation, allowing allowed: Set<String>? = nil) throws -> Presentation {
-        presentation.applyingLenient(try validate(data, allowing: allowed)).presentation
     }
 }

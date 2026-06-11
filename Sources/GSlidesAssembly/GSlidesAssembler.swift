@@ -86,9 +86,14 @@ public struct GSlidesAssembler: Equatable, Sendable {
             } catch {
                 throw GSlidesAssemblyError.invalidPayload(String(describing: error))
             }
-            // Best-effort: a single bad edit (stale objectId, unsupported op) must not drop the whole
-            // batch — apply what's valid so the presentation still visibly updates.
-            presentation = (presentation ?? Presentation()).applyingLenient(batch.requests ?? []).presentation
+            // Atomic, exactly like the real API: a batch either applies in full or not at all. An
+            // invalid batch (stale objectId, off-page move, unsupported op) surfaces as an assembly
+            // error instead of silently applying a partial, inconsistent edit.
+            do {
+                presentation = try (presentation ?? Presentation()).applying(batch.requests ?? [])
+            } catch {
+                throw GSlidesAssemblyError.invalidPayload(String(describing: error))
+            }
         }
         if chunk.lastChunk {
             isComplete = true
