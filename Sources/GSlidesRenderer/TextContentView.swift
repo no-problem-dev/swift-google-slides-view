@@ -117,7 +117,7 @@ struct TextContentView: View {
         var result = AttributedString()
         if let glyph = paragraph.marker?.bullet?.glyph {
             var prefix = AttributedString("\(glyph)  ")
-            prefix.font = .system(size: scaledSize(nil), weight: PlaceholderTypography.weight(for: placeholderType))
+            prefix.font = font(for: scaledSize(nil), style: nil)
             prefix.foregroundColor = palette.defaultText
             result += prefix
         }
@@ -144,7 +144,7 @@ struct TextContentView: View {
         let isSubscript = style?.baselineOffset == .subscript
         let size = (isSuperscript || isSubscript) ? baseSize * 0.7 : baseSize
 
-        var font = font(for: size, fallbackBold: style?.bold == true || weightHint(style) >= 600)
+        var font = font(for: size, style: style)
         if style?.italic == true { font = font.italic() }
         piece.font = font
 
@@ -160,15 +160,44 @@ struct TextContentView: View {
         return piece
     }
 
-    private func font(for size: CGFloat?, fallbackBold: Bool) -> Font {
-        let resolved = size ?? PlaceholderTypography.defaultFontSize(for: placeholderType) * pointScale
-        let weight: Font.Weight = fallbackBold ? .bold : PlaceholderTypography.weight(for: placeholderType)
-        return .system(size: resolved, weight: weight)
+    /// Resolve a run's font from the Slides schema: honor `fontFamily` (`TextStyle` or the weighted
+    /// family) via `Font.custom`, and the numeric weight (100–900) via `Font.Weight`. Falls back to
+    /// the system font and the placeholder's default weight when the schema leaves them unset, so a
+    /// presentation that specifies no typography renders exactly as before.
+    private func font(for size: CGFloat, style: TextStyle?) -> Font {
+        let weight = resolvedWeight(style)
+        let family = (style?.fontFamily ?? style?.weightedFontFamily?.fontFamily)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        if let family, !family.isEmpty {
+            // An unavailable family name falls back to the system font automatically.
+            return Font.custom(family, size: size).weight(weight)
+        }
+        return .system(size: size, weight: weight)
     }
 
-    /// Numeric weight from `weightedFontFamily` (100–900), 0 when absent.
-    private func weightHint(_ style: TextStyle?) -> Int {
-        style?.weightedFontFamily?.weight ?? 0
+    /// Effective SwiftUI weight: an explicit numeric weight (100–900) wins; otherwise the bold flag;
+    /// otherwise the placeholder's default weight.
+    private func resolvedWeight(_ style: TextStyle?) -> Font.Weight {
+        if let numeric = style?.weightedFontFamily?.weight {
+            return Self.fontWeight(numeric: numeric)
+        }
+        if style?.bold == true { return .bold }
+        return PlaceholderTypography.weight(for: placeholderType)
+    }
+
+    /// Map a Google Slides numeric font weight (100–900) to the nearest `Font.Weight`.
+    static func fontWeight(numeric weight: Int) -> Font.Weight {
+        switch weight {
+        case ..<150: .ultraLight
+        case 150..<250: .thin
+        case 250..<350: .light
+        case 350..<450: .regular
+        case 450..<550: .medium
+        case 550..<650: .semibold
+        case 650..<750: .bold
+        case 750..<850: .heavy
+        default: .black
+        }
     }
 
     private func frameAlignment(_ alignment: GSlidesSchema.Alignment?, rtl: Bool = false) -> SwiftUI.Alignment {

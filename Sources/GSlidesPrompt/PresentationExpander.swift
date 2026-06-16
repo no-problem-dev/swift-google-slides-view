@@ -188,6 +188,8 @@ public enum PresentationExpander {
                 if style.fontSize == nil { style.fontSize = spec.defaultStyle.fontSize }
                 if style.foregroundColor == nil { style.foregroundColor = spec.defaultStyle.foregroundColor }
                 if style.bold == nil { style.bold = spec.bold }
+                if style.fontFamily == nil { style.fontFamily = spec.defaultStyle.fontFamily }
+                if style.weightedFontFamily == nil { style.weightedFontFamily = spec.defaultStyle.weightedFontFamily }
                 run.style = style
                 element.textRun = run
             }

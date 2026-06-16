@@ -208,6 +208,35 @@ import GSlidesLayout
         #expect((run.style?.fontSize?.pointMagnitude ?? 0) >= 80)
     }
 
+    @Test func styledPropagatesTypographyFromSpecToRuns() throws {
+        let spec = PlaceholderSpec(
+            x: 0, y: 0, w: 100, h: 100, fontSizePt: 18, themeColor: .text1, bold: false,
+            align: .start, vAlign: .top, fontFamily: "Hiragino Sans", weight: 600
+        )
+        let text = TextContent(textElements: [TextElement(textRun: TextRun(content: "本文", style: nil))])
+
+        let styled = PresentationExpander.styled(text, with: spec)
+
+        let run = try #require(styled.textElements?.first?.textRun)
+        #expect(run.style?.fontFamily == "Hiragino Sans")
+        #expect(run.style?.weightedFontFamily?.fontFamily == "Hiragino Sans")
+        #expect(run.style?.weightedFontFamily?.weight == 600)
+    }
+
+    @Test func styledLeavesTypographyUnsetWhenSpecHasNone() throws {
+        let spec = PlaceholderSpec(
+            x: 0, y: 0, w: 100, h: 100, fontSizePt: 18, themeColor: .text1, bold: false,
+            align: .start, vAlign: .top
+        )
+        let text = TextContent(textElements: [TextElement(textRun: TextRun(content: "本文", style: nil))])
+
+        let styled = PresentationExpander.styled(text, with: spec)
+
+        let run = try #require(styled.textElements?.first?.textRun)
+        #expect(run.style?.fontFamily == nil)
+        #expect(run.style?.weightedFontFamily == nil)
+    }
+
     @Test func layoutPagesReferenceMasterAndHavePlaceholders() throws {
         let p = PresentationExpander.expand(SemanticPresentation(title: "x", slides: [
             SemanticSlide(layout: "TITLE_AND_TWO_COLUMNS", title: "T", bodies: [SemanticBody(text: "l"), SemanticBody(text: "r")]),

@@ -9,6 +9,22 @@ public struct PlaceholderSpec: Sendable {
     public var bold: Bool
     public var align: Alignment            // horizontal text alignment
     public var vAlign: ContentAlignment    // vertical alignment within the box
+    /// Typography intent (Slides `TextStyle.fontFamily` / `weightedFontFamily`). Both nil → the
+    /// renderer uses the system font + the placeholder's default weight (the historical behavior).
+    public var fontFamily: String?         // e.g. "Hiragino Sans" — applied as the run's font family
+    public var weight: Int?                // numeric font weight 100–900 (finer than the bold flag)
+
+    public init(
+        x: Double, y: Double, w: Double, h: Double,
+        fontSizePt: Double, themeColor: ThemeColorType, bold: Bool,
+        align: Alignment, vAlign: ContentAlignment,
+        fontFamily: String? = nil, weight: Int? = nil
+    ) {
+        self.x = x; self.y = y; self.w = w; self.h = h
+        self.fontSizePt = fontSizePt; self.themeColor = themeColor; self.bold = bold
+        self.align = align; self.vAlign = vAlign
+        self.fontFamily = fontFamily; self.weight = weight
+    }
 
     public var size: Size {
         Size(width: Dimension(magnitude: w, unit: .emu), height: Dimension(magnitude: h, unit: .emu))
@@ -19,8 +35,12 @@ public struct PlaceholderSpec: Sendable {
     public var defaultStyle: TextStyle {
         TextStyle(
             bold: bold,
+            fontFamily: fontFamily,
             fontSize: Dimension(magnitude: fontSizePt, unit: .pt),
-            foregroundColor: OptionalColor(opaqueColor: OpaqueColor(themeColor: themeColor))
+            foregroundColor: OptionalColor(opaqueColor: OpaqueColor(themeColor: themeColor)),
+            weightedFontFamily: (fontFamily != nil || weight != nil)
+                ? WeightedFontFamily(fontFamily: fontFamily, weight: weight)
+                : nil
         )
     }
 }
