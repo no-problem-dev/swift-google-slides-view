@@ -127,6 +127,25 @@ import GSlidesSchema
         let ratio = size.width / size.height
         #expect(abs(ratio - 16.0 / 9.0) < 0.0001)
     }
+
+    /// A negative scale (a flip) normalizes to a positive rect with the origin moved to the top-left,
+    /// so a vertically-flipped line element still occupies the intended box.
+    @Test func negativeScaleNormalizesToPositiveRect() {
+        let element = PageElement(
+            objectId: "e",
+            size: Size(
+                width: Dimension(magnitude: 2_000_000, unit: .emu),
+                height: Dimension(magnitude: 1_000_000, unit: .emu)
+            ),
+            transform: AffineTransform(
+                scaleX: 1, scaleY: -1,
+                translateX: 500_000, translateY: 3_000_000,
+                unit: .emu
+            )
+        )
+        // scaleY -1 anchored at y=3_000_000 → box spans [2_000_000, 3_000_000], positive height.
+        #expect(PageGeometry.frame(of: element) == CGRect(x: 500_000, y: 2_000_000, width: 2_000_000, height: 1_000_000))
+    }
 }
 
 @Suite struct PlaceholderResolverTests {

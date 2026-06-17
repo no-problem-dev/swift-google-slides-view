@@ -124,6 +124,11 @@ struct ElementView: View {
                     lineSpacingReduction: autofit?.autofitType == .textAutofit ? (autofit?.lineSpacingReduction ?? 0) : 0
                 )
                 .padding(4 * pointScale)
+                // Honor the shape's vertical content alignment for text. A fill-less text box otherwise
+                // collapses to its intrinsic height and the outer positioning frame centers it — making
+                // `contentAlignment` a no-op (top/bottom-aligned bodies floated to the box center). Filling
+                // the frame lets `.top`/`.bottom` actually pin; `.middle`/default stays centered as before.
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: contentAlignment(props?.contentAlignment))
             }
         }
     }
@@ -261,9 +266,14 @@ struct ElementView: View {
         let color = palette.color(props?.lineFill?.solidFill) ?? .secondary
         let weight = max(1, (props?.weight?.pointMagnitude ?? 1) * pointScale)
         let category = lineCategory(line)
+        // A flip (negative scale, normalized away by PageGeometry) chooses the other diagonal: a
+        // vertical flip makes the line rise (bottom-left → top-right) instead of fall — what a line
+        // chart's ascending segment needs. Positive scales keep the historical top-left → bottom-right.
+        let vFlip = (element.transform?.scaleY ?? 1) < 0
+        let hFlip = (element.transform?.scaleX ?? 1) < 0
         return GeometryReader { geo in
-            let start = CGPoint(x: 0, y: 0)
-            let end = CGPoint(x: geo.size.width, y: geo.size.height)
+            let start = CGPoint(x: hFlip ? geo.size.width : 0, y: vFlip ? geo.size.height : 0)
+            let end = CGPoint(x: hFlip ? 0 : geo.size.width, y: vFlip ? 0 : geo.size.height)
             // For BENT/CURVED connectors the tangent at the end is horizontal (elbow/curve arrive
             // sideways); STRAIGHT arrives along the diagonal.
             let endFrom = category == .straight ? start : CGPoint(x: 0, y: end.y)

@@ -24,7 +24,10 @@ struct TextContentView: View {
     @Environment(\.gslidesSlideNumber) private var slideNumber
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2 * pointScale) {
+        // Inter-paragraph air. Bullet lists (the dominant multi-paragraph case) read cramped at the
+        // old hairline gap; a roomier rhythm matches reference decks. Single-paragraph bodies/titles
+        // have no inter-paragraph gap, so this only relaxes lists.
+        VStack(alignment: .leading, spacing: 6 * pointScale) {
             ForEach(Array(paragraphs.enumerated()), id: \.offset) { _, paragraph in
                 paragraphView(paragraph)
             }
@@ -88,15 +91,48 @@ struct TextContentView: View {
         let nestingIndent = CGFloat(paragraph.marker?.bullet?.nestingLevel ?? 0) * 16 * pointScale
         let indentStart = dimension(style?.indentStart)
         let rtl = style?.direction == .rightToLeft
-        Text(attributed(paragraph))
+        paragraphBody(paragraph, style: style, rtl: rtl)
             .lineSpacing(extraLineSpacing(style, paragraph))
-            .frame(maxWidth: .infinity, alignment: frameAlignment(style?.alignment, rtl: rtl))
             .padding(.leading, nestingIndent + indentStart)
             .padding(.trailing, dimension(style?.indentEnd))
             .padding(.top, dimension(style?.spaceAbove))
             .padding(.bottom, dimension(style?.spaceBelow))
             .environment(\.layoutDirection, rtl ? .rightToLeft : .leftToRight)
             .minimumScaleFactor(0.3)
+    }
+
+    /// A bulleted paragraph renders the marker and the text as separate columns so wrapped lines hang
+    /// — they align under the text, not under the marker (the professional default; a single prefixed
+    /// string would wrap back under the bullet). Non-bulleted paragraphs stay a single full-width Text.
+    @ViewBuilder
+    private func paragraphBody(_ paragraph: Paragraph, style: ParagraphStyle?, rtl: Bool) -> some View {
+        let leadingAlign: SwiftUI.Alignment = rtl ? .trailing : .leading
+        if let glyph = paragraph.marker?.bullet?.glyph {
+            HStack(alignment: .firstTextBaseline, spacing: scaledSize(nil) * 0.4) {
+                Text(styledGlyph(glyph))
+                Text(attributedRuns(paragraph))
+                    .frame(maxWidth: .infinity, alignment: leadingAlign)
+            }
+            .frame(maxWidth: .infinity, alignment: leadingAlign)
+        } else {
+            Text(attributed(paragraph))
+                .frame(maxWidth: .infinity, alignment: frameAlignment(style?.alignment, rtl: rtl))
+        }
+    }
+
+    /// The bullet marker as a standalone styled string (so it can live in its own column).
+    private func styledGlyph(_ glyph: String) -> AttributedString {
+        var prefix = AttributedString(glyph)
+        prefix.font = font(for: scaledSize(nil), style: nil)
+        prefix.foregroundColor = palette.defaultText
+        return prefix
+    }
+
+    /// The paragraph's runs without the bullet glyph (the hanging-indent text column).
+    private func attributedRuns(_ paragraph: Paragraph) -> AttributedString {
+        var result = AttributedString()
+        for run in paragraph.runs { result += styledRun(run) }
+        return result
     }
 
     private func dimension(_ value: GSlidesSchema.Dimension?) -> CGFloat {

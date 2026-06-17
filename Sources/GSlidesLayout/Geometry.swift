@@ -43,7 +43,11 @@ public enum PageGeometry {
             x *= EMU.perPoint
             y *= EMU.perPoint
         }
-        return CGRect(x: x, y: y, width: width * scaleX, height: height * scaleY)
+        // A negative scale is a flip: normalize to a positive rect by moving the origin to the
+        // top-left. Positive scales are unaffected (min(·, 0) == 0), so existing geometry is unchanged.
+        let signedW = width * scaleX
+        let signedH = height * scaleY
+        return CGRect(x: x + min(signedW, 0), y: y + min(signedH, 0), width: abs(signedW), height: abs(signedH))
     }
 
     public static func pageSize(of presentation: Presentation) -> CGSize {

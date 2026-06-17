@@ -237,6 +237,220 @@ import GSlidesLayout
         #expect(run.style?.weightedFontFamily == nil)
     }
 
+    /// `expand(typography:)` overlays the scale onto each slot by its semantic role: a title run
+    /// carries the title weight, a body run the body weight, and a BIG_NUMBER title the bigNumber
+    /// weight — all on the supplied family.
+    @Test func expandInjectsTypographyByRole() throws {
+        let typography = PresentationTypography([
+            .title: .init(fontFamily: "Hiragino Sans", weight: 700),
+            .body: .init(fontFamily: "Hiragino Sans", weight: 400),
+            .bigNumber: .init(fontFamily: "Hiragino Sans", weight: 800),
+        ])
+        let p = PresentationExpander.expand(SemanticPresentation(title: "x", slides: [
+            SemanticSlide(layout: "TITLE_AND_BODY", title: "結論", bodies: [SemanticBody(text: "本文")]),
+            SemanticSlide(layout: "BIG_NUMBER", title: "120%"),
+        ]), typography: typography)
+
+        let titleRun = try #require(p.slides?.first?.pageElements?
+            .first { $0.shape?.placeholder?.type == .title }?.shape?.text?.textElements?.first?.textRun)
+        #expect(titleRun.style?.fontFamily == "Hiragino Sans")
+        #expect(titleRun.style?.weightedFontFamily?.weight == 700)
+
+        let bodyRun = try #require(p.slides?.first?.pageElements?
+            .first { $0.shape?.placeholder?.type == .body }?.shape?.text?.textElements?.first?.textRun)
+        #expect(bodyRun.style?.weightedFontFamily?.weight == 400)
+
+        let bigRun = try #require(p.slides?.last?.pageElements?
+            .first { $0.shape?.placeholder?.type == .title }?.shape?.text?.textElements?.first?.textRun)
+        #expect(bigRun.style?.weightedFontFamily?.weight == 800)
+    }
+
+    /// The default `.system` typography leaves runs without a family/weighted family — a presentation
+    /// that specifies no typography renders exactly as before.
+    @Test func expandWithoutTypographyLeavesRunsUnstyled() throws {
+        let p = PresentationExpander.expand(SemanticPresentation(title: "x", slides: [
+            SemanticSlide(layout: "TITLE_AND_BODY", title: "結論", bodies: [SemanticBody(text: "本文")]),
+        ]))
+        let titleRun = try #require(p.slides?.first?.pageElements?
+            .first { $0.shape?.placeholder?.type == .title }?.shape?.text?.textElements?.first?.textRun)
+        #expect(titleRun.style?.fontFamily == nil)
+        #expect(titleRun.style?.weightedFontFamily == nil)
+    }
+
+    /// A metrics body expands to native stat cards: a value(+unit) text and a label per metric, plus
+    /// a track+fill bar only for metrics that carry a `ratio` (no image, no new element type).
+    @Test func metricsExpandToValueLabelAndBar() throws {
+        let p = PresentationExpander.expand(SemanticPresentation(title: "x", slides: [
+            SemanticSlide(layout: "TITLE_AND_BODY", title: "実績", bodies: [
+                SemanticBody(metrics: [
+                    SemanticMetric(label: "継続率", value: "98", unit: "%", ratio: 0.98),
+                    SemanticMetric(label: "導入企業", value: "1,200", unit: "社"),
+                ]),
+            ]),
+        ]))
+        let elements = try #require(p.slides?.first?.pageElements)
+        let ids = elements.compactMap(\.objectId).filter { $0.contains("-metric-") }
+
+        // Both metrics get a value + label.
+        #expect(ids.contains("slide-1-metric-0-0-value"))
+        #expect(ids.contains("slide-1-metric-0-0-label"))
+        #expect(ids.contains("slide-1-metric-0-1-value"))
+        #expect(ids.contains("slide-1-metric-0-1-label"))
+
+        // Only the first metric (ratio: 0.98) draws a bar; the second (no ratio) does not.
+        #expect(ids.contains("slide-1-metric-0-0-track"))
+        #expect(ids.contains("slide-1-metric-0-0-fill"))
+        #expect(!ids.contains("slide-1-metric-0-1-track"))
+
+        // The value text carries the value and unit; the label carries its text.
+        let valueRun = try #require(elements.first { $0.objectId == "slide-1-metric-0-0-value" }?
+            .shape?.text?.textElements?.compactMap { $0.textRun?.content }.joined())
+        #expect(valueRun.contains("98"))
+        #expect(valueRun.contains("%"))
+
+        // The fill bar is narrower than its track (ratio < 1).
+        let track = try #require(elements.first { $0.objectId == "slide-1-metric-0-0-track" }?.size?.width?.magnitude)
+        let fill = try #require(elements.first { $0.objectId == "slide-1-metric-0-0-fill" }?.size?.width?.magnitude)
+        #expect(fill < track)
+    }
+
+    /// A chart body expands to a column chart: a bar + value + label per data point and a baseline,
+    /// with bar heights proportional to value (the taller value yields the taller bar).
+    @Test func chartExpandsToProportionalBars() throws {
+        let p = PresentationExpander.expand(SemanticPresentation(title: "x", slides: [
+            SemanticSlide(layout: "TITLE_AND_BODY", title: "成長", bodies: [
+                SemanticBody(chart: SemanticChart(bars: [
+                    SemanticChartBar(label: "2023", value: 50, caption: "¥0.5億"),
+                    SemanticChartBar(label: "2024", value: 100, caption: "¥1.0億"),
+                ])),
+            ]),
+        ]))
+        let elements = try #require(p.slides?.first?.pageElements)
+        let ids = elements.compactMap(\.objectId).filter { $0.contains("-chart-") }
+
+        #expect(ids.contains("slide-1-chart-0-base"))
+        for i in 0...1 {
+            #expect(ids.contains("slide-1-chart-0-\(i)-bar"))
+            #expect(ids.contains("slide-1-chart-0-\(i)-value"))
+            #expect(ids.contains("slide-1-chart-0-\(i)-label"))
+        }
+
+        // The 100-value bar is taller than the 50-value bar (proportional heights).
+        let bar0 = try #require(elements.first { $0.objectId == "slide-1-chart-0-0-bar" }?.size?.height?.magnitude)
+        let bar1 = try #require(elements.first { $0.objectId == "slide-1-chart-0-1-bar" }?.size?.height?.magnitude)
+        #expect(bar1 > bar0)
+        #expect(abs(bar1 - 2 * bar0) < 1) // 100 vs 50 → ~2× height
+
+        // The caption is printed above the bar.
+        let valueText = try #require(elements.first { $0.objectId == "slide-1-chart-0-1-value" }?
+            .shape?.text?.textElements?.compactMap { $0.textRun?.content }.joined())
+        #expect(valueText.contains("¥1.0億"))
+    }
+
+    /// A line chart expands to markers + connecting segments + value/category labels (no bars). An
+    /// ascending segment is encoded with a vertical flip (negative scaleY); a descending one isn't.
+    @Test func lineChartExpandsWithFlippedAscendingSegments() throws {
+        let p = PresentationExpander.expand(SemanticPresentation(title: "x", slides: [
+            SemanticSlide(layout: "TITLE_AND_BODY", title: "推移", bodies: [
+                SemanticBody(chart: SemanticChart(bars: [
+                    SemanticChartBar(label: "2022", value: 30),
+                    SemanticChartBar(label: "2023", value: 80),  // ascending vs 2022
+                    SemanticChartBar(label: "2024", value: 50),  // descending vs 2023
+                ], type: .line)),
+            ]),
+        ]))
+        let elements = try #require(p.slides?.first?.pageElements)
+        let ids = elements.compactMap(\.objectId).filter { $0.contains("-chart-") }
+
+        #expect(ids.contains("slide-1-chart-0-base"))
+        #expect(ids.contains("slide-1-chart-0-0-seg"))
+        #expect(ids.contains("slide-1-chart-0-1-seg"))
+        for i in 0...2 {
+            #expect(ids.contains("slide-1-chart-0-\(i)-dot"))
+            #expect(ids.contains("slide-1-chart-0-\(i)-value"))
+            #expect(ids.contains("slide-1-chart-0-\(i)-label"))
+        }
+        #expect(!ids.contains { $0.hasSuffix("-bar") }) // a line chart draws no bars
+
+        // 30→80 rises: vertical flip (scaleY < 0). 80→50 falls: no flip (scaleY > 0).
+        let seg0 = try #require(elements.first { $0.objectId == "slide-1-chart-0-0-seg" })
+        let seg1 = try #require(elements.first { $0.objectId == "slide-1-chart-0-1-seg" })
+        #expect((seg0.transform?.scaleY ?? 1) < 0)
+        #expect((seg1.transform?.scaleY ?? 1) > 0)
+
+        // Markers render as ellipses.
+        let dot = try #require(elements.first { $0.objectId == "slide-1-chart-0-0-dot" })
+        #expect(dot.shape?.shapeType == .ellipse)
+    }
+
+    /// A steps body expands to a row of cards with labels joined by arrows: one card + label per step,
+    /// an arrow between consecutive steps (n-1), and a caption only where provided.
+    @Test func stepsExpandToCardsJoinedByArrows() throws {
+        let p = PresentationExpander.expand(SemanticPresentation(title: "x", slides: [
+            SemanticSlide(layout: "TITLE_AND_BODY", title: "流れ", bodies: [
+                SemanticBody(steps: [
+                    SemanticStep(label: "調査", caption: "現状を掴む"),
+                    SemanticStep(label: "整理"),
+                    SemanticStep(label: "実行"),
+                ]),
+            ]),
+        ]))
+        let elements = try #require(p.slides?.first?.pageElements)
+        let ids = elements.compactMap(\.objectId).filter { $0.contains("-step-") }
+
+        for i in 0...2 {
+            #expect(ids.contains("slide-1-step-0-\(i)-card"))
+            #expect(ids.contains("slide-1-step-0-\(i)-label"))
+        }
+        // Two arrows for three steps; only the first step has a caption.
+        #expect(ids.filter { $0.hasSuffix("-arrow") }.count == 2)
+        #expect(ids.contains("slide-1-step-0-0-caption"))
+        #expect(!ids.contains("slide-1-step-0-1-caption"))
+
+        // The connector is a filled right-arrow shape (reliable for a horizontal arrow).
+        let arrow = try #require(elements.first { $0.objectId == "slide-1-step-0-0-arrow" })
+        #expect(arrow.shape?.shapeType == .rightArrow)
+        // Cards render as rounded rectangles.
+        let card = try #require(elements.first { $0.objectId == "slide-1-step-0-0-card" })
+        #expect(card.shape?.shapeType == .roundRectangle)
+    }
+
+    /// A quote body expands to a quotation mark, the quote text, and an attribution (only when an
+    /// author/role is given).
+    @Test func quoteExpandsToMarkTextAndAttribution() throws {
+        let p = PresentationExpander.expand(SemanticPresentation(title: "x", slides: [
+            SemanticSlide(layout: "TITLE_AND_BODY", title: "顧客の声", bodies: [
+                SemanticBody(quote: SemanticQuote(text: "調査の時間が半分になった。", author: "山田太郎", role: "Acme 部長")),
+            ]),
+        ]))
+        let elements = try #require(p.slides?.first?.pageElements)
+        func runs(_ id: String) -> String? {
+            elements.first { $0.objectId == id }?.shape?.text?.textElements?.compactMap { $0.textRun?.content }.joined()
+        }
+
+        let text = try #require(runs("slide-1-quote-0-text"))
+        #expect(text.contains("調査の時間が半分になった"))
+        let attr = try #require(runs("slide-1-quote-0-attr"))
+        #expect(attr.contains("山田太郎"))
+        #expect(attr.contains("Acme 部長"))
+        #expect(elements.contains { $0.objectId == "slide-1-quote-0-mark" })
+
+        // No author/role → no attribution element.
+        let p2 = PresentationExpander.expand(SemanticPresentation(title: "x", slides: [
+            SemanticSlide(layout: "TITLE_AND_BODY", title: "声", bodies: [SemanticBody(quote: SemanticQuote(text: "最高。"))]),
+        ]))
+        let ids2 = (p2.slides?.first?.pageElements ?? []).compactMap(\.objectId)
+        #expect(!ids2.contains("slide-1-quote-0-attr"))
+    }
+
+    @Test func formatValueGroupsThousands() {
+        #expect(PresentationExpander.formatValue(1200) == "1,200")
+        #expect(PresentationExpander.formatValue(999) == "999")
+        #expect(PresentationExpander.formatValue(1_234_567) == "1,234,567")
+        #expect(PresentationExpander.formatValue(12.5) == "12.5")
+        #expect(PresentationExpander.formatValue(1234.5) == "1,234.5")
+    }
+
     @Test func layoutPagesReferenceMasterAndHavePlaceholders() throws {
         let p = PresentationExpander.expand(SemanticPresentation(title: "x", slides: [
             SemanticSlide(layout: "TITLE_AND_TWO_COLUMNS", title: "T", bodies: [SemanticBody(text: "l"), SemanticBody(text: "r")]),
@@ -260,15 +474,28 @@ import GSlidesLayout
         ])).slides!.first!
     }
 
-    @Test func contentSlidesGetAccentBarAndPageNumber() throws {
-        let s = slide("TITLE_AND_BODY")
-        // an accent-filled rectangle (no placeholder) provides the color/structure
-        let accent = (s.pageElements ?? []).first { $0.shape?.shapeType == .rectangle && $0.shape?.placeholder == nil }
-        let fill = try #require(accent?.shape?.shapeProperties?.shapeBackgroundFill?.solidFill?.color?.themeColor)
-        #expect(fill == .accent1)
-        // page number footer
+    @Test func contentSlidesHavePageNumberAndNoFloatingAccentBar() throws {
+        let s = slide("TITLE_AND_BODY")  // title "T" has no "：" → single headline, no eyebrow
+        // The floating accent rectangle is gone — the eyebrow kicker carries the accent now.
+        let accent = (s.pageElements ?? []).first { $0.objectId.hasSuffix("-accent") }
+        #expect(accent == nil)
+        // page number footer remains
         let pageNo = (s.pageElements ?? []).first { $0.objectId.hasSuffix("-pageno") }
         #expect(pageNo?.shape?.text?.textElements?.first?.textRun?.content == "1")
+    }
+
+    @Test func labelTitleBecomesAccentEyebrowPlusHeadline() throws {
+        let s = PresentationExpander.expand(SemanticPresentation(title: "x", slides: [
+            SemanticSlide(layout: "TITLE_AND_BODY", title: "実績：日本最大級の基盤", bodies: [SemanticBody(text: "b")]),
+        ])).slides!.first!
+        let title = try #require((s.pageElements ?? []).first { $0.shape?.placeholder?.type == .title })
+        let runs = (title.shape?.text?.textElements ?? []).compactMap(\.textRun)
+        #expect(runs.count == 2)
+        // eyebrow = the label, accent-colored
+        #expect(runs.first?.content == "実績")
+        #expect(runs.first?.style?.foregroundColor?.opaqueColor?.themeColor == .accent1)
+        // headline = the conclusion
+        #expect(runs.last?.content == "日本最大級の基盤")
     }
 
     @Test func sectionAndTitleGetAccentButNoPageNumber() {
@@ -481,5 +708,43 @@ import GSlidesLayout
         // the example's serialized JSON carries the markup for the model to learn from
         #expect(GSlidesGenerationContract.examplePresentationJSON().contains("**"))
         #expect(GSlidesGenerationContract.examplePresentationJSON().contains("=="))
+    }
+}
+
+@Suite struct DesignSystemSwapTests {
+    /// The body region is placed from the supplied `SpacingScale` — swapping the scale moves it, so a
+    /// profile/theme can choose a denser or looser rhythm without touching the template.
+    @Test func swappingSpacingScaleMovesBodyRegion() throws {
+        func bodyTopY(_ design: SlideDesignSystem) throws -> Double {
+            let p = PresentationExpander.expand(SemanticPresentation(title: "x", slides: [
+                SemanticSlide(layout: "TITLE_AND_BODY", title: "T", bodies: [SemanticBody(text: "b")]),
+            ]), design: design)
+            let body = try #require(p.slides?.first?.pageElements?.first { $0.shape?.placeholder?.type == .body })
+            return try #require(body.transform?.translateY)
+        }
+        // A taller header pushes the body down by exactly the same EMU delta (single source of truth).
+        var dense = SpacingScale.content
+        dense.headerHeight = SpacingScale.content.headerHeight + 500_000
+        let standardY = try bodyTopY(.standard)
+        let denseY = try bodyTopY(SlideDesignSystem(scale: dense))
+        #expect(denseY == standardY + 500_000)
+    }
+
+    /// `.plain` header style renders a single-run headline even for a "ラベル：結論" title — no eyebrow —
+    /// proving the header treatment is a swappable variant, not a hardcoded behavior.
+    @Test func swappingHeaderStyleToPlainDropsEyebrow() throws {
+        let semantic = SemanticPresentation(title: "x", slides: [
+            SemanticSlide(layout: "TITLE_AND_BODY", title: "実績：日本最大級の基盤", bodies: [SemanticBody(text: "b")]),
+        ])
+        func titleRuns(_ design: SlideDesignSystem) throws -> [TextRun] {
+            let s = PresentationExpander.expand(semantic, design: design).slides!.first!
+            let title = try #require((s.pageElements ?? []).first { $0.shape?.placeholder?.type == .title })
+            return (title.shape?.text?.textElements ?? []).compactMap(\.textRun)
+        }
+        // eyebrowHeadline → two runs (eyebrow + headline); plain → one run (the whole title)
+        #expect(try titleRuns(.standard).count == 2)
+        let plain = try titleRuns(SlideDesignSystem(headerStyle: .plain))
+        #expect(plain.count == 1)
+        #expect(plain.first?.content?.trimmingCharacters(in: .newlines) == "実績：日本最大級の基盤")
     }
 }
