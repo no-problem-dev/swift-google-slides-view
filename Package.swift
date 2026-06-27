@@ -33,6 +33,7 @@ let package = Package(
         .library(name: "GSlidesExport", targets: ["GSlidesExport"]),
     ],
     dependencies: [
+        .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.4.0"),
         .package(url: "https://github.com/no-problem-dev/swift-structured-data.git", from: "1.3.0"),
         .package(url: "https://github.com/no-problem-dev/swift-a2a.git", from: "0.5.0"),
         // レンダラのテーミング基盤: デッキの ColorScheme を DS ColorPalette に写し、
