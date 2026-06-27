@@ -33,7 +33,8 @@ jobs:
         run: |
           swift package --allow-writing-to-directory ./docs \
             generate-documentation \
-            --target GSlidesSchema \
+            --enable-experimental-combined-documentation \
+            --target GSlidesSchema --target GSlidesLayout --target GSlidesAssembly --target GSlidesPrompt --target GSlidesRequests --target GSlidesEdit --target GSlidesA2A --target GSlidesRenderer --target GSlidesExport \
             --disable-indexing \
             --transform-for-static-hosting \
             --hosting-base-path swift-google-slides-view \
