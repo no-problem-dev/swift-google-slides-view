@@ -1,8 +1,12 @@
 import CoreGraphics
 import GSlidesSchema
 
+/// English Metric Unit constants used by the Slides API for all length values.
+/// 914,400 EMU = 1 inch; 12,700 EMU = 1 point.
 public enum EMU {
+    /// EMU per inch (1 inch = 914,400 EMU).
     public static let perInch: Double = 914_400
+    /// EMU per typographic point (1 pt = 12,700 EMU).
     public static let perPoint: Double = 12_700
 
     /// Standard 16:9 page (10in × 5.625in).

@@ -1,3 +1,7 @@
+/// A predefined slide layout name as defined by the Slides API.
+/// Modeled as a `SpecEnum` (open-ended String-backed struct) so unknown layouts decoded from
+/// the wire round-trip losslessly while `knownValues` is enforced by tests.
+/// Mirrors `google.apps.slides.v1.PredefinedLayout`.
 public struct PredefinedLayout: SpecEnum {
     public var rawValue: String
     public init(rawValue: String) { self.rawValue = rawValue }
@@ -24,6 +28,9 @@ public struct PredefinedLayout: SpecEnum {
     }
 }
 
+/// Identifies the layout used by a slide — either by an explicit `layoutId` (objectId of a page
+/// in `Presentation.layouts`) or by a predefined name. Exactly one should be set.
+/// Mirrors `google.apps.slides.v1.LayoutReference`.
 public struct LayoutReference: Codable, Equatable, Sendable {
     public var layoutId: String?
     public var predefinedLayout: PredefinedLayout?
@@ -34,6 +41,10 @@ public struct LayoutReference: Codable, Equatable, Sendable {
     }
 }
 
+/// The root object of a Google Slides presentation: slides, layouts, and masters.
+/// All fields are optional to support partial in-memory presentations built by the assembler
+/// (e.g. a slide-led stream that predates an explicit envelope).
+/// Mirrors `google.apps.slides.v1.Presentation`.
 public struct Presentation: Codable, Equatable, Sendable {
     public var presentationId: String?
     public var title: String?

@@ -1,3 +1,6 @@
+/// A color in the Red-Green-Blue color space. All components are floats in the range 0.0–1.0
+/// as the Slides API specifies (not 0–255 integers). Unset components are treated as 0.
+/// Mirrors `google.apps.slides.v1.RgbColor`.
 public struct RgbColor: Codable, Equatable, Sendable {
     public var red: Double?
     public var green: Double?
@@ -75,6 +78,10 @@ public struct ThemeColorType: SpecEnum {
     public var isEditableSlot: Bool { Self.editableSlots.contains { $0.rawValue == rawValue } }
 }
 
+/// A fully opaque color that is either an explicit RGB value or a reference to a theme color
+/// slot. Theme colors resolve to the concrete RGB bound in the master's `ColorScheme` at render
+/// time, so the whole deck repaints when the master changes.
+/// Mirrors `google.apps.slides.v1.OpaqueColor`.
 public struct OpaqueColor: Codable, Equatable, Sendable {
     public var rgbColor: RgbColor?
     public var themeColor: ThemeColorType?
@@ -85,6 +92,9 @@ public struct OpaqueColor: Codable, Equatable, Sendable {
     }
 }
 
+/// A color that may be absent (transparent / no-op), wrapping an optional `OpaqueColor`.
+/// Used where the Slides API allows a paint to be explicitly cleared.
+/// Mirrors `google.apps.slides.v1.OptionalColor`.
 public struct OptionalColor: Codable, Equatable, Sendable {
     public var opaqueColor: OpaqueColor?
 
@@ -93,6 +103,9 @@ public struct OptionalColor: Codable, Equatable, Sendable {
     }
 }
 
+/// A solid-color fill with optional opacity. `alpha` ranges from 0.0 (transparent) to 1.0
+/// (fully opaque); the Slides API default when `alpha` is absent is 1.0.
+/// Mirrors `google.apps.slides.v1.SolidFill`.
 public struct SolidFill: Codable, Equatable, Sendable {
     public var color: OpaqueColor?
     public var alpha: Double?

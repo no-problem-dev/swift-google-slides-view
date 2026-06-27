@@ -55,7 +55,7 @@ public enum PresentationPDFRenderer {
     }
 }
 
-enum PresentationExportNaming {
+private enum PresentationExportNaming {
     static func fileName(_ raw: String, ext: String) -> String {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         let safe = trimmed.isEmpty ? "presentation" : String(trimmed.prefix(60))
