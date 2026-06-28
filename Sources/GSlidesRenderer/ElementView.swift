@@ -242,17 +242,7 @@ struct ElementView: View {
     @ViewBuilder
     private func cropped(_ img: SwiftUI.Image, _ crop: CropProperties?) -> some View {
         if let crop, (crop.leftOffset ?? 0) + (crop.rightOffset ?? 0) + (crop.topOffset ?? 0) + (crop.bottomOffset ?? 0) > 0 {
-            GeometryReader { geo in
-                let l = CGFloat(crop.leftOffset ?? 0), r = CGFloat(crop.rightOffset ?? 0)
-                let t = CGFloat(crop.topOffset ?? 0), b = CGFloat(crop.bottomOffset ?? 0)
-                let visW = max(0.01, 1 - l - r), visH = max(0.01, 1 - t - b)
-                let fullW = geo.size.width / visW, fullH = geo.size.height / visH
-                img.resizable()
-                    .frame(width: fullW, height: fullH)
-                    .offset(x: -l * fullW, y: -t * fullH)
-                    .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)
-                    .clipped()
-            }
+            CroppedImageView(img: img, crop: crop)
         } else {
             img.resizable().scaledToFit()
         }
@@ -933,5 +923,31 @@ struct TableElementView: View {
         let width = CGFloat(border?.weight?.pointMagnitude ?? 0.75) * pointScale
         return Path { p in p.move(to: from); p.addLine(to: to) }
             .stroke(color, style: StrokeStyle(lineWidth: width, dash: gslidesDashPattern(border?.dashStyle, scale: pointScale)))
+    }
+}
+
+/// Renders a cropped image where crop offsets are fractions of each edge and the visible region
+/// fills the element box. Extracted into its own view so the type-checker handles the geometry
+/// expression in isolation (avoids "unable to type-check in reasonable time").
+private struct CroppedImageView: View {
+    let img: SwiftUI.Image
+    let crop: CropProperties
+
+    var body: some View {
+        GeometryReader { geo in
+            let l = CGFloat(crop.leftOffset ?? 0)
+            let r = CGFloat(crop.rightOffset ?? 0)
+            let t = CGFloat(crop.topOffset ?? 0)
+            let b = CGFloat(crop.bottomOffset ?? 0)
+            let visW = max(0.01, 1 - l - r)
+            let visH = max(0.01, 1 - t - b)
+            let fullW = geo.size.width / visW
+            let fullH = geo.size.height / visH
+            img.resizable()
+                .frame(width: fullW, height: fullH)
+                .offset(x: -l * fullW, y: -t * fullH)
+                .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)
+                .clipped()
+        }
     }
 }
