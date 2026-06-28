@@ -88,7 +88,7 @@ struct TextContentView: View {
     @ViewBuilder
     private func paragraphView(_ paragraph: Paragraph) -> some View {
         let style = paragraph.marker?.style
-        let nestingIndent = CGFloat(paragraph.marker?.bullet?.nestingLevel ?? 0) * 16 * pointScale
+        let nestingIndent = CGFloat(paragraph.marker?.bullet?.nestingLevel ?? 0) * 16 * CGFloat(pointScale)
         let indentStart = dimension(style?.indentStart)
         let rtl = style?.direction == .rightToLeft
         paragraphBody(paragraph, style: style, rtl: rtl)

@@ -243,8 +243,8 @@ struct ElementView: View {
     private func cropped(_ img: SwiftUI.Image, _ crop: CropProperties?) -> some View {
         if let crop, (crop.leftOffset ?? 0) + (crop.rightOffset ?? 0) + (crop.topOffset ?? 0) + (crop.bottomOffset ?? 0) > 0 {
             GeometryReader { geo in
-                let l = crop.leftOffset ?? 0, r = crop.rightOffset ?? 0
-                let t = crop.topOffset ?? 0, b = crop.bottomOffset ?? 0
+                let l = CGFloat(crop.leftOffset ?? 0), r = CGFloat(crop.rightOffset ?? 0)
+                let t = CGFloat(crop.topOffset ?? 0), b = CGFloat(crop.bottomOffset ?? 0)
                 let visW = max(0.01, 1 - l - r), visH = max(0.01, 1 - t - b)
                 let fullW = geo.size.width / visW, fullH = geo.size.height / visH
                 img.resizable()
