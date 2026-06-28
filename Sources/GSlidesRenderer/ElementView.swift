@@ -239,9 +239,17 @@ struct ElementView: View {
 
     /// Crop offsets are fractions of each edge: the visible region fills the element box. With no
     /// crop the image is fit (letterboxed) as before.
+    private func cropHasOffsets(_ crop: CropProperties) -> Bool {
+        let l: Double = crop.leftOffset ?? 0
+        let r: Double = crop.rightOffset ?? 0
+        let t: Double = crop.topOffset ?? 0
+        let b: Double = crop.bottomOffset ?? 0
+        return l + r + t + b > 0
+    }
+
     @ViewBuilder
     private func cropped(_ img: SwiftUI.Image, _ crop: CropProperties?) -> some View {
-        if let crop, (crop.leftOffset ?? 0) + (crop.rightOffset ?? 0) + (crop.topOffset ?? 0) + (crop.bottomOffset ?? 0) > 0 {
+        if let crop, cropHasOffsets(crop) {
             CroppedImageView(img: img, crop: crop)
         } else {
             img.resizable().scaledToFit()
