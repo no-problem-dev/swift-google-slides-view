@@ -1,12 +1,13 @@
 import CoreGraphics
 import SwiftUI
 
-/// Synchronously-resolved images for the renderer, keyed by absolute URL string.
+/// レンダラー用の同期解決済み画像。絶対 URL 文字列をキーとする。
 ///
-/// `AsyncImage` loads off the main run loop, so an `ImageRenderer` snapshot (used for PDF/PNG
-/// export) captures the slide before images arrive. Injecting a provider lets the renderer draw a
-/// synchronous `Image` instead — the export path preloads every image into one of these. On-screen
-/// rendering leaves it nil and keeps using `AsyncImage`.
+/// `AsyncImage` はメインランループの外でロードするため、PDF/PNG エクスポートで使う
+/// `ImageRenderer` のスナップショットが画像到着前にスライドをキャプチャしてしまう。
+/// プロバイダーを注入することでレンダラーが同期的な `Image` を描画できる。
+/// エクスポートパスは全画像をこのプロバイダーにプリロードする。
+/// 画面上のレンダリングでは nil のままにして `AsyncImage` を使い続ける。
 // CGImage is immutable and thread-safe in practice; the dictionary is built once before use.
 public struct GSlidesImageProvider: @unchecked Sendable {
     public let images: [String: CGImage]
@@ -25,7 +26,7 @@ private struct GSlidesImageProviderKey: EnvironmentKey {
 }
 
 public extension EnvironmentValues {
-    /// When set, the renderer draws images synchronously from this provider (export path).
+    /// セットされている場合、レンダラーはこのプロバイダーから同期的に画像を描画する（エクスポートパス）。
     var gslidesImageProvider: GSlidesImageProvider? {
         get { self[GSlidesImageProviderKey.self] }
         set { self[GSlidesImageProviderKey.self] = newValue }
@@ -37,8 +38,8 @@ private struct GSlidesSlideNumberKey: EnvironmentKey {
 }
 
 public extension EnvironmentValues {
-    /// The current slide's 1-based number, used to resolve `autoText` SLIDE_NUMBER fields whose
-    /// content the API leaves empty (resolved at presentation time).
+    /// 現在のスライドの 1 始まりの番号。API がコンテンツを空のままにする `autoText` の
+    /// SLIDE_NUMBER フィールドをプレゼンテーション時に解決するために使用する。
     var gslidesSlideNumber: Int? {
         get { self[GSlidesSlideNumberKey.self] }
         set { self[GSlidesSlideNumberKey.self] = newValue }

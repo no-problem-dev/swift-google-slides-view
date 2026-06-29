@@ -3,21 +3,21 @@ import GSlidesLayout
 import GSlidesSchema
 import SwiftUI
 
-/// Renders one slide on a fixed-aspect canvas (the presentation's page size).
-/// Elements carrying geometry (size + transform, possibly inherited from their
-/// layout) are placed absolutely in page coordinates; semantic-tier elements
-/// without geometry fall back to a placeholder-type-driven stack layout.
+/// 1 枚のスライドをプレゼンテーションのページサイズに合わせた固定アスペクトキャンバスに描画する。
+/// ジオメトリ（size + transform、レイアウトから継承している場合も含む）を持つ要素は
+/// ページ座標で絶対配置する。ジオメトリを持たないセマンティック層要素は
+/// プレースホルダータイプ主導のスタックレイアウトにフォールバックする。
 ///
-/// Colors come from the presentation's theme: the master/layout/slide `ColorScheme` is
-/// projected onto a DS `ColorPalette` (`PresentationColorPalette`), which drives both the
-/// slide content and any DS chrome via `@Environment(\.colorPalette)`.
+/// カラーはプレゼンテーションのテーマから取得する。master/layout/slide の `ColorScheme` を
+/// DS `ColorPalette`（`PresentationColorPalette`）に射影し、スライドコンテンツと DS クロームの
+/// 両方が `@Environment(\.colorPalette)` を共有する。
 public struct GSlidesSlideView: View {
     public var slide: Page
     public var presentation: Presentation
-    /// Explicit base DS palette for slots the presentation doesn't define. When nil, the surrounding
-    /// app palette (`@Environment(\.colorPalette)`, e.g. the DS ThemeProvider) is used — so presentation-
-    /// undefined slots and chrome follow the app's dark mode while the presentation's own colors stay
-    /// authoritative for the canvas.
+    /// プレゼンテーションが定義していないスロット用のベース DS パレット。nil の場合、
+    /// 周囲のアプリパレット（`@Environment(\.colorPalette)`、DS ThemeProvider など）を使用する。
+    /// プレゼンテーション未定義のスロットとクロームはアプリのダークモードに従い、
+    /// キャンバスに対しては自身のカラーが権威を保つ。
     public var basePalette: (any ColorPalette)?
 
     @Environment(\.colorPalette) private var envPalette
@@ -70,8 +70,7 @@ public struct GSlidesSlideView: View {
         .environment(\.colorPalette, presentationPalette)
     }
 
-    /// The slide background: a stretched picture fill if the page defines one, otherwise the solid
-    /// theme color.
+    /// スライドの背景。ページが定義していればストレッチされたピクチャフィル、なければテーマカラーの単色塗り。
     @ViewBuilder
     private func slideBackground(_ presentationPalette: PresentationColorPalette) -> some View {
         if let url = PresentationTheme.backgroundFill(for: slide, in: presentation)?
@@ -89,7 +88,7 @@ public struct GSlidesSlideView: View {
         }
     }
 
-    /// The slide's 1-based position in the presentation (for autoText SLIDE_NUMBER).
+    /// プレゼンテーション内でのスライドの 1 始まりの位置（autoText SLIDE_NUMBER 用）。
     private var slideNumber: Int? {
         (presentation.slides ?? []).firstIndex { $0.objectId == slide.objectId }.map { $0 + 1 }
     }
@@ -102,9 +101,9 @@ public struct GSlidesSlideView: View {
     }
 }
 
-/// Layout-name-aware arrangement for geometry-less elements:
-/// title band on top (centered for TITLE / SECTION_HEADER families),
-/// bodies side by side, images filling remaining space.
+/// ジオメトリなし要素のレイアウト名認識配置。
+/// タイトルバンドを上部に（TITLE / SECTION_HEADER 系は中央揃え）、
+/// ボディを横並びに、画像は残りのスペースを埋める。
 struct SemanticSlideLayout: View {
     var elements: [PageElement]
     var layoutName: PredefinedLayout?
@@ -164,8 +163,8 @@ struct SemanticSlideLayout: View {
     }
 }
 
-/// Minimal cross-platform presentation container: current slide + pager controls.
-/// Apps with their own chrome should drive GSlidesSlideView directly.
+/// 最小限のクロスプラットフォームプレゼンテーションコンテナ。現在のスライド + ページャーコントロール。
+/// 独自クロームを持つアプリは GSlidesSlideView を直接使用する。
 public struct GSlidesPresentationView: View {
     public var presentation: Presentation
     public var basePalette: (any ColorPalette)?

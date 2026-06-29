@@ -1,6 +1,6 @@
-/// Profile subset of the PageElement union: shape / image / line / table / elementGroup.
-/// An element where every known union member is nil is an out-of-profile element
-/// (e.g. video, wordArt) — first-class for renderers as `kind == .unknown`.
+/// PageElement ユニオンのプロファイルサブセット：shape / image / line / table / elementGroup。
+/// 既知のユニオンメンバーがすべて nil の要素はプロファイル外（例: video, wordArt）であり、
+/// レンダラーでは `kind == .unknown` としてファーストクラスに扱われる。
 public struct PageElement: Codable, Equatable, Sendable {
     public var objectId: String
     public var size: Size?
@@ -59,7 +59,7 @@ public struct PageElement: Codable, Equatable, Sendable {
         case wordArt(WordArt)
         case sheetsChart(SheetsChart)
         case speakerSpotlight(SpeakerSpotlight)
-        /// A union member outside this profile (none of the spec's element kinds present).
+        /// このプロファイル外のユニオンメンバー（既知の要素種別がいずれも存在しない）。
         case unknown
     }
 
@@ -442,7 +442,7 @@ public struct LineFill: Codable, Equatable, Sendable {
     }
 }
 
-/// A connection of a line to another page element (start/end connection sites).
+/// ライン要素の接続先ページ要素（始点 / 終点の接続サイト）。
 public struct LineConnection: Codable, Equatable, Sendable {
     public var connectedObjectId: String?
     public var connectionSiteIndex: Int?
@@ -596,8 +596,8 @@ public struct Table: Codable, Equatable, Sendable {
     }
 }
 
-/// Response of `presentations.pages.getThumbnail` — a rendered page image. Standalone (not part of
-/// a `Presentation`), modeled for a complete API surface.
+/// `presentations.pages.getThumbnail` のレスポンス — レンダリング済みページ画像。
+/// `Presentation` の一部ではなく単独で存在し、API サーフェスを完全にモデル化する。
 public struct Thumbnail: Codable, Equatable, Sendable {
     public var width: Int?
     public var height: Int?

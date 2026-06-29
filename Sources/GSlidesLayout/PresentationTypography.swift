@@ -1,25 +1,31 @@
-/// Typography as a design input — a type scale expressed as font family + numeric weight per
-/// semantic role, applied to placeholder default styles exactly like `ThemeSpec` applies color.
-/// The vocabulary stays Slides-native (`fontFamily` / weighted family weight), and the family name
-/// is supplied by the caller (a general renderer must not hardcode a language's font). `.system`
-/// (all roles unset) reproduces the historical system-font behavior, so it is a safe default.
+/// デザイン入力としてのタイポグラフィ。セマンティックロールごとにフォントファミリー + 数値ウェイトで
+/// 表現したタイプスケールで、`ThemeSpec` がカラーを適用するのと同じ方法でプレースホルダーの
+/// デフォルトスタイルに適用する。語彙は Slides ネイティブ（`fontFamily` / ウェイト付きファミリー）を維持し、
+/// ファミリー名は呼び出し元が供給する（汎用レンダラーは言語固有フォントをハードコードしない）。
+/// `.system`（全ロール未設定）は従来のシステムフォント挙動を再現するため、安全なデフォルト。
 public struct PresentationTypography: Sendable, Equatable {
-    /// A semantic typographic role, derived from a slide's (layout, placeholder type) — the unit a
-    /// type scale assigns a family/weight to, independent of color.
+    /// スライドの（レイアウト, プレースホルダータイプ）から導出するセマンティックタイポグラフィロール。
+    /// タイプスケールがカラーとは独立してファミリー/ウェイトを割り当てる単位。
     public enum Role: Sendable, Hashable {
-        case eyebrow     // the small category kicker above a content headline
-        case title       // slide / section / main-point headings
-        case subtitle    // the supporting line under a title
-        case body        // body copy, bullets, captions
-        case bigNumber   // the oversized metric on a BIG_NUMBER slide
-        case footer      // page number / footer chrome
+        /// コンテンツヘッドラインの上に置く小さなカテゴリキッカー。
+        case eyebrow
+        /// スライド/セクション/メインポイントの見出し。
+        case title
+        /// タイトルの下に置くサポートライン。
+        case subtitle
+        /// ボディコピー、箇条書き、キャプション。
+        case body
+        /// BIG_NUMBER スライドの大型メトリクス。
+        case bigNumber
+        /// ページ番号/フッタークロム。
+        case footer
     }
 
-    /// The family + weight a role resolves to. Either field nil leaves that aspect to the placeholder
-    /// default (system font / the layout's default weight), so a partial scale composes cleanly.
+    /// ロールが解決するファミリー + ウェイト。どちらのフィールドも nil の場合はプレースホルダーの
+    /// デフォルト（システムフォント / レイアウトのデフォルトウェイト）に委ねる。部分的なスケールもきれいに合成できる。
     public struct RoleStyle: Sendable, Equatable {
         public var fontFamily: String?
-        public var weight: Int?     // numeric font weight 100–900
+        public var weight: Int?     // 数値フォントウェイト 100–900
 
         public init(fontFamily: String? = nil, weight: Int? = nil) {
             self.fontFamily = fontFamily
@@ -33,9 +39,9 @@ public struct PresentationTypography: Sendable, Equatable {
         self.styles = styles
     }
 
-    /// The style for a role — an empty `RoleStyle` (both nil) when the scale doesn't set it.
+    /// ロールのスタイル。スケールが設定していない場合は空の `RoleStyle`（両方 nil）を返す。
     public func style(for role: Role) -> RoleStyle { styles[role] ?? RoleStyle() }
 
-    /// No typography overrides: placeholders keep the system font + their default weight (historical).
+    /// タイポグラフィオーバーライドなし。プレースホルダーはシステムフォント + デフォルトウェイトを保持する（従来の挙動）。
     public static let system = PresentationTypography()
 }

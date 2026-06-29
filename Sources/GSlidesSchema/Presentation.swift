@@ -1,7 +1,7 @@
-/// A predefined slide layout name as defined by the Slides API.
-/// Modeled as a `SpecEnum` (open-ended String-backed struct) so unknown layouts decoded from
-/// the wire round-trip losslessly while `knownValues` is enforced by tests.
-/// Mirrors `google.apps.slides.v1.PredefinedLayout`.
+/// Slides API が定義する事前定義スライドレイアウト名。
+/// ワイヤーからデコードした未知のレイアウトがロスレスで round-trip できるよう、
+/// Swift enum ではなくオープンエンドな `SpecEnum` としてモデル化する。`knownValues` はテストで強制。
+/// `google.apps.slides.v1.PredefinedLayout` のミラー。
 public struct PredefinedLayout: SpecEnum {
     public var rawValue: String
     public init(rawValue: String) { self.rawValue = rawValue }
@@ -28,9 +28,8 @@ public struct PredefinedLayout: SpecEnum {
     }
 }
 
-/// Identifies the layout used by a slide — either by an explicit `layoutId` (objectId of a page
-/// in `Presentation.layouts`) or by a predefined name. Exactly one should be set.
-/// Mirrors `google.apps.slides.v1.LayoutReference`.
+/// スライドが使用するレイアウトを識別する。明示的な `layoutId`（`Presentation.layouts` 内ページの objectId）
+/// または事前定義名のいずれか一方を設定する。`google.apps.slides.v1.LayoutReference` のミラー。
 public struct LayoutReference: Codable, Equatable, Sendable {
     public var layoutId: String?
     public var predefinedLayout: PredefinedLayout?
@@ -41,10 +40,9 @@ public struct LayoutReference: Codable, Equatable, Sendable {
     }
 }
 
-/// The root object of a Google Slides presentation: slides, layouts, and masters.
-/// All fields are optional to support partial in-memory presentations built by the assembler
-/// (e.g. a slide-led stream that predates an explicit envelope).
-/// Mirrors `google.apps.slides.v1.Presentation`.
+/// Google Slides プレゼンテーションのルートオブジェクト：スライド・レイアウト・マスター。
+/// アセンブラーが構築するインメモリの部分的なプレゼンテーション（例: envelope より先にスライドが届くストリーム）を
+/// サポートするため、すべてのフィールドはオプション。`google.apps.slides.v1.Presentation` のミラー。
 public struct Presentation: Codable, Equatable, Sendable {
     public var presentationId: String?
     public var title: String?

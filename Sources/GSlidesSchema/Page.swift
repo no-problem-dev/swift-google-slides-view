@@ -15,7 +15,7 @@ public struct SlideProperties: Codable, Equatable, Sendable {
     public var layoutObjectId: String?
     public var masterObjectId: String?
     public var isSkipped: Bool?
-    /// The notes page for this slide (indirect to break the Page ⇄ SlideProperties cycle).
+    /// このスライドのノートページ（Page ⇄ SlideProperties の循環参照を断ち切るため間接参照）。
     public var notesPage: Indirect<Page>?
 
     public init(
@@ -31,7 +31,7 @@ public struct SlideProperties: Codable, Equatable, Sendable {
     }
 }
 
-/// Boxes a recursive Codable value (notesPage is a full Page).
+/// 再帰的な `Codable` 値をボックス化する（`notesPage` が完全な `Page` を持つ）。
 public struct Indirect<Wrapped: Codable & Equatable & Sendable>: Codable, Equatable, Sendable {
     private final class Box: @unchecked Sendable { let value: Wrapped; init(_ value: Wrapped) { self.value = value } }
     private let box: Box

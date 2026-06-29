@@ -1,30 +1,19 @@
 # ``GSlidesA2A``
 
-Agent-to-Agent (A2A) streaming codec that maps A2A protocol events to `GSlidesChunk` values.
+A2A プロトコルイベントを `GSlidesChunk` 値へ写像する Agent-to-Agent ストリーミングコーデック。
 
 ## Overview
 
-GSlidesA2A bridges the [A2A protocol](https://github.com/google/A2A) and the chunk-based
-assembly pipeline in `GSlidesAssembly`. An A2A server that wants to stream a presentation
-to a client does not invent a custom wire format — it emits standard
-`TaskArtifactUpdateEvent` values with a `DataPart` payload and two metadata keys that
-identify the artifact as a gslides stream and declare its chunk kind.
+GSlidesA2A は [A2A プロトコル](https://github.com/google/A2A) と `GSlidesAssembly` のチャンクベースアセンブリパイプラインをブリッジする。プレゼンテーションをクライアントにストリーミング配信したい A2A サーバーはカスタムワイヤーフォーマットを発明する必要はなく、標準の `TaskArtifactUpdateEvent` を `DataPart` ペイロード付きで emit するだけでよい。2 つのメタデータキーでアーティファクトが gslides ストリームであることとチャンクの種類を宣言する。
 
-``GSlidesA2AVocabulary`` documents those keys (`gslides.schema` and `gslides.kind`) and
-the media type (`application/json`). ``GSlidesArtifactCoding`` is the codec: its sender-side
-helpers (`envelopeEvent`, `slideEvent`, `batchUpdateEvent`) build correctly-structured
-events from a `Presentation`, `Page`, or `[Request]`; its receiver-side helpers
-(`chunks(from:)`, `presentation(from:)`) unpack events into ``GSlidesAssembly/GSlidesChunk``
-values that feed directly into a ``GSlidesAssembly/GSlidesAssembler``.
+``GSlidesA2AVocabulary`` はそれらのキー（`gslides.schema` と `gslides.kind`）およびメディアタイプ（`application/json`）を文書化する。``GSlidesArtifactCoding`` はコーデック本体。送信側ヘルパー（`envelopeEvent`・`slideEvent`・`batchUpdateEvent`）は `Presentation`・`Page`・`[Request]` から正しく構造化されたイベントを構築し、受信側ヘルパー（`chunks(from:)`・`presentation(from:)`）はイベントを ``GSlidesAssembly/GSlidesChunk`` 値に展開して ``GSlidesAssembly/GSlidesAssembler`` に直接渡せる形にする。
 
-``GSlidesArtifactAssembler`` is a convenience wrapper that combines event filtering (ignore
-non-gslides artifacts), artifact-ID tracking, and chunk assembly into a single `mutating
-apply(_:)` call — the minimal surface a client needs to reconstruct a streamed presentation.
+``GSlidesArtifactAssembler`` は便利ラッパー。イベントフィルタリング（非 gslides アーティファクトを無視）・アーティファクト ID 追跡・チャンクアセンブリを 1 つの `mutating apply(_:)` 呼び出しにまとめる。ストリーミングされたプレゼンテーションを再構築するクライアントが必要とする最小サーフェス。
 
 ```swift
 import GSlidesA2A
 
-// Sender — emit one slide at a time
+// 送信側 — スライドを 1 枚ずつ emit する
 let event = try GSlidesArtifactCoding.slideEvent(
     taskId: taskId,
     contextId: contextId,
@@ -33,30 +22,30 @@ let event = try GSlidesArtifactCoding.slideEvent(
     lastChunk: isLast
 )
 
-// Receiver — accumulate events until the stream is complete
+// 受信側 — ストリームが完了するまでイベントを蓄積する
 var receiver = GSlidesArtifactAssembler()
 for event in a2aStream {
     try receiver.apply(event)
 }
 if let presentation = receiver.presentation, receiver.isComplete {
-    // hand off to GSlidesRenderer
+    // GSlidesRenderer へ渡す
 }
 ```
 
 ## Topics
 
-### Vocabulary
+### ボキャブラリー
 
 - ``GSlidesA2AVocabulary``
 
-### Codec
+### コーデック
 
 - ``GSlidesArtifactCoding``
 
-### Stream assembler
+### ストリームアセンブラー
 
 - ``GSlidesArtifactAssembler``
 
-### Errors
+### エラー
 
 - ``GSlidesA2AError``

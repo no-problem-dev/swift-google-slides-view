@@ -1,57 +1,47 @@
 # ``GSlidesAssembly``
 
-Pure reducer that assembles a streaming `Presentation` from a sequence of typed chunks.
+型付きチャンク列からストリーミング `Presentation` を組み立てる純粋リデューサー。
 
 ## Overview
 
-GSlidesAssembly is the protocol-agnostic receiving half of the Swift Google Slides streaming
-pipeline. Its central abstraction is the ``GSlidesChunk``, a typed payload envelope that carries
-exactly one of three presentation-stream shapes:
+GSlidesAssembly は Swift Google Slides ストリーミングパイプラインのプロトコル非依存な受信側。中心的な抽象は ``GSlidesChunk`` — 3 種類のプレゼンテーションストリームペイロードのいずれかを運ぶ型付きエンベロープ。
 
-- **envelope** — a full `Presentation`; replaces any prior state.
-- **slide** — a single `Page`; appended to `slides`. A slide chunk that arrives before any
-  envelope creates an implicit empty presentation, so slide-led streams assemble cleanly.
-- **batchUpdate** — a `BatchUpdatePresentationRequest` (from `GSlidesRequests`); applied
-  atomically to the current state via the local `batchUpdate` executor.
+- **envelope** — 完全な `Presentation`。既存の状態をすべて置き換える。
+- **slide** — 単一の `Page`。`slides` に追加される。envelope より先にスライドチャンクが届いた場合は暗黙の空プレゼンテーションを生成するため、スライド先行ストリームもきれいに組み立てられる。
+- **batchUpdate** — `BatchUpdatePresentationRequest`（`GSlidesRequests` 由来）。ローカル `batchUpdate` エグゼキューター経由で現在の状態にアトミックに適用される。
 
-``GSlidesAssembler`` is the reducer: a pure `mutating` value type whose `apply(_:)` advances
-the state by one chunk at a time. The stream is sealed when `lastChunk == true`; further
-envelope or slide chunks after that point are rejected with
-``GSlidesAssemblyError/chunkAfterCompletion``. Post-completion `batchUpdate` chunks are
-accepted (an agent tweaking a finished presentation should not be silently ignored).
+``GSlidesAssembler`` はリデューサー本体。純粋な `mutating` 値型で、`apply(_:)` を呼ぶたびに 1 チャンク分だけ状態が進む。`lastChunk == true` でストリームが封印され、以降に envelope や slide チャンクが届くと ``GSlidesAssemblyError/chunkAfterCompletion`` で拒否される。完了後の `batchUpdate` チャンクは受理される（完成したプレゼンテーションを調整するエージェントを黙って無視するべきではないため）。
 
-The convenience static method `assemble(_:)` collapses an entire sequence of chunks in one
-call and returns the finished `Presentation` — useful in tests and one-shot pipeline
-consumers.
+便利なスタティックメソッド `assemble(_:)` はチャンク列全体を 1 呼び出しで畳み込み、完成した `Presentation` を返す。テストやワンショットのパイプラインコンシューマーに便利。
 
 ```swift
 import GSlidesAssembly
 
 var assembler = GSlidesAssembler()
 
-// Feed chunks as they arrive from a stream
+// ストリームからチャンクが届くたびに投入する
 for event in stream {
     try assembler.apply(event)
 }
 
 if let presentation = assembler.presentation, assembler.isComplete {
-    // Ready to render
+    // レンダリング可能
 }
 
-// Or collapse a sequence at once
+// または列全体を一度に畳み込む
 let presentation = try GSlidesAssembler.assemble(chunks)
 ```
 
 ## Topics
 
-### Chunk primitive
+### チャンク基本型
 
 - ``GSlidesChunk``
 
-### Reducer
+### リデューサー
 
 - ``GSlidesAssembler``
 
-### Errors
+### エラー
 
 - ``GSlidesAssemblyError``

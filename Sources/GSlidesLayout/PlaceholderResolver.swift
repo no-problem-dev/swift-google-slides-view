@@ -1,16 +1,16 @@
 import GSlidesSchema
 
-/// Resolves the Master → Layout → Slide placeholder inheritance chain
-/// far enough for rendering: geometry (size/transform) falls back to the
-/// matching layout placeholder when a slide element omits it.
+/// レンダリングに必要な範囲で Master → Layout → Slide のプレースホルダー継承チェーンを解決する。
+/// スライド要素がジオメトリ（size/transform）を省略した場合、対応するレイアウトの
+/// プレースホルダーへフォールバックする。
 public enum PlaceholderResolver {
     public static func layoutPage(for slide: Page, in presentation: Presentation) -> Page? {
         guard let layoutObjectId = slide.slideProperties?.layoutObjectId else { return nil }
         return presentation.layouts?.first { $0.objectId == layoutObjectId }
     }
 
-    /// The layout element a slide placeholder inherits from:
-    /// explicit parentObjectId wins, otherwise match by (type, index).
+    /// スライドのプレースホルダーが継承するレイアウト要素。
+    /// 明示的な parentObjectId が優先され、なければ（type, index）でマッチングする。
     public static func parentElement(for element: PageElement, in layout: Page) -> PageElement? {
         guard let placeholder = placeholder(of: element) else { return nil }
         let candidates = layout.pageElements ?? []
@@ -24,7 +24,7 @@ public enum PlaceholderResolver {
         }
     }
 
-    /// Slide elements with missing geometry filled in from the layout chain.
+    /// ジオメトリが欠けているスライド要素をレイアウトチェーンで補完した要素の配列。
     public static func resolvedElements(of slide: Page, in presentation: Presentation) -> [PageElement] {
         let layout = layoutPage(for: slide, in: presentation)
         return (slide.pageElements ?? []).map { element in

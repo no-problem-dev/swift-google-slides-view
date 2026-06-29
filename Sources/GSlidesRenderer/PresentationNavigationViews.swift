@@ -2,8 +2,8 @@ import DesignSystem
 import GSlidesSchema
 import SwiftUI
 
-/// Horizontal carousel of slide thumbnails — the inline "presentation section" representation.
-/// Slides appear as they stream in; `isComplete == false` shows a trailing progress card.
+/// スライドサムネイルの水平カルーセル — インライン「プレゼンテーションセクション」表示。
+/// スライドはストリームに入ってきた順に表示される。`isComplete == false` の場合は末尾に進行中カードを表示する。
 public struct GSlidesCarouselView: View {
     @Environment(\.colorPalette) private var colors
     public var presentation: Presentation
@@ -67,8 +67,8 @@ public struct GSlidesCarouselView: View {
     }
 }
 
-/// Vertical reading view: slides stacked top-to-bottom. Tapping a slide hands its
-/// index back (hosts present the fullscreen pager).
+/// 垂直読み取りビュー: スライドを上から下に積み重ねて表示する。スライドをタップすると
+/// そのインデックスを返す（ホストはフルスクリーンページャーを提示する）。
 public struct GSlidesStackView: View {
     public var presentation: Presentation
     public var basePalette: (any ColorPalette)?
@@ -108,7 +108,7 @@ public struct GSlidesStackView: View {
     }
 }
 
-/// Fullscreen pager over the presentation. Horizontal paging starting at `initialIndex`.
+/// プレゼンテーションのフルスクリーンページャー。`initialIndex` から始まる水平ページング。
 public struct GSlidesFullScreenView: View {
     public var presentation: Presentation
     public var basePalette: (any ColorPalette)?

@@ -1,9 +1,10 @@
 import Foundation
 import GSlidesSchema
 
-/// One addressable element, described for an editing agent: a stable `objectId` to target, plus
-/// enough context (kind, label, current text, EMU bounding box) to decide what to change. This is
-/// the "read current state" half of the edit loop — an agent calls inspect, then emits `SemanticEdit`s.
+/// 編集エージェント向けのアドレス可能な 1 要素の記述。変更対象を決定するのに十分なコンテキスト
+/// （kind、ラベル、現在のテキスト、EMU バウンディングボックス）を持つ安定した `objectId`。
+/// 編集ループの「現在の状態を読む」半分 — エージェントが inspect を呼び出し、
+/// その後 batchUpdate リクエストを emit する。
 public struct PresentationElementDescriptor: Codable, Equatable, Sendable {
     public var objectId: String
     public var slideIndex: Int
@@ -16,7 +17,7 @@ public struct PresentationElementDescriptor: Codable, Equatable, Sendable {
     public var heightEmu: Double?
 }
 
-/// A whole presentation reduced to its editable surface — what an agent sees before editing.
+/// プレゼンテーション全体を編集可能なサーフェスに縮約したもの — エージェントが編集前に見る情報。
 public struct PresentationSnapshot: Codable, Equatable, Sendable {
     public var presentationTitle: String?
     public var slideCount: Int
@@ -24,8 +25,8 @@ public struct PresentationSnapshot: Codable, Equatable, Sendable {
     public var elements: [PresentationElementDescriptor]
 }
 
-/// Renders a `Presentation` into the agent-facing snapshot. Pure and LLM-agnostic: the host wraps
-/// it in an `inspect_presentation` tool; the package just owns the projection (objectId ↔ what it is).
+/// `Presentation` をエージェント向けスナップショットにレンダリングする。純粋かつ LLM 非依存：
+/// ホストが `inspect_presentation` ツールとしてラップし、パッケージが射影（objectId ↔ 要素の種別）を所有する。
 public enum GSlidesPresentationInspector {
     public static func snapshot(_ presentation: Presentation, textLimit: Int = 120) -> PresentationSnapshot {
         let slides = presentation.slides ?? []
@@ -91,7 +92,7 @@ public enum GSlidesPresentationInspector {
         return trimmed.isEmpty ? nil : trimmed
     }
 
-    /// Normalize a magnitude to EMU (1pt = 12700 EMU); pass through when already EMU or unitless.
+    /// マグニチュードを EMU に正規化する（1pt = 12700 EMU）。既に EMU または単位なしの場合はそのまま返す。
     static func emu(_ magnitude: Double?, unit: GSlidesSchema.Unit?) -> Double? {
         guard let magnitude else { return nil }
         return unit == .pt ? magnitude * 12700 : magnitude

@@ -1,8 +1,8 @@
 import GSlidesSchema
 
-/// The LLM generation contract: the semantic layer of the profile.
-/// Models emit layout intent and placeholder content — never geometry.
-/// Field order mirrors generation order: layout → title → subtitle → bodies.
+/// LLM 生成コントラクト: プロファイルのセマンティックレイヤー。
+/// モデルはレイアウトの意図とプレースホルダーコンテンツを出力する — ジオメトリは出力しない。
+/// フィールド順は生成順を反映: layout → title → subtitle → bodies。
 public struct SemanticPresentation: Codable, Equatable, Sendable {
     public var title: String
     public var slides: [SemanticSlide]
@@ -14,10 +14,10 @@ public struct SemanticPresentation: Codable, Equatable, Sendable {
 }
 
 public struct SemanticSlide: Codable, Equatable, Sendable {
-    /// Raw PredefinedLayout value; omitted → inferred by LayoutMatcher.
+    /// 生の PredefinedLayout 値。省略時は LayoutMatcher が推論する。
     public var layout: String?
     public var title: String?
-    /// Emphasized title (drives MAIN_POINT / BIG_NUMBER inference).
+    /// 強調タイトル（MAIN_POINT / BIG_NUMBER の推論を駆動する）。
     public var big: Bool?
     public var subtitle: String?
     public var bodies: [SemanticBody]?
@@ -42,18 +42,15 @@ public struct SemanticBody: Codable, Equatable, Sendable {
     public var bullets: [SemanticBullet]?
     public var imageUrl: String?
     public var table: SemanticTable?
-    /// Numeric stat cards (実績の図解): each renders as a big value + label + optional proportional
-    /// bar, composed from native text/shape elements (no external image). Drives a data-visual look
-    /// for metrics slides beyond a single big number. nil/empty → the body falls back to text/bullets.
+    /// 数値スタットカード（実績の図解）: 各カードは大きな値 + ラベル + オプションの比例バーで構成され、
+    /// ネイティブのテキスト / シェイプ要素から描画する（外部画像なし）。単一の大きな数字を超える
+    /// データビジュアルなメトリクススライドを実現する。nil / 空の場合はテキスト / バレットにフォールバックする。
     public var metrics: [SemanticMetric]?
-    /// A column (vertical bar) chart for comparing categories or a time series (成長/推移) — bars sized
-    /// proportionally, drawn from native shapes/text (no external image). nil → no chart.
+    /// カテゴリ比較または時系列（成長/推移）用の縦棒チャート — 比例サイズのバーをネイティブシェイプ / テキストで描画する（外部画像なし）。nil → チャートなし。
     public var chart: SemanticChart?
-    /// A left-to-right process flow (プロセス/手順): step cards joined by arrows, drawn from native
-    /// shapes/text/lines (no external image). nil/empty → no flow.
+    /// 左→右のプロセスフロー（プロセス/手順）: 矢印でつながるステップカードをネイティブシェイプ / テキスト / ラインで描画する（外部画像なし）。nil / 空 → フローなし。
     public var steps: [SemanticStep]?
-    /// A testimonial / pull quote (顧客の声・社会的証明): a large quotation set off by an accent quote
-    /// mark, with an attribution. nil → no quote.
+    /// 推薦文 / プルクォート（顧客の声・社会的証明）: アクセント引用符で際立たせた大きな引用と帰属行。nil → 引用なし。
     public var quote: SemanticQuote?
 
     public init(
@@ -77,8 +74,8 @@ public struct SemanticBody: Codable, Equatable, Sendable {
     }
 }
 
-/// A testimonial / pull quote: the `text` itself, plus an optional `author` and their `role` (company
-/// or title) for the attribution line. Rendered large with a decorative quote mark.
+/// 推薦文 / プルクォート: `text` 本文、オプションの `author`、帰属行用の `role`（会社または役職）。
+/// 装飾的な引用符と共に大きく描画される。
 public struct SemanticQuote: Codable, Equatable, Sendable {
     public var text: String
     public var author: String?
@@ -91,8 +88,8 @@ public struct SemanticQuote: Codable, Equatable, Sendable {
     }
 }
 
-/// One step of a process flow: a short `label` (the step name) and an optional `caption` (a one-line
-/// detail under it). Rendered as a card; consecutive steps are joined by an arrow.
+/// プロセスフローの 1 ステップ: 短い `label`（ステップ名）とオプションの `caption`（その下の 1 行説明）。
+/// カードとして描画され、連続するステップは矢印で接続される。
 public struct SemanticStep: Codable, Equatable, Sendable {
     public var label: String
     public var caption: String?
@@ -103,13 +100,11 @@ public struct SemanticStep: Codable, Equatable, Sendable {
     }
 }
 
-/// A single-series column chart: each bar carries a `value` (its height, relative to the largest),
-/// a `label` (the category/period under it, e.g. "2023"), and an optional `caption` overriding the
-/// printed value above the bar (e.g. "¥1.2億"; otherwise the value is printed). Up to a handful of
-/// bars — for a credible 成長/推移 read without a chart engine or Sheets.
+/// 単系列縦棒チャート: 各バーは `value`（最大値に対する相対高さ）、`label`（その下のカテゴリ/期間、例: "2023"）、
+/// バー上の表示値を上書きするオプションの `caption`（例: "¥1.2億"。なければ value を表示）を持つ。
+/// チャートエンジンや Sheets なしに成長/推移を説得力ある形で見せるための少数のバー。
 public struct SemanticChart: Codable, Equatable, Sendable {
-    /// How the series is drawn: `.bar` columns (default) for category comparison, `.line` for a
-    /// trend/推移 read. Same data shape either way.
+    /// 系列の描画方法: `.bar` 縦棒（デフォルト）はカテゴリ比較、`.line` 折れ線は推移の読み取りに使う。データ形状はどちらも同じ。
     public enum ChartType: String, Codable, Sendable {
         case bar
         case line
@@ -144,9 +139,8 @@ public struct SemanticChartBar: Codable, Equatable, Sendable {
     }
 }
 
-/// One numeric stat for a metrics visual: a `value` (kept as a string so "1,200" / "98.5" / "3×"
-/// render verbatim), an optional `unit` shown smaller next to it, a `label` underneath, and an
-/// optional `ratio` (0–1) that draws a proportional accent bar (a share/achievement read).
+/// メトリクスビジュアルの 1 件の数値統計: `value`（文字列として保持し "1,200" / "98.5" / "3×" をそのまま表示）、
+/// 隣に小さく表示するオプションの `unit`、その下の `label`、割合/達成度バーを描くオプションの `ratio`（0–1）。
 public struct SemanticMetric: Codable, Equatable, Sendable {
     public var label: String
     public var value: String
@@ -161,9 +155,9 @@ public struct SemanticMetric: Codable, Equatable, Sendable {
     }
 }
 
-/// One bullet line with an optional nesting level (0 = top level). Decodes from EITHER a bare
-/// string (level 0) or an object `{text, level}`, so flat lists stay terse and nested lists are
-/// explicit — and encodes back the same way (level 0 → string), keeping example JSON compact.
+/// オプションのネストレベル（0 = トップレベル）を持つ 1 バレット行。裸の文字列（レベル 0）または
+/// `{text, level}` オブジェクトのどちらからでもデコードし、フラットリストは簡潔に、ネストリストは明示的に保つ。
+/// 同じ方法でエンコードし（レベル 0 → 文字列）、例 JSON をコンパクトに維持する。
 public struct SemanticBullet: Equatable, Sendable {
     public var text: String
     public var level: Int
@@ -204,8 +198,8 @@ extension SemanticBullet: ExpressibleByStringLiteral {
     public init(stringLiteral value: String) { self.init(value) }
 }
 
-/// A simple table: an optional header row plus rows of cell strings. Expands to a profile `Table`
-/// element (header row emphasized). Ragged rows are padded to the widest row.
+/// シンプルなテーブル: オプションのヘッダー行 + セル文字列の行。プロファイルの `Table` 要素に展開する
+/// （ヘッダー行は強調）。参差な行は最大幅にパディングする。
 public struct SemanticTable: Codable, Equatable, Sendable {
     public var headers: [String]?
     public var rows: [[String]]

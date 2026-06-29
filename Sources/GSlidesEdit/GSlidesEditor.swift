@@ -3,17 +3,17 @@ import GSlidesRequests
 import GSlidesSchema
 
 public extension Presentation {
-    /// Apply a sequence of batchUpdate requests to this presentation, returning the new value.
-    /// Pure (no I/O, no Google dependency): the official `Request` vocabulary, executed locally.
+    /// batchUpdate リクエストのシーケンスをこのプレゼンテーションに適用し、新しい値を返す。
+    /// 純粋（I/O なし、Google 依存なし）：公式 `Request` ボキャブラリーをローカルで実行する。
     ///
-    /// **Atomic, exactly like the real API** — "if any request is not valid, then the entire request
-    /// will fail and nothing will be applied" (catalog: batch-atomicity). The reducer works on a
-    /// copy and only the fully-applied result is returned; a failure throws `BatchUpdateError` and
-    /// leaves `self` untouched. (Rich up-front validation that collects ALL violations lives in
-    /// `PreflightValidator`; this reducer is the execution + last-line safety net.)
+    /// **実際の API とまったく同じアトミック性** — 「いずれかのリクエストが無効な場合、リクエスト
+    /// 全体が失敗し何も適用されない」（catalog: batch-atomicity）。リデューサーはコピー上で動作し、
+    /// 完全適用済みの結果のみを返す。失敗すると `BatchUpdateError` をスローし `self` は変更されない。
+    /// （すべてのバイオレーションを収集するリッチな事前検証は `PreflightValidator` にあり、
+    /// このリデューサーは実行＋最終安全網の役割を持つ。）
     ///
-    /// Index convention for text edits: positions count `textRun` content only; paragraph markers
-    /// and auto-text are zero-width — the reducer's own, internally-consistent convention.
+    /// テキスト編集のインデックス規約：位置は `textRun` のコンテンツのみをカウントし、
+    /// 段落マーカーおよびオートテキストはゼロ幅 — リデューサー固有の内部一貫した規約。
     func applying(_ requests: [Request]) throws -> Presentation {
         var p = self
         for (i, request) in requests.enumerated() {
@@ -26,12 +26,13 @@ public extension Presentation {
     }
 }
 
-/// Local `batchUpdate` executor. Sits on the frozen Schema+Requests mirror; everything above
-/// (A2A diff delivery, the agent edit loop) drives the presentation through this one entry point.
+/// ローカル `batchUpdate` エグゼキュータ。凍結した Schema+Requests ミラー上に位置し、
+/// 上位のすべて（A2A 差分デリバリー、エージェント編集ループ）がこの 1 つのエントリポイントを通じて
+/// プレゼンテーションを駆動する。
 public enum GSlidesEditor {
-    /// The operations the local reducer actually executes — the SSOT for "supported" used by the
-    /// `PreflightValidator`. Mirrors the `apply(_:to:)` switch below; `supportedOperationsCoverSwitch`
-    /// in the tests keeps the two in lockstep.
+    /// ローカルリデューサーが実際に実行するオペレーション — `PreflightValidator` が使う「サポート済み」
+    /// の SSOT。下の `apply(_:to:)` スイッチをミラーし、テストの `supportedOperationsCoverSwitch`
+    /// が 2 つを同期させる。
     public static let supportedOperations: Set<String> = [
         "deleteObject", "updatePageElementTransform", "updatePageElementsZOrder", "duplicateObject",
         "createSlide", "replaceAllText", "insertText", "deleteText", "updateTextStyle",
@@ -78,7 +79,7 @@ public enum GSlidesEditor {
                        reason: .unsupportedOperation)
     }
 
-    /// The wire field name of a request's set member (for diagnostics) — data-driven, no 44-case switch.
+    /// リクエストのセットメンバーのワイヤーフィールド名（診断用）— データ駆動で、44 ケースのスイッチ不要。
     static func label(_ request: Request) -> String {
         for child in Mirror(reflecting: request).children {
             if let name = child.label, Mirror(reflecting: child.value).displayStyle == .optional,
@@ -93,7 +94,7 @@ public enum GSlidesEditor {
 // MARK: - Element traversal
 
 extension GSlidesEditor {
-    /// Find an element by id anywhere (recursing into groups) and mutate it in place.
+    /// id でどこにあっても（グループに再帰して）要素を見つけ、その場で変更する。
     static func mutateElement(_ id: String, in p: inout Presentation, _ body: (inout PageElement) -> Void) throws {
         var slides = p.slides ?? []
         for s in slides.indices {
@@ -235,7 +236,7 @@ extension GSlidesEditor {
 
     static let identity = GSlidesSchema.AffineTransform(scaleX: 1, scaleY: 1, translateX: 0, translateY: 0)
 
-    /// 2×3 affine concatenation: result applies `update` on top of `existing` (existing first).
+    /// 2×3 アフィン連結：`existing` の上に `update` を適用した結果（existing が先）。
     static func concat(_ existing: GSlidesSchema.AffineTransform, _ update: GSlidesSchema.AffineTransform) -> GSlidesSchema.AffineTransform {
         let (esx, esy, ehx, ehy, etx, ety) = coalesce(existing)
         let (usx, usy, uhx, uhy, utx, uty) = coalesce(update)
@@ -250,7 +251,7 @@ extension GSlidesEditor {
         )
     }
 
-    /// (sx, sy, hx, hy, tx, ty) with nils defaulted to the identity components.
+    /// (sx, sy, hx, hy, tx, ty) — nil はアイデンティティ成分をデフォルトとする。
     static func coalesce(_ t: GSlidesSchema.AffineTransform) -> (Double, Double, Double, Double, Double, Double) {
         (t.scaleX ?? 1, t.scaleY ?? 1, t.shearX ?? 0, t.shearY ?? 0, t.translateX ?? 0, t.translateY ?? 0)
     }
@@ -278,7 +279,7 @@ extension GSlidesEditor {
         p.slides = slides
     }
 
-    /// Walk every shape's text runs (recursing into groups) and transform each run's content.
+    /// すべてのシェイプのテキストラン（グループに再帰）を走査し、各ランのコンテンツを変換する。
     static func mutateAllText(in elements: inout [PageElement], _ transform: (inout String) -> Void) {
         for i in elements.indices {
             if var shape = elements[i].shape, var tc = shape.text, var els = tc.textElements {
@@ -341,8 +342,8 @@ extension GSlidesEditor {
         if let thrown { throw thrown }
     }
 
-    /// Edit a shape's text elements in place, preserving paragraph markers and the compact
-    /// (marker+run on one element) form, then re-derive flattened indices.
+    /// シェイプのテキスト要素をその場で編集し、段落マーカーとコンパクト形式
+    /// （1 要素上のマーカー＋ラン）を保持して、フラット化されたインデックスを再導出する。
     static func editText(_ id: String, in p: inout Presentation, _ body: (inout [TextElement]) -> Void) throws {
         try mutateElement(id, in: &p) { element in
             guard var shape = element.shape else { return }
@@ -360,7 +361,7 @@ extension GSlidesEditor {
         els.reduce(0) { $0 + ($1.textRun?.content?.count ?? 0) }
     }
 
-    /// Flattened [start,end) of each run-bearing element, in element order.
+    /// 各ラン保持要素のフラット化された [start,end)。要素順。
     static func runRanges(_ els: [TextElement]) -> [(index: Int, start: Int, end: Int)] {
         var out: [(Int, Int, Int)] = []
         var cursor = 0
@@ -382,9 +383,9 @@ extension GSlidesEditor {
         }
     }
 
-    /// Splice at a flattened character offset, keeping each character bound to its originating run
-    /// element (markers preserved). Inserted text joins the run at the insertion point, inheriting
-    /// its style. Run-only elements emptied by a delete are dropped; marker-bearing ones are kept.
+    /// フラット化された文字オフセットでスプライスし、各文字を元のランエレメントに束縛させたまま保持する
+    /// （マーカー保持）。挿入テキストは挿入点のランに合流し、そのスタイルを継承する。
+    /// 削除によって空になったラン専用要素は削除し、マーカー付き要素は保持する。
     static func splice(_ els: inout [TextElement], at offset: Int, removing: Int, inserting: String) {
         let runs = runRanges(els)
         if runs.isEmpty {  // empty shape — seed a single run

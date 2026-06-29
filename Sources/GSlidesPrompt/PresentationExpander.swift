@@ -1,15 +1,15 @@
 import GSlidesLayout
 import GSlidesSchema
 
-/// Expands the semantic layer into profile-conformant presentation JSON, applying `PresentationTemplate`:
-/// each slide element gets the template's placeholder geometry + default text style baked in (so
-/// the renderer's geometry path places and styles it), the master carries the theme, and layout
-/// pages mirror the placeholder geometry — exactly the shape a real `presentations.get` presentation has.
+/// セマンティックレイヤーをプロファイル準拠の presentation JSON に展開する。`PresentationTemplate` を適用し、
+/// 各スライド要素にテンプレートのプレースホルダージオメトリ + デフォルトテキストスタイルを焼き込む（
+/// レンダラーのジオメトリパスが配置・スタイル付けできるよう）。マスターはテーマを保持し、
+/// レイアウトページはプレースホルダージオメトリを反映する — 実際の `presentations.get` と同じ形状。
 public enum PresentationExpander {
-    /// Expands the semantic content with a design intent (`ThemeSpec`): the palette bakes directly
-    /// into the single master `ColorScheme`, and every placeholder/decoration references those slots
-    /// symbolically, so the whole deck recolors to it. Theme is always supplied explicitly (default
-    /// light) — never inferred from content.
+    /// デザインインテント（`ThemeSpec`）でセマンティックコンテンツを展開する。パレットを単一マスターの
+    /// `ColorScheme` に直接焼き込み、各プレースホルダー/デコレーションがそのスロットをシンボルで参照する
+    /// ことで、デッキ全体をテーマに応じて再着色できる。テーマは常に明示的に供給し（デフォルトはライト）、
+    /// コンテンツから推論しない。
     public static func expand(
         _ presentation: SemanticPresentation,
         themeSpec: ThemeSpec = .light,
@@ -36,7 +36,7 @@ public enum PresentationExpander {
         )
     }
 
-    /// The placeholder slots a layout's pages declare (drives the synthesized layout pages).
+    /// レイアウトページが宣言するプレースホルダースロット（合成レイアウトページの生成に使用）。
     static func slots(for layout: PredefinedLayout) -> [(PlaceholderType, Int)] {
         switch layout {
         case .title: [(.centeredTitle, 0), (.subtitle, 0)]
@@ -179,10 +179,10 @@ public enum PresentationExpander {
         )
     }
 
-    /// A content slide's header: the title placeholder carrying an eyebrow paragraph (the "label" of a
-    /// "ラベル：結論" title, small + accent-colored) above the headline paragraph (the conclusion). This
-    /// is Slides-native — one TITLE placeholder, two styled paragraphs — so it round-trips to the real
-    /// API. A title without a "：" separator falls back to a single headline.
+    /// コンテンツスライドのヘッダー: アイブロウ段落（"ラベル：結論" タイトルの「ラベル」部分、小さくアクセントカラー）を
+    /// ヘッドライン段落（結論）の上に配置する TITLE プレースホルダー。Slides ネイティブ形式
+    /// （TITLE プレースホルダー 1 つに 2 段落）なので実 API との往復が可能。
+    /// "：" 区切りがないタイトルは単一ヘッドラインにフォールバックする。
     static func contentHeaderShape(
         _ slideId: String, _ layout: PredefinedLayout, _ title: String,
         typography: PresentationTypography = .system,
@@ -209,8 +209,8 @@ public enum PresentationExpander {
         return styledShape(id: id, type: .title, index: 0, spec: spec, text: text)
     }
 
-    /// Split a "ラベル：結論" title into (label, headline) on the first full-width or ASCII colon. Returns
-    /// nil when there's no separator or either side is empty (→ render a single headline).
+    /// "ラベル：結論" タイトルを最初の全角または ASCII コロンで (label, headline) に分割する。
+    /// 区切りがない場合または片側が空の場合は nil を返す（→ 単一ヘッドラインを描画）。
     static func splitLabelTitle(_ title: String) -> (label: String, headline: String)? {
         for separator in ["：", ":"] {
             if let range = title.range(of: separator) {
@@ -222,7 +222,7 @@ public enum PresentationExpander {
         return nil
     }
 
-    /// Title / subtitle shape from the template spec (or a plain shape if no spec).
+    /// テンプレートスペックからタイトル / サブタイトルシェイプを生成する（スペックがない場合はプレーンシェイプ）。
     static func titleShape(
         _ slideId: String, _ suffix: String, _ layout: PredefinedLayout,
         _ type: PlaceholderType, _ text: TextContent,
@@ -236,8 +236,8 @@ public enum PresentationExpander {
         return styledShape(id: id, type: type, index: 0, spec: spec, text: text)
     }
 
-    /// A fully-specified placeholder shape: geometry + default style baked in (like a flattened real
-    /// presentation) so the renderer places and styles it without the semantic fallback.
+    /// ジオメトリ + デフォルトスタイルを焼き込んだ完全指定のプレースホルダーシェイプ（フラット化した実プレゼンテーションと同様）。
+    /// レンダラーはセマンティックフォールバックなしに配置・スタイル付けできる。
     static func styledShape(id: String, type: PlaceholderType, index: Int, spec: PlaceholderSpec, text: TextContent) -> PageElement {
         PageElement(
             objectId: id,
@@ -261,7 +261,7 @@ public enum PresentationExpander {
         )
     }
 
-    /// Splits a body box into a text column (left, ~55%) and an image rect (right).
+    /// ボディボックスをテキストカラム（左、約 55%）と画像 rect（右）に分割する。
     static func splitLeftRight(_ spec: PlaceholderSpec) -> (text: PlaceholderSpec, image: PlaceholderSpec) {
         let gap = 360_000.0
         let leftW = (spec.w - gap) * 0.55
@@ -273,10 +273,10 @@ public enum PresentationExpander {
 
     // MARK: - Metrics (native stat-card visual, composed from text + filled bars — no image)
 
-    /// Expands a metrics body into a row of stat cards across the body rect: each card is a big
-    /// accent value (+ smaller unit), a muted label beneath, and — when a `ratio` is given — a
-    /// proportional accent bar over a track. Pure native elements (text + filled rectangles), so the
-    /// existing geometry renderer draws it with no new element type.
+    /// メトリクスボディをボディ rect 全体にわたるスタットカード行に展開する。各カードは
+    /// 大きなアクセント値（+ 小さな単位）、その下のミュートラベル、`ratio` が指定されている場合は
+    /// トラック上の比例アクセントバーで構成される。純粋なネイティブ要素（テキスト + 塗り矩形）なので、
+    /// 新しい要素型なしに既存のジオメトリレンダラーが描画する。
     static func metricElements(slideId: String, bodyIndex: Int, rect: PlaceholderSpec, metrics: [SemanticMetric]) -> [PageElement] {
         let columns = PresentationTemplate.columns(of: rect, count: metrics.count, gap: 360_000)
         let valueH = 1_150_000.0
@@ -328,8 +328,8 @@ public enum PresentationExpander {
         return elements
     }
 
-    /// A standalone styled text box (no placeholder) — metric value/label text that isn't a semantic
-    /// placeholder. Runs inherit the spec's default style (size/color/weight) via `styled`.
+    /// スタンドアロンのスタイル付きテキストボックス（プレースホルダーなし）— セマンティックプレースホルダーでない
+    /// メトリクスの値/ラベルテキスト。ランは `styled` 経由でスペックのデフォルトスタイル（サイズ/色/ウェイト）を継承する。
     static func textBox(id: String, spec: PlaceholderSpec, text: TextContent) -> PageElement {
         PageElement(
             objectId: id,
@@ -343,7 +343,7 @@ public enum PresentationExpander {
         )
     }
 
-    /// A filled rectangle at an EMU rect (the renderer draws `shapeBackgroundFill`) — the metric bar.
+    /// EMU 矩形上の塗り矩形（レンダラーが `shapeBackgroundFill` を描画）— メトリクスバー。
     static func fillRect(id: String, x: Double, y: Double, w: Double, h: Double, color: ThemeColorType) -> PageElement {
         PageElement(
             objectId: id,
@@ -357,7 +357,7 @@ public enum PresentationExpander {
         )
     }
 
-    /// Degraded metrics rendering when there's no body geometry: one bullet per stat ("label: value unit").
+    /// ボディジオメトリがない場合のメトリクス劣化レンダリング: 統計ごとに 1 バレット（"label: value unit"）。
     static func metricsFallbackText(_ metrics: [SemanticMetric]) -> TextContent {
         TextContent(textElements: metrics.flatMap { metric in
             let unit = metric.unit.map { " " + $0 } ?? ""
@@ -370,9 +370,9 @@ public enum PresentationExpander {
 
     // MARK: - Chart (native single-series column chart, composed from filled bars + labels — no image)
 
-    /// Expands a column chart into the body rect: proportional accent bars on a baseline, a value
-    /// caption above each bar, and a category label beneath. Bars are sized relative to the largest
-    /// value. Pure native elements (filled rectangles + text), so the geometry renderer draws it.
+    /// 縦棒チャートをボディ rect に展開する: ベースライン上の比例アクセントバー、各バー上の値キャプション、
+    /// その下のカテゴリラベル。バーは最大値に対する相対サイズ。純粋なネイティブ要素（塗り矩形 + テキスト）
+    /// なのでジオメトリレンダラーが描画する。
     static func chartElements(slideId: String, bodyIndex: Int, rect: PlaceholderSpec, chart: SemanticChart) -> [PageElement] {
         let bars = chart.bars
         let valueLabelH = 320_000.0
@@ -442,7 +442,7 @@ public enum PresentationExpander {
         return elements
     }
 
-    /// A filled circular marker centered at (cx, cy) — a line chart data point.
+    /// (cx, cy) を中心とする塗り円マーカー — 折れ線チャートのデータポイント。
     static func dot(id: String, cx: Double, cy: Double, d: Double, color: ThemeColorType) -> PageElement {
         PageElement(
             objectId: id,
@@ -456,9 +456,9 @@ public enum PresentationExpander {
         )
     }
 
-    /// A straight line segment from (x1,y1) to (x2,y2) as a `Line` element. An ascending segment
-    /// (y2 < y1) is encoded with a vertical flip (negative scaleY); `PageGeometry` normalizes the box
-    /// and the renderer draws bottom-left → top-right. Points run left→right so x1 ≤ x2.
+    /// (x1,y1) から (x2,y2) への直線セグメントを `Line` 要素として生成する。上昇セグメント（y2 < y1）は
+    /// 垂直フリップ（負の scaleY）でエンコードし、`PageGeometry` がボックスを正規化して
+    /// レンダラーが左下→右上を描画する。点は左→右なので x1 ≤ x2。
     static func lineSegment(id: String, x1: Double, y1: Double, x2: Double, y2: Double, weightPt: Double, color: ThemeColorType) -> PageElement {
         let w = abs(x2 - x1)
         let h = max(abs(y2 - y1), 1)
@@ -479,8 +479,8 @@ public enum PresentationExpander {
         )
     }
 
-    /// Formats a bar value for display: a whole number drops the decimal ("12.0" → "12"), and the
-    /// integer part gets thousands separators ("1200" → "1,200", "1234.5" → "1,234.5").
+    /// バー値を表示用にフォーマットする: 整数なら小数点を除去（"12.0" → "12"）し、
+    /// 整数部に桁区切りを挿入する（"1200" → "1,200", "1234.5" → "1,234.5"）。
     static func formatValue(_ value: Double) -> String {
         if value == value.rounded() { return groupDigits(String(Int(value))) }
         let s = String(value)
@@ -488,8 +488,7 @@ public enum PresentationExpander {
         return groupDigits(String(s[..<dot])) + String(s[dot...])
     }
 
-    /// Inserts thousands separators into an integer string (sign preserved). Non-numeric input passes
-    /// through unchanged.
+    /// 整数文字列に桁区切りを挿入する（符号を保持）。数値でない入力はそのまま通す。
     static func groupDigits(_ s: String) -> String {
         var digits = s
         let sign = digits.hasPrefix("-") ? "-" : ""
@@ -503,7 +502,7 @@ public enum PresentationExpander {
         return sign + String(grouped.reversed())
     }
 
-    /// Degraded chart rendering when there's no body geometry: one bullet per bar ("label: value").
+    /// ボディジオメトリがない場合のチャート劣化レンダリング: バーごとに 1 バレット（"label: value"）。
     static func chartFallbackText(_ chart: SemanticChart) -> TextContent {
         TextContent(textElements: chart.bars.flatMap { bar in
             paragraphElements(
@@ -515,9 +514,9 @@ public enum PresentationExpander {
 
     // MARK: - Process flow (native arrow-joined step cards — no image)
 
-    /// Expands a process flow into a left-to-right row of step cards joined by arrows: each card is a
-    /// subtle filled rounded rectangle holding the step label (and optional caption); consecutive
-    /// cards are connected by an accent arrow. Pure native elements (shapes + text + lines).
+    /// プロセスフローを左→右の矢印つきステップカード行に展開する。各カードはステップラベル
+    /// （オプションのキャプション付き）を持つ控えめな塗り角丸矩形。連続するカードはアクセント矢印で接続する。
+    /// 純粋なネイティブ要素（シェイプ + テキスト + ライン）。
     static func stepElements(slideId: String, bodyIndex: Int, rect: PlaceholderSpec, steps: [SemanticStep]) -> [PageElement] {
         let arrowGap = 420_000.0
         let cardW = (rect.w - arrowGap * Double(steps.count - 1)) / Double(steps.count)
@@ -555,7 +554,7 @@ public enum PresentationExpander {
         return elements
     }
 
-    /// A filled rounded-rectangle card (the renderer draws `shapeBackgroundFill`).
+    /// 塗り角丸矩形カード（レンダラーが `shapeBackgroundFill` を描画）。
     static func card(id: String, x: Double, y: Double, w: Double, h: Double, color: ThemeColorType) -> PageElement {
         PageElement(
             objectId: id,
@@ -569,8 +568,8 @@ public enum PresentationExpander {
         )
     }
 
-    /// A horizontal right-pointing arrow as a filled `rightArrow` shape spanning a gap. A shape (not a
-    /// `Line`) so a horizontal connector renders reliably — the renderer fills its box pointing right.
+    /// ギャップをまたぐ塗り `rightArrow` シェイプとしての水平右向き矢印。`Line` ではなくシェイプにすることで
+    /// 水平コネクタが確実に描画される — レンダラーがボックスを右向きに塗る。
     static func arrowRight(id: String, x1: Double, x2: Double, centerY: Double, height: Double, color: ThemeColorType) -> PageElement {
         PageElement(
             objectId: id,
@@ -584,7 +583,7 @@ public enum PresentationExpander {
         )
     }
 
-    /// Degraded process rendering when there's no body geometry: one bullet per step ("label — caption").
+    /// ボディジオメトリがない場合のプロセス劣化レンダリング: ステップごとに 1 バレット（"label — caption"）。
     static func stepsFallbackText(_ steps: [SemanticStep]) -> TextContent {
         TextContent(textElements: steps.flatMap { step in
             let caption = step.caption.map { " — " + $0 } ?? ""
@@ -597,8 +596,8 @@ public enum PresentationExpander {
 
     // MARK: - Quote (testimonial / pull quote — decorative mark + quote + attribution)
 
-    /// Expands a testimonial into a large pull quote: an oversized accent quotation mark, the quote
-    /// text set large, and a muted right-aligned attribution line. Pure native text elements.
+    /// 推薦文を大きなプルクォートに展開する: 特大のアクセント引用符、大きく設定された引用テキスト、
+    /// ミュートの右揃え帰属行。純粋なネイティブテキスト要素。
     static func quoteElements(slideId: String, bodyIndex: Int, rect: PlaceholderSpec, quote: SemanticQuote) -> [PageElement] {
         let prefix = "\(slideId)-quote-\(bodyIndex)"
         var elements: [PageElement] = []
@@ -629,22 +628,22 @@ public enum PresentationExpander {
         return elements
     }
 
-    /// "— author、role" (whichever parts are present).
+    /// "— author、role"（存在するパーツのみ）。
     static func attributionText(_ quote: SemanticQuote) -> String {
         let parts = [quote.author, quote.role].compactMap { $0 }.filter { !$0.isEmpty }
         return parts.isEmpty ? "" : "— " + parts.joined(separator: "、")
     }
 
-    /// Degraded quote rendering when there's no body geometry: the quote text + attribution as text.
+    /// ボディジオメトリがない場合の引用劣化レンダリング: 引用テキスト + 帰属をテキストとして出力。
     static func quoteFallbackText(_ quote: SemanticQuote) -> String {
         let attr = attributionText(quote)
         return attr.isEmpty ? "\u{201C}\(quote.text)\u{201D}" : "\u{201C}\(quote.text)\u{201D}\n\(attr)"
     }
 
-    /// Applies the spec's default text style + alignment to runs/paragraphs that don't set their own.
-    /// Only fills nil fields, so inline emphasis (bold / accent runs) is preserved. Paragraph style
-    /// is set only on elements that already open a paragraph — run-only elements (extra inline runs)
-    /// are left as runs so the renderer keeps them on the same line.
+    /// スペックのデフォルトテキストスタイル + アライメントを、自身のスタイルを持たないラン / 段落に適用する。
+    /// nil フィールドのみ埋めるため、インライン強調（太字 / アクセントラン）は保持される。段落スタイルは
+    /// 既に段落を開いている要素にのみ設定し、ラン専用要素（追加インラインラン）はランのままにして
+    /// レンダラーが同じ行に保つ。
     static func styled(_ text: TextContent, with spec: PlaceholderSpec) -> TextContent {
         var text = text
         text.textElements = text.textElements?.map { element in
@@ -685,7 +684,7 @@ public enum PresentationExpander {
         return nil
     }
 
-    /// Glyph per nesting level — a visual hierarchy for multi-level lists (renderer also indents).
+    /// ネストレベルごとのグリフ — 多段リストの視覚的階層（レンダラーもインデントを適用）。
     static func bulletGlyph(for level: Int) -> String {
         switch level {
         case 0: "•"   // a light mid-dot reads more professional than a heavy filled circle (お手本 prefer restrained markers)
@@ -694,8 +693,7 @@ public enum PresentationExpander {
         }
     }
 
-    /// Flattened text for layout matching (bullets + table cells), so a table-bearing body still
-    /// reads as content.
+    /// レイアウトマッチング用フラットテキスト（バレット + テーブルセル）。テーブルを持つボディもコンテンツとして読める。
     static func bodyMatchText(_ body: SemanticBody) -> String {
         let bullets = (body.bullets ?? []).map(\.text).joined(separator: "\n")
         return [bullets, tableText(body.table)].filter { !$0.isEmpty }.joined(separator: "\n")
@@ -707,8 +705,8 @@ public enum PresentationExpander {
         return rows.map { $0.joined(separator: " ") }.joined(separator: "\n")
     }
 
-    /// A profile `Table` element from the semantic table: header row (if any) first and emphasized,
-    /// ragged rows padded to the widest. `rect` nil → no baked geometry (renderer flows it).
+    /// セマンティックテーブルからプロファイルの `Table` 要素を生成する。ヘッダー行（存在すれば）を先頭に強調し、
+    /// 参差な行は最大幅にパディングする。`rect` が nil の場合はジオメトリを焼き込まず（レンダラーがフロー配置）。
     static func tableElement(id: String, rect: PlaceholderSpec?, table: SemanticTable) -> PageElement {
         let allRows = (table.headers.map { [$0] } ?? []) + table.rows
         let columns = allRows.map(\.count).max() ?? 0
@@ -750,9 +748,8 @@ public enum PresentationExpander {
         TextContent(textElements: paragraphElements(marker: ParagraphMarker(), runs: inlineRuns(text)))
     }
 
-    /// One paragraph's elements: the marker opens it (carrying the first run, compact form), and any
-    /// further inline runs follow as run-only elements on the same line. The trailing newline marks
-    /// the paragraph end.
+    /// 1 段落分の要素: マーカーが段落を開き（最初のランをコンパクト形式で保持）、追加インラインランは
+    /// ラン専用要素として同じ行に続く。末尾の改行が段落の終わりを示す。
     static func paragraphElements(marker: ParagraphMarker, runs: [TextRun]) -> [TextElement] {
         guard var last = runs.last else { return [TextElement(paragraphMarker: marker)] }
         var runs = runs
@@ -763,8 +760,8 @@ public enum PresentationExpander {
         return elements
     }
 
-    /// Parses lightweight inline markup into styled runs: `**bold**` → bold, `==accent==` → an
-    /// accent-colored emphasis. Plain spans carry no style (the placeholder default fills them).
+    /// 軽量インラインマークアップをスタイル付きランに変換する: `**bold**` → 太字、`==accent==` →
+    /// アクセントカラーの強調。プレーンスパンはスタイルなし（プレースホルダーのデフォルトが埋める）。
     static func inlineRuns(_ text: String) -> [TextRun] {
         enum Emphasis { case none, bold, accent }
         func style(_ e: Emphasis) -> TextStyle? {

@@ -1,83 +1,68 @@
 # ``GSlidesLayout``
 
-Geometry, coordinate conversion, layout matching, and slide design system for Google Slides presentations.
+Google Slides プレゼンテーションのジオメトリ、座標変換、レイアウトマッチング、スライドデザインシステム。
 
 ## Overview
 
-GSlidesLayout is the design-data layer that sits between `GSlidesSchema` (wire types) and
-`GSlidesRenderer` / `GSlidesAssembly` (consumers). Every measurement this library deals with uses
-the Slides API's native unit: the English Metric Unit (EMU). ``EMU`` supplies the conversion
-constants (914,400 per inch; 12,700 per point) and the standard 16:9 default page size.
-``PageGeometry`` converts those raw numbers to `CGRect` / `CGSize` values by reading the
-`size` + `transform` fields that the API returns on every `PageElement`.
+GSlidesLayout は `GSlidesSchema`（ワイヤー型）と `GSlidesRenderer` / `GSlidesAssembly`（コンシューマー）の間に位置するデザインデータ層。このライブラリが扱う全計測値は Slides API のネイティブ単位である English Metric Unit (EMU) を使用する。``EMU`` は変換定数（1 インチ = 914,400 EMU、1 ポイント = 12,700 EMU）と標準 16:9 デフォルトページサイズを提供する。``PageGeometry`` は、API が全 `PageElement` に返す `size` + `transform` フィールドを読み取り、生の数値を `CGRect` / `CGSize` 値に変換する。
 
-### Layout matching
+### レイアウトマッチング
 
-``LayoutMatcher`` maps semantic ``SlideContent`` descriptions — title, subtitle, bodies,
-table count — to the best-fit `PredefinedLayout`, porting the same rule order that
-md2googleslides uses. ``PlaceholderResolver`` walks the Master → Layout → Slide inheritance
-chain to fill in missing geometry for slide elements that rely on their layout parent.
+``LayoutMatcher`` は セマンティックな ``SlideContent`` の記述（タイトル、サブタイトル、ボディ、テーブル数）を最適な `PredefinedLayout` にマッピングする。md2googleslides と同じルール順序を移植している。``PlaceholderResolver`` は Master → Layout → Slide の継承チェーンを辿り、レイアウト親に依存するスライド要素の欠損ジオメトリを補完する。
 
-### Template and design system
+### テンプレートとデザインシステム
 
-``PresentationTemplate`` expresses an entire deck's design as data: the master page (carrying
-a ``ThemeSpec`` color scheme) and, for each predefined layout, the placeholder rectangles and
-default text styles as ``PlaceholderSpec`` values. Consumers call `spec(layout:type:index:)`
-to retrieve a fully-configured placeholder without embedding any magic numbers.
+``PresentationTemplate`` はデッキ全体のデザインをデータとして表現する。マスターページ（``ThemeSpec`` カラースキームを持つ）と、各定義済みレイアウトのプレースホルダー矩形・デフォルトテキストスタイル（``PlaceholderSpec`` 値）がある。コンシューマーは `spec(layout:type:index:)` を呼び出してマジックナンバーを埋め込まずに完全設定済みのプレースホルダーを取得できる。
 
-The design-system types — ``SpacingScale``, ``HeaderStyle``, and ``SlideDesignSystem`` —
-bundle vertical-rhythm tokens and header-treatment choices so a caller can swap the whole
-look of a deck by changing one value, not by hunting magic constants across layout cases.
+デザインシステム型 — ``SpacingScale``、``HeaderStyle``、``SlideDesignSystem`` — は垂直リズムトークンとヘッダー処理の選択をまとめ、1 つの値を変更するだけでデッキ全体の見た目を交換できるようにする。
 
-``PresentationTypography`` assigns a font family and numeric weight to each semantic role
-(title, subtitle, body, eyebrow, big-number, footer). It is applied on top of geometry the
-same way ``ThemeSpec`` applies color, and `.system` (all roles unset) is always a safe default.
+``PresentationTypography`` は各セマンティックロール（タイトル、サブタイトル、ボディ、アイブロウ、ビッグナンバー、フッター）にフォントファミリーと数値ウェイトを割り当てる。``ThemeSpec`` がカラーを適用するのと同じ方法でジオメトリの上に重ねて適用し、`.system`（全ロール未設定）は常に安全なデフォルト。
 
 ```swift
 import GSlidesLayout
 
-// Infer the best predefined layout for a slide
+// スライドに最適な定義済みレイアウトを推論する
 let content = SlideContent(
     title: .init("Q3 Results"),
     bodies: [.init(text: .init("Revenue grew 42 % YoY"))]
 )
 let layout = LayoutMatcher.match(content)   // → .titleAndBody
 
-// Build a placeholder spec for that layout's title slot
+// そのレイアウトのタイトルスロットのプレースホルダー spec を構築する
 let spec = PresentationTemplate.spec(
     layout: layout,
     type: .title,
     index: 0,
     typography: .system
 )
-// spec?.size, spec?.transform — ready to embed in a PageElement
+// spec?.size, spec?.transform — PageElement に埋め込む準備完了
 ```
 
 ## Topics
 
-### Coordinate utilities
+### 座標ユーティリティ
 
 - ``EMU``
 - ``PageGeometry``
 
-### Placeholder resolution
+### プレースホルダー解決
 
 - ``PlaceholderResolver``
 - ``PlaceholderSpec``
 - ``PresentationTemplate``
 
-### Layout matching
+### レイアウトマッチング
 
 - ``SlideContent``
 - ``LayoutMatcher``
 
-### Design system
+### デザインシステム
 
 - ``SlideDesignSystem``
 - ``SpacingScale``
 - ``HeaderStyle``
 
-### Color and typography
+### カラーとタイポグラフィ
 
 - ``ThemeSpec``
 - ``PresentationTypography``

@@ -4,9 +4,8 @@ import GSlidesRenderer
 import GSlidesSchema
 import ImageIO
 
-/// Preloads every image a presentation references into a `GSlidesImageProvider`, so the export renderers
-/// draw them synchronously (no blank `AsyncImage` snapshots). file:// loads immediately; http(s)
-/// is fetched concurrently.
+/// プレゼンテーションが参照する全画像を `GSlidesImageProvider` にプリロードする。エクスポートレンダラーが
+/// 同期的に描画できるようにし（`AsyncImage` のブランクスナップショットを防ぐ）。file:// は即時ロード、http(s) は並行フェッチ。
 public enum PresentationImagePreloader {
     public static func provider(for presentation: Presentation) async -> GSlidesImageProvider {
         let urls = imageURLs(in: presentation)
@@ -22,7 +21,7 @@ public enum PresentationImagePreloader {
         return GSlidesImageProvider(images: map)
     }
 
-    /// Distinct image URLs across all slides (shapes carry no images; image / sheetsChart elements do).
+    /// 全スライドにわたる重複除去済みの画像 URL（シェイプは画像を持たない; image / sheetsChart 要素が持つ）。
     static func imageURLs(in presentation: Presentation) -> [URL] {
         var seen = Set<String>()
         var urls: [URL] = []

@@ -1,14 +1,13 @@
 import Foundation
 
-/// Few-shot examples built **from the Swift type system** instead of hand-written JSON — the
-/// slide-presentation counterpart of `A2UIExample`. A hand-authored string drifts and silently goes
-/// invalid (wrong layout name, a field the schema dropped); constructing the example from typed
-/// `SemanticPresentation` values and serializing guarantees it stays structurally valid, and a test pins it.
+/// 手書き JSON ではなく **Swift の型システムから** 構築するフューショット例 — `A2UIExample` のスライドプレゼンテーション版。
+/// 手書きの文字列は静かにズレてバリデーション違反になる（レイアウト名の誤りやスキーマから削除されたフィールド）。
+/// 型付きの `SemanticPresentation` 値から構築してシリアライズすることで構造的な正当性を保証し、テストで固定する。
 extension GSlidesGenerationContract {
 
-    /// The canonical example AND the quality bar. The model is told to MATCH this presentation's variety,
-    /// density and layout usage rather than read prose rules — teaching by demonstration. Built
-    /// from typed values; localized (the host's role prompt sets the language, the content shows it).
+    /// 正規例であり品質基準でもある。モデルには散文ルールを読ませるのではなく、このプレゼンテーションの
+    /// 多様性・密度・レイアウト使用を MATCH するよう指示する — デモンストレーションによる教示。
+    /// 型付き値から構築。ローカライズ済み（ホストのロールプロンプトが言語を設定し、コンテンツがそれを示す）。
     public static func examplePresentation() -> SemanticPresentation {
         SemanticPresentation(title: "リモートワーク時代の生産性", slides: [
             SemanticSlide(
@@ -78,17 +77,17 @@ extension GSlidesGenerationContract {
         ])
     }
 
-    /// The example as deterministic JSON (sorted keys, unescaped slashes — stable prompt cache,
-    /// URL-clean), derived from the typed presentation. Matches `A2UIExample.json`'s conventions.
+    /// 型付きプレゼンテーションから導出した決定論的 JSON（ソートキー・スラッシュエスケープなし — 安定したプロンプトキャッシュ、URL クリーン）。
+    /// `A2UIExample.json` の規約に準拠。
     public static func examplePresentationJSON() -> String {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes, .prettyPrinted]
         return (try? encoder.encode(examplePresentation())).map { String(decoding: $0, as: UTF8.self) } ?? "{}"
     }
 
-    /// The system-instruction block: schema (what's allowed) + the worked example wrapped in the
-    /// same `---BEGIN/END---` markers A2UI uses. The package owns this composition and pins the
-    /// example to the schema with tests — hosts attach one block instead of hand-rolling the prompt.
+    /// システム指示ブロック: スキーマ（許可される内容）+ A2UI と同じ `---BEGIN/END---` マーカーで包んだワーク済み例。
+    /// パッケージがこの合成を所有し、テストでスキーマと例を固定する —
+    /// ホストはプロンプトを手で組む代わりにこの 1 ブロックを添付する。
     public static func promptBlock() -> String {
         let schema = (try? jsonSchemaData()).map { String(decoding: $0, as: UTF8.self) } ?? "{}"
         let schemaSection = """
@@ -104,8 +103,8 @@ extension GSlidesGenerationContract {
     }
 }
 
-/// Wraps a few-shot example in `---BEGIN {name}--- / ---END {name}---` markers — the same marker
-/// format as A2UI's `A2UIExampleFormatter` (the Python `load_examples()` convention).
+/// フューショット例を `---BEGIN {name}--- / ---END {name}---` マーカーで包む —
+/// A2UI の `A2UIExampleFormatter`（Python `load_examples()` 規約）と同じマーカー形式。
 public enum GSlidesExampleFormatter {
     public static func format(name: String, content: String) -> String {
         "---BEGIN \(name)---\n\(content)\n---END \(name)---"

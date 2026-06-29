@@ -4,28 +4,28 @@ import GSlidesSchema
 
 public enum GSlidesThemeContractError: Error, Equatable {
     case invalidJSON(String)
-    /// Theme color types that aren't defined by the spec (e.g. a typo'd "ACCENT7").
+    /// スペックで定義されていないテーマカラータイプ（例: タイポ "ACCENT7"）。
     case unknownTypes([String])
-    /// Editable slots (of the 12) the model failed to provide.
+    /// モデルが提供し損ねた（12 のうちの）編集可能スロット。
     case missingSlots([ThemeColorType])
-    /// Slots whose RGB components fall outside the documented 0.0–1.0 range.
+    /// RGB コンポーネントが規定の 0.0–1.0 範囲外にあるスロット。
     case outOfRange([ThemeColorType])
 }
 
-/// Structured-output contract for a presentation's design intent — its **theme color scheme** — in
-/// the Slides API's own protocol shape. Mirrors `GSlidesEditContract`: inject the exact authoritative
-/// schema into the system prompt and validate the model's output against it. No invented vocabulary,
-/// no speculative "design brief" abstraction — the model emits a real `ColorScheme` (the 12 editable
-/// `ThemeColorType` slots, each an `RgbColor` of 0.0–1.0 floats), exactly as the API consumes it.
+/// プレゼンテーションのデザインインテント — **テーマカラースキーム** — に対する構造化出力コントラクト。
+/// Slides API 自身のプロトコル形状で表現する。`GSlidesEditContract` のミラー: 正確な権威スキーマをシステムプロンプトに
+/// 注入し、モデルの出力をそれに対して検証する。発明された語彙も推測的な "design brief" 抽象化もなく、
+/// モデルは実際の `ColorScheme`（12 個の編集可能な `ThemeColorType` スロット、各 0.0–1.0 浮動小数 `RgbColor`）を
+/// API がそのまま使用できる形式で出力する。
 ///
 /// (catalog: theme-color-scheme-editable, rgb-color-range)
 public enum GSlidesThemeContract {
-    /// The 12 editable slots the model must provide, in discovery enum order.
+    /// モデルが提供しなければならない 12 の編集可能スロット。discovery enum の順序で並ぶ。
     public static let editableSlots = ThemeColorType.editableSlots
 
-    /// JSON Schema for the tool argument: a `ColorScheme` `{ "colors": [ {type, color} … ] }`,
-    /// restricted to the 12 editable `ThemeColorType`s with `RgbColor` components in 0.0–1.0. The
-    /// "all 12, each once" rule is stated here and enforced precisely in `validate`.
+    /// ツール引数の JSON Schema: `ColorScheme` `{ "colors": [ {type, color} … ] }`、
+    /// 12 個の編集可能な `ThemeColorType` と 0.0–1.0 の `RgbColor` コンポーネントに制限する。
+    /// "全 12、各 1 回" ルールはここで明示し、`validate` で厳密に強制する。
     public static var jsonSchema: [String: Any] {
         let rgb: [String: Any] = [
             "type": "object",
@@ -70,15 +70,15 @@ public enum GSlidesThemeContract {
         try JSONSerialization.data(withJSONObject: jsonSchema, options: [.sortedKeys])
     }
 
-    /// A complete worked example in the exact wire shape — the package's default light palette,
-    /// limited to the 12 editable slots (the model never emits the four read-only aliases).
+    /// 正確なワイヤー形状での完全なワーク済み例 — パッケージのデフォルトライトパレット、
+    /// 12 の編集可能スロットに限定（モデルは 4 つの読み取り専用エイリアスを出力しない）。
     public static func workedExample() -> String {
         let scheme = ColorScheme(colors: ThemeSpec.light.editableColors.map { ThemeColorPair(type: $0.0, color: $0.1) })
         let data = (try? JSONEncoder().encode(scheme)).map { String(decoding: $0, as: UTF8.self) } ?? "{}"
         return data
     }
 
-    /// System-instruction block: rules (the authoritative constraints) + schema + a worked example.
+    /// システム指示ブロック: ルール（権威的な制約）+ スキーマ + ワーク済み例。
     public static func promptBlock() -> String {
         let schema = (try? jsonSchemaData()).map { String(decoding: $0, as: UTF8.self) } ?? "{}"
         return """
@@ -98,9 +98,9 @@ public enum GSlidesThemeContract {
         """
     }
 
-    /// Validation sandwich, receiving side: decode the `ColorScheme`, then enforce the authoritative
-    /// rules — every type known, all 12 editable slots present, every color in 0.0–1.0. Non-editable
-    /// slots the model may include (TEXT1 etc.) are ignored, exactly as the API ignores them.
+    /// バリデーションサンドイッチの受信側: `ColorScheme` をデコードし、権威的なルールを強制する —
+    /// 全タイプが既知、12 の編集可能スロットが全て存在、全カラーが 0.0–1.0。モデルが含む可能性のある
+    /// 非編集可能スロット（TEXT1 等）は API と同様に無視する。
     public static func validate(_ data: Data) throws -> ColorScheme {
         let scheme: ColorScheme
         do {
@@ -115,8 +115,8 @@ public enum GSlidesThemeContract {
         return scheme
     }
 
-    /// Validated end-to-end: model output bytes → `ThemeSpec` (ready to bake into a master). The
-    /// validated scheme always binds all 12 editable slots, so the conversion never fails.
+    /// 検証済みのエンドツーエンド: モデル出力バイト → `ThemeSpec`（マスターへの焼き込み準備完了）。
+    /// 検証済みスキームは常に 12 の編集可能スロットを全てバインドするため、変換は失敗しない。
     public static func themeSpec(from data: Data) throws -> ThemeSpec {
         let scheme = try validate(data)
         guard let spec = ThemeSpec(colorScheme: scheme) else {
@@ -126,7 +126,7 @@ public enum GSlidesThemeContract {
         return spec
     }
 
-    /// LLM-facing feedback for a rejected theme: what to fix, in plain terms, so it can self-correct.
+    /// 拒否されたテーマに対する LLM 向けフィードバック: 自己修正できるよう、修正箇所を平易な言葉で示す。
     public static func feedback(for error: GSlidesThemeContractError) -> String {
         switch error {
         case .invalidJSON(let detail):

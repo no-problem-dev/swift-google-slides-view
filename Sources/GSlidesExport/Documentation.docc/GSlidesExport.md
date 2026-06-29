@@ -1,40 +1,27 @@
 # ``GSlidesExport``
 
-PDF and raster-image export for Google Slides presentations.
+Google Slides プレゼンテーションを PDF および画像ファイルとして出力する。
 
 ## Overview
 
-GSlidesExport converts a `Presentation` (from `GSlidesSchema`) into file-ready output
-using `GSlidesRenderer`'s `GSlidesSlideView` as the render primitive. Both renderers are
-`@MainActor` and use SwiftUI's `ImageRenderer` to draw each slide into a `CGContext`,
-so they run on any platform that supports SwiftUI (iOS 16+, macOS 13+).
+GSlidesExport は `Presentation`（`GSlidesSchema` 由来）をファイル出力用データへ変換する。レンダリングのプリミティブには `GSlidesRenderer` の `GSlidesSlideView` を使用する。両レンダラーは `@MainActor` で SwiftUI の `ImageRenderer` を使って各スライドを `CGContext` に描画するため、SwiftUI をサポートするプラットフォーム（iOS 16+・macOS 13+）であればどこでも動作する。
 
-### Image export
+### 画像エクスポート
 
-``PresentationImageRenderer`` produces `CGImage` values — one per slide — at a configurable
-pixel size (default 1920×1080). `pngData(_:)` returns the images encoded as PNG `Data`
-values. `stackedPNG(_:spacing:)` composites all slides into a single tall PNG, which is
-convenient for social-media carousels.
+``PresentationImageRenderer`` はスライドごとに `CGImage` を生成する。デフォルトのピクセルサイズは 1920×1080。`pngData(_:)` は PNG `Data` としてエンコードした画像を返す。`stackedPNG(_:spacing:)` は全スライドを縦長の単一 PNG に合成する（SNS カルーセル用途に便利）。
 
-### PDF export
+### PDF エクスポート
 
-``PresentationPDFRenderer`` writes a multi-page PDF with one slide per page, at a
-configurable point size (default 960×540 pt, i.e. 10 in × 5.625 in). `pdfData(_:)`
-returns the raw bytes; `pdfFile(_:filename:)` writes them to a temporary file and
-returns the `URL`, ready for `ShareLink` or `fileExporter`.
+``PresentationPDFRenderer`` はスライド 1 枚 1 ページのマルチページ PDF を書き出す。デフォルトのポイントサイズは 960×540 pt（= 10 in × 5.625 in）。`pdfData(_:)` は生バイトを返し、`pdfFile(_:filename:)` はデータを一時ファイルに書き込んで `URL` を返す。`ShareLink` や `fileExporter` にそのまま渡せる。
 
-### Image preloading
+### 画像プリロード
 
-Both renderers accept an optional `GSlidesImageProvider`. Pass one built by
-``PresentationImagePreloader/provider(for:)`` to ensure every `image` and `sheetsChart`
-element renders synchronously — without it, `AsyncImage` snapshots at blank frames.
-`PresentationImagePreloader` fetches all referenced URLs concurrently before the render
-pass begins.
+両レンダラーはオプションで `GSlidesImageProvider` を受け取る。``PresentationImagePreloader/provider(for:)`` で構築したプロバイダーを渡すと、`image` 要素と `sheetsChart` 要素がすべて同期的に描画される。省略すると `AsyncImage` が使われ、エクスポートスナップショット時に空白フレームになる可能性がある。`PresentationImagePreloader` はレンダリングパスが始まる前に参照されているすべての URL を並行してフェッチする。
 
 ```swift
 import GSlidesExport
 
-// Preload images, then export to PDF
+// 画像をプリロードしてから PDF にエクスポートする
 let provider = await PresentationImagePreloader.provider(for: presentation)
 let pdfURL = try await MainActor.run {
     try PresentationPDFRenderer.pdfFile(
@@ -44,7 +31,7 @@ let pdfURL = try await MainActor.run {
     )
 }
 
-// Or export each slide as PNG
+// またはスライドごとに PNG としてエクスポートする
 let pngFiles = await MainActor.run {
     PresentationImageRenderer.pngData(presentation, imageProvider: provider)
 }
@@ -52,7 +39,7 @@ let pngFiles = await MainActor.run {
 
 ## Topics
 
-### Preloading
+### プリロード
 
 - ``PresentationImagePreloader``
 
@@ -60,6 +47,6 @@ let pngFiles = await MainActor.run {
 
 - ``PresentationPDFRenderer``
 
-### Images
+### 画像
 
 - ``PresentationImageRenderer``

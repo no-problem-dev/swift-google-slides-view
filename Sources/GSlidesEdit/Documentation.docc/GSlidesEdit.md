@@ -1,40 +1,40 @@
 # ``GSlidesEdit``
 
-Local batchUpdate execution and validation for Google Slides presentations.
+Google Slides プレゼンテーションへのローカル batchUpdate 実行とバリデーション。
 
 ## Overview
 
-GSlidesEdit implements a pure, in-memory mirror of the Slides API's `batchUpdate` endpoint.
-It applies the official `Request` vocabulary (from GSlidesRequests) to a ``GSlidesSchema/Presentation``
-without making any network calls — the same types the wire speaks, executed locally.
+GSlidesEdit は Slides API の `batchUpdate` エンドポイントを純粋なインメモリで再現する。ネットワーク呼び出しなしで、ワイヤーと同じ型（GSlidesRequests 由来の公式 `Request` ボキャブラリー）を ``GSlidesSchema/Presentation`` に適用する。
 
-The library enforces the same atomicity guarantee as the real API: **if any request in the batch
-is invalid, nothing is applied** and a ``BatchUpdateError`` is thrown listing every
-``FieldViolation`` so the caller (or an LLM agent) can fix them all in one pass.
+本家 API と同じアトミシティ保証を強制する。**バッチ内のいずれかのリクエストが不正であれば何も適用されず**、``BatchUpdateError`` が throw される。エラーには発見されたすべての ``FieldViolation`` が含まれるため、呼び出し側（または LLM エージェント）は 1 パスで全問題を修正できる。
 
-### Edit lifecycle
+### 編集ライフサイクル
 
-1. **Decode** — ``GSlidesEditContract/decode(_:)`` parses model output into `[Request]`.
-2. **Preflight** — ``PreflightValidator`` collects all violations up front (objectId existence,
-   page bounds, enum correctness, field-mask syntax).
-3. **Apply** — ``GSlidesSchema/Presentation/applying(_:)`` executes the validated batch atomically.
+1. **デコード** — ``GSlidesEditContract/decode(_:)`` がモデル出力を `[Request]` へパースする。
+2. **Preflight** — ``PreflightValidator`` がすべての違反を事前に収集する（objectId 存在確認・ページ境界・enum 正当性・フィールドマスク構文）。
+3. **適用** — ``GSlidesSchema/Presentation/applying(_:)`` がバリデーション済みバッチをアトミックに実行する。
 
-Use ``GSlidesEditContract`` as the single entry point; it composes the three steps and generates
-the JSON Schema + worked examples to teach an LLM the correct request shape.
+``GSlidesEditContract`` を唯一のエントリーポイントとして使う。3 ステップを合成し、LLM に正しいリクエスト形状を教えるための JSON Schema とワーク済み例も生成する。
 
 ## Topics
 
-### Entry point
+### エントリーポイント
 
 - ``GSlidesEditContract``
 
-### Execution
+### 実行
 
 - ``GSlidesEditor``
 
-### Validation
+### バリデーション
 
 - ``PreflightValidator``
 - ``FieldViolation``
 - ``ViolationReason``
 - ``BatchUpdateError``
+
+### インスペクション
+
+- ``GSlidesPresentationInspector``
+- ``PresentationElementDescriptor``
+- ``PresentationSnapshot``

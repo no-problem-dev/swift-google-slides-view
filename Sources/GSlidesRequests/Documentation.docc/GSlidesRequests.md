@@ -1,27 +1,25 @@
 # ``GSlidesRequests``
 
-Generated Swift types for the Google Slides API `batchUpdate` request vocabulary.
+Google Slides API `batchUpdate` リクエスト語彙の生成済み Swift 型。
 
 ## Overview
 
-GSlidesRequests provides the complete set of `Codable` request types that mirror the
-[Slides API discovery document](https://slides.googleapis.com/$discovery/rest?version=v1).
-Every type is generated from the discovery schema, so the Swift vocabulary can never
-drift from the wire protocol.
+GSlidesRequests は、[Slides API discovery document](https://slides.googleapis.com/$discovery/rest?version=v1) をミラーした `Codable` リクエスト型の完全なセットを提供する。
+すべての型が discovery スキーマから生成されるため、Swift の語彙がワイヤープロトコルから乖離することはない。
 
-The top-level entry points are ``BatchUpdatePresentationRequest`` (the envelope the API
-receives) and ``Request`` (the tagged union that wraps exactly one operation per element
-of the `requests` array). ``Request`` exposes one optional field per operation kind;
-`GSlidesEdit` and `GSlidesAssembly` use it as their interchange format.
+トップレベルのエントリポイントは ``BatchUpdatePresentationRequest``（API が受け取るエンベロープ）と
+``Request``（`requests` 配列の各要素で正確に 1 つのオペレーションをラップするタグ付きユニオン）。
+``Request`` はオペレーション種別ごとに 1 つの optional フィールドを公開し、
+`GSlidesEdit` と `GSlidesAssembly` がインターチェンジフォーマットとして使用する。
 
-Enum-like fields (line categories, shape types, replace methods, z-order operations, etc.)
-are modelled as open-ended ``GSlidesSchema/SpecEnum`` structs — not Swift enums — so future
-API values decode losslessly without a library update.
+enum ライクなフィールド（ライン種別・シェイプ種別・置換方式・Z オーダーオペレーションなど）は
+オープンエンドな ``GSlidesSchema/SpecEnum`` 構造体でモデル化されており、Swift の enum ではない —
+将来の API 値もライブラリ更新なしにロスレスでデコードできる。
 
 ```swift
 import GSlidesRequests
 
-// Build a batchUpdate that inserts text into a shape
+// シェイプにテキストを挿入する batchUpdate を構築する
 let batch = BatchUpdatePresentationRequest(requests: [
     Request(insertText: InsertTextRequest(
         objectId: "my-shape-id",
@@ -33,12 +31,12 @@ let batch = BatchUpdatePresentationRequest(requests: [
 
 ## Topics
 
-### Batch container
+### バッチコンテナ
 
 - ``BatchUpdatePresentationRequest``
 - ``Request``
 
-### Slide operations
+### スライドオペレーション
 
 - ``CreateSlideRequest``
 - ``DeleteObjectRequest``
@@ -46,7 +44,7 @@ let batch = BatchUpdatePresentationRequest(requests: [
 - ``UpdateSlidesPositionRequest``
 - ``UpdatePagePropertiesRequest``
 
-### Shape and text
+### シェイプとテキスト
 
 - ``CreateShapeRequest``
 - ``InsertTextRequest``
@@ -57,7 +55,7 @@ let batch = BatchUpdatePresentationRequest(requests: [
 - ``CreateParagraphBulletsRequest``
 - ``DeleteParagraphBulletsRequest``
 
-### Image and media
+### 画像とメディア
 
 - ``CreateImageRequest``
 - ``CreateVideoRequest``
@@ -67,7 +65,7 @@ let batch = BatchUpdatePresentationRequest(requests: [
 - ``ReplaceAllShapesWithSheetsChartRequest``
 - ``RefreshSheetsChartRequest``
 
-### Geometry and properties
+### ジオメトリとプロパティ
 
 - ``UpdatePageElementTransformRequest``
 - ``UpdateShapePropertiesRequest``
@@ -78,7 +76,7 @@ let batch = BatchUpdatePresentationRequest(requests: [
 - ``UpdatePageElementAltTextRequest``
 - ``UpdatePageElementsZOrderRequest``
 
-### Table operations
+### テーブルオペレーション
 
 - ``CreateTableRequest``
 - ``InsertTableRowsRequest``
@@ -92,7 +90,7 @@ let batch = BatchUpdatePresentationRequest(requests: [
 - ``UpdateTableColumnPropertiesRequest``
 - ``UpdateTableRowPropertiesRequest``
 
-### Grouping
+### グルーピング
 
 - ``GroupObjectsRequest``
 - ``UngroupObjectsRequest``

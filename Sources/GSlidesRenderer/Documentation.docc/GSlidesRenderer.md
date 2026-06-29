@@ -1,40 +1,33 @@
 # ``GSlidesRenderer``
 
-SwiftUI views that render Google Slides presentations on iOS and macOS.
+iOS および macOS で Google Slides プレゼンテーションをレンダリングする SwiftUI ビュー群。
 
 ## Overview
 
-GSlidesRenderer turns a `Presentation` (from GSlidesSchema) into native SwiftUI views. Each slide is
-rendered on a fixed-aspect 16:9 canvas in EMU page coordinates; elements with explicit geometry
-are placed absolutely, while semantic-tier elements without geometry fall back to a
-layout-name-aware stack.
+GSlidesRenderer は `Presentation`（GSlidesSchema 由来）をネイティブ SwiftUI ビューへ変換する。各スライドは EMU ページ座標系の固定アスペクト 16:9 キャンバスにレンダリングされる。明示的なジオメトリ（size + transform）を持つ要素は絶対配置し、ジオメトリを持たないセマンティック層要素はレイアウト名に応じたスタック配置にフォールバックする。
 
-Colors come from the presentation's theme: the master/layout/slide `ColorScheme` is projected
-onto the design system's `ColorPalette` via ``PresentationColorPalette``, so both slide content
-and any DS chrome share the same `@Environment(\.colorPalette)`.
+カラーはプレゼンテーションのテーマから取得する。master/layout/slide の `ColorScheme` を ``PresentationColorPalette`` 経由でデザインシステムの `ColorPalette` へ射影するため、スライドコンテンツと DS クロームの両方が同じ `@Environment(\.colorPalette)` を共有する。
 
-Image loading is pluggable via ``GSlidesImageProvider``: supply one built by
-`PresentationImagePreloader` (from GSlidesExport) for synchronous export, or omit it to fall back to
-`AsyncImage` for live rendering.
+画像読み込みは ``GSlidesImageProvider`` で差し替え可能。エクスポート時は `PresentationImagePreloader`（GSlidesExport）が構築したプロバイダーを渡して同期描画を保証し、省略時はライブレンダリング用として `AsyncImage` にフォールバックする。
 
 ## Topics
 
-### Slide views
+### スライドビュー
 
 - ``GSlidesSlideView``
 - ``GSlidesPresentationView``
 
-### Navigation views
+### ナビゲーションビュー
 
 - ``GSlidesCarouselView``
 - ``GSlidesStackView``
 - ``GSlidesFullScreenView``
 
-### Theming
+### テーマ
 
 - ``PresentationTheme``
 - ``PresentationColorPalette``
 
-### Image loading
+### 画像読み込み
 
 - ``GSlidesImageProvider``

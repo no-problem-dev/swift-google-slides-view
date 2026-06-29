@@ -1,13 +1,13 @@
 import Foundation
 
-/// Google's `update*` requests carry a `fields` mask (comma-separated dotted paths, or `*`) naming
-/// exactly which fields of the patch to apply; a path present in the mask but absent in the patch
-/// resets that field. We honor this generically by merging at the JSON-object level: any Codable
-/// patch + base + mask → a new value. One implementation covers every update request (text style,
-/// shape/​image/line properties, page properties…), so the reducer never hand-rolls per-field copies.
+/// Google の `update*` リクエストは `fields` マスク（カンマ区切りドットパスまたは `*`）を持ち、
+/// パッチのどのフィールドを適用するかを正確に指定する。マスクにあってパッチにないパスはそのフィールドをリセットする。
+/// JSON オブジェクトレベルでマージすることで汎用的に実装する：任意の `Codable` パッチ＋ベース＋マスク → 新しい値。
+/// 1 つの実装がすべての更新リクエスト（テキストスタイル・シェイプ / 画像 / ライン・ページプロパティなど）をカバーし、
+/// リデューサーがフィールドごとのコピーを手書きする必要がない。
 enum FieldMask {
-    /// Merge `patch` into `base` for the paths named by `fields`. `*` (or a path list containing it)
-    /// replaces wholesale. A masked path missing from `patch` is removed from the result (reset).
+    /// `fields` で指定されたパスについて `patch` を `base` にマージする。`*`（またはそれを含むパスリスト）は
+    /// 全置換する。マスクにあってパッチにないパスは結果から削除される（リセット）。
     static func merge<T: Codable>(base: T?, patch: T, fields: String, as type: T.Type = T.self) throws -> T {
         let listed = fields
             .split(separator: ",")

@@ -3,10 +3,10 @@ import GSlidesEdit
 import GSlidesRequests
 import GSlidesSchema
 
-/// Transport-agnostic chunk primitive. Adapters (e.g. GSlidesA2A) map their
-/// protocol's stream events onto this — the reducer never sees protocol types.
+/// トランスポート非依存のチャンクプリミティブ。アダプタ（例: GSlidesA2A）が
+/// プロトコルのストリームイベントをこれにマップし、リデューサーはプロトコル型を見ない。
 public struct GSlidesChunk: Equatable, Sendable {
-    /// What the payload carries — the three presentation-stream shapes.
+    /// ペイロードの内容 — プレゼンテーションストリームの 3 つの形状。
     public enum Kind: String, Equatable, Sendable {
         case envelope     // a full `Presentation` — replaces the state
         case slide        // a single `Page` — appended to `slides`
@@ -17,7 +17,7 @@ public struct GSlidesChunk: Equatable, Sendable {
     public var kind: Kind
     public var lastChunk: Bool
 
-    /// Wire append-semantics: a chunk builds on prior state unless it's a full envelope.
+    /// ワイヤーの追記セマンティクス：完全なエンベロープでない限り、チャンクは先行状態の上に積み上がる。
     public var append: Bool { kind != .envelope }
 
     public init(payload: Data, kind: Kind = .envelope, lastChunk: Bool = false) {
@@ -26,7 +26,7 @@ public struct GSlidesChunk: Equatable, Sendable {
         self.lastChunk = lastChunk
     }
 
-    /// Back-compat: `append == false` → envelope, `append == true` → slide.
+    /// 後方互換: `append == false` → envelope、`append == true` → slide。
     public init(payload: Data, append: Bool, lastChunk: Bool = false) {
         self.init(payload: payload, kind: append ? .slide : .envelope, lastChunk: lastChunk)
     }
@@ -37,14 +37,14 @@ public enum GSlidesAssemblyError: Error, Hashable {
     case chunkAfterCompletion
 }
 
-/// Pure reducer over chunk sequences:
-/// - `.envelope`: payload is a full `Presentation` — replaces the state.
-/// - `.slide`: payload is a single `Page` — appended to `slides`. A slide before any
-///   envelope creates an implicit empty presentation, so slide-led streams still assemble.
-/// - `.batchUpdate`: payload is a `BatchUpdatePresentationRequest` — applied to the current
-///   state via the local reducer (element-level live edits without resending the presentation).
-/// - `lastChunk == true`: completes the stream; further chunks are an error.
-/// A throwing apply leaves the state unchanged.
+/// チャンクシーケンスに対する純粋リデューサ：
+/// - `.envelope`：ペイロードは完全な `Presentation` — 状態を置き換える。
+/// - `.slide`：ペイロードは単一の `Page` — `slides` に追記する。エンベロープより前のスライドは
+///   暗黙の空プレゼンテーションを作成するため、スライド先行ストリームでもアセンブル可能。
+/// - `.batchUpdate`：ペイロードは `BatchUpdatePresentationRequest` — ローカルリデューサ経由で
+///   現在の状態に適用する（プレゼンテーション再送なしの要素レベルライブ編集）。
+/// - `lastChunk == true`：ストリームを完了する。以降のチャンクはエラー。
+/// スローする apply は状態を変更しないまま返す。
 public struct GSlidesAssembler: Equatable, Sendable {
     public private(set) var presentation: Presentation?
     public private(set) var isComplete: Bool

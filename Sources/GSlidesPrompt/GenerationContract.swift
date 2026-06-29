@@ -8,19 +8,19 @@ public enum GenerationContractError: Error, Hashable {
     case unknownLayout(String, allowed: [String])
 }
 
-/// Structured-output contract for slide generation, plus the receiving side of
-/// the validation sandwich: never trust provider-side schema enforcement alone.
+/// スライド生成用の構造化出力コントラクト。バリデーションサンドイッチの受信側も担う。
+/// プロバイダー側のスキーマ強制だけを信頼してはならない。
 public enum GSlidesGenerationContract {
-    /// Layout vocabulary offered to the model — the profile's predefined layouts
-    /// minus UNSPECIFIED (a model should always pick or omit).
+    /// モデルに提示するレイアウト語彙。プロファイルの定義済みレイアウトから
+    /// UNSPECIFIED を除いたもの（モデルは常に選択するか省略する）。
     public static var allowedLayouts: [String] {
         PredefinedLayout.knownValues
             .filter { $0 != .unspecified }
             .map(\.rawValue)
     }
 
-    /// JSON Schema for SemanticPresentation, single source: the layout enum is composed
-    /// from PredefinedLayout.knownValues so it can never drift from the model types.
+    /// SemanticPresentation の JSON Schema。単一の情報源: レイアウト enum は
+    /// PredefinedLayout.knownValues から構成されるため、モデル型からズレることがない。
     public static var jsonSchema: [String: Any] {
         [
             "type": "object",
@@ -172,7 +172,7 @@ public enum GSlidesGenerationContract {
         try JSONSerialization.data(withJSONObject: jsonSchema, options: [.sortedKeys])
     }
 
-    /// Validation sandwich, receiving side: strict decode + semantic checks.
+    /// バリデーションサンドイッチの受信側: 厳格なデコード + セマンティックチェック。
     public static func validate(_ data: Data) throws -> SemanticPresentation {
         let presentation: SemanticPresentation
         do {
@@ -189,9 +189,8 @@ public enum GSlidesGenerationContract {
         return presentation
     }
 
-    /// Validated end-to-end path: model output bytes → profile presentation, baked with `themeSpec`
-    /// (the design intent — default light). Theme is supplied separately (e.g. by
-    /// `GSlidesThemeContract`), never inferred from the content.
+    /// 検証済みのエンドツーエンドパス: モデル出力バイト → プロファイルプレゼンテーション（`themeSpec` で焼き込み済み）。
+    /// テーマはコンテンツから推論せず、個別に供給する（例: `GSlidesThemeContract` 経由。デフォルトはライト）。
     public static func presentation(from data: Data, themeSpec: ThemeSpec = .light) throws -> Presentation {
         PresentationExpander.expand(try validate(data), themeSpec: themeSpec)
     }

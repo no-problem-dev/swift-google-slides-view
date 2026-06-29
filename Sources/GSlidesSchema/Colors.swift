@@ -1,6 +1,5 @@
-/// A color in the Red-Green-Blue color space. All components are floats in the range 0.0–1.0
-/// as the Slides API specifies (not 0–255 integers). Unset components are treated as 0.
-/// Mirrors `google.apps.slides.v1.RgbColor`.
+/// RGB 色空間の色。Slides API の仕様に従い各成分は 0.0〜1.0 の浮動小数点数（0〜255 整数ではない）。
+/// 未設定の成分は 0 として扱う。`google.apps.slides.v1.RgbColor` のミラー。
 public struct RgbColor: Codable, Equatable, Sendable {
     public var red: Double?
     public var green: Double?
@@ -12,9 +11,9 @@ public struct RgbColor: Codable, Equatable, Sendable {
         self.blue = blue
     }
 
-    /// Build from a `#RRGGBB` / `RRGGBB` hex string. The Slides API stores each component as a float
-    /// "from 0.0 to 1.0" (discovery: `RgbColor.red/green/blue`), so each byte is divided by 255 — the
-    /// conversion the human-facing hex form requires. Returns nil for non-6-digit-hex input.
+    /// `#RRGGBB` または `RRGGBB` の hex 文字列から生成する。Slides API は各成分を「0.0〜1.0」の
+    /// 浮動小数点で保持するため（discovery: `RgbColor.red/green/blue`）、各バイトを 255 で除算する。
+    /// 6 桁の hex 以外の入力は nil を返す。
     public init?(hex: String) {
         var s = hex.trimmingCharacters(in: .whitespaces)
         if s.hasPrefix("#") { s.removeFirst() }
@@ -25,8 +24,8 @@ public struct RgbColor: Codable, Equatable, Sendable {
             blue: Double(value & 0xFF) / 255)
     }
 
-    /// Whether every set component lies in the API's documented 0.0–1.0 range. Unset components pass
-    /// (they're simply absent), matching the field-optional decoding model.
+    /// すべての設定済み成分が API 仕様の 0.0〜1.0 範囲内かどうか。
+    /// 未設定の成分はチェックをパスする（フィールド省略可能なデコードモデルと一致）。
     public var componentsInRange: Bool {
         [red, green, blue].allSatisfy { $0.map { (0.0...1.0).contains($0) } ?? true }
     }
@@ -62,10 +61,9 @@ public struct ThemeColorType: SpecEnum {
         ]
     }
 
-    /// The 12 ThemeColorTypes whose concrete colors are editable via the API, in discovery enum
-    /// order. Per the spec, ONLY these can be set, ONLY on a `Master` page, and ALL 12 must be
-    /// provided when updating a color scheme; the remaining four (TEXT1, BACKGROUND1, TEXT2,
-    /// BACKGROUND2) are ignored on update. (catalog: theme-color-scheme-editable)
+    /// API で編集可能な 12 の ThemeColorType — discovery enum 順。仕様上、設定できるのはこの 12 種のみ、
+    /// `Master` ページ上のみ、かつカラースキーム更新時は 12 種すべてを提供しなければならない。
+    /// 残り 4 種（TEXT1, BACKGROUND1, TEXT2, BACKGROUND2）は更新時に無視される。(catalog: theme-color-scheme-editable)
     public static var editableSlots: [Self] {
         [
             .dark1, .light1, .dark2, .light2,
@@ -74,14 +72,13 @@ public struct ThemeColorType: SpecEnum {
         ]
     }
 
-    /// Whether this slot's concrete color is editable via the API (one of the first 12).
+    /// このスロットの具体色が API で編集可能かどうか（先頭 12 種のうちの 1 つ）。
     public var isEditableSlot: Bool { Self.editableSlots.contains { $0.rawValue == rawValue } }
 }
 
-/// A fully opaque color that is either an explicit RGB value or a reference to a theme color
-/// slot. Theme colors resolve to the concrete RGB bound in the master's `ColorScheme` at render
-/// time, so the whole deck repaints when the master changes.
-/// Mirrors `google.apps.slides.v1.OpaqueColor`.
+/// 明示的な RGB 値またはテーマカラースロットへの参照を持つ完全不透明色。
+/// テーマカラーはレンダリング時にマスターの `ColorScheme` に束縛された具体 RGB に解決されるため、
+/// マスター変更でデッキ全体が再描画される。`google.apps.slides.v1.OpaqueColor` のミラー。
 public struct OpaqueColor: Codable, Equatable, Sendable {
     public var rgbColor: RgbColor?
     public var themeColor: ThemeColorType?
@@ -92,9 +89,8 @@ public struct OpaqueColor: Codable, Equatable, Sendable {
     }
 }
 
-/// A color that may be absent (transparent / no-op), wrapping an optional `OpaqueColor`.
-/// Used where the Slides API allows a paint to be explicitly cleared.
-/// Mirrors `google.apps.slides.v1.OptionalColor`.
+/// 存在しない場合がある色（透明 / no-op）。オプションの `OpaqueColor` をラップする。
+/// Slides API で描画を明示的にクリアできる箇所で使用する。`google.apps.slides.v1.OptionalColor` のミラー。
 public struct OptionalColor: Codable, Equatable, Sendable {
     public var opaqueColor: OpaqueColor?
 
@@ -103,9 +99,8 @@ public struct OptionalColor: Codable, Equatable, Sendable {
     }
 }
 
-/// A solid-color fill with optional opacity. `alpha` ranges from 0.0 (transparent) to 1.0
-/// (fully opaque); the Slides API default when `alpha` is absent is 1.0.
-/// Mirrors `google.apps.slides.v1.SolidFill`.
+/// 不透明度を指定できる単色塗りつぶし。`alpha` は 0.0（透明）〜 1.0（完全不透明）。
+/// `alpha` が省略された場合の Slides API デフォルトは 1.0。`google.apps.slides.v1.SolidFill` のミラー。
 public struct SolidFill: Codable, Equatable, Sendable {
     public var color: OpaqueColor?
     public var alpha: Double?

@@ -1,35 +1,35 @@
 import GSlidesSchema
 
-/// The design-system layer for slide geometry: a vertical-rhythm scale and a small, finite set of
-/// header treatments. The point is the same one `ThemeSpec` (color) and `PresentationTypography`
-/// (font) already make for their domains — express the *design* as swappable tokens/variants, not as
-/// magic numbers scattered across per-layout geometry. Consistency is enforced by construction: a
-/// content slide's header and body share one scale, so they cannot drift between layouts.
+/// スライドジオメトリのデザインシステム層。垂直リズムスケールと有限のヘッダー処理セットを持つ。
+/// `ThemeSpec`（カラー）と `PresentationTypography`（フォント）が各ドメインで実現しているのと同じ考え方で、
+/// *デザイン*を交換可能なトークン/バリアントとして表現し、レイアウトごとのジオメトリに散在するマジックナンバーを避ける。
+/// 一貫性は構造的に強制される。コンテンツスライドのヘッダーとボディは 1 つのスケールを共有するため、
+/// レイアウト間でズレが生じない。
 ///
-/// This layer sits *above* the Google Slides wire schema (`GSlidesSchema`) and only ever emits
-/// schema-conformant structures: the eyebrow/headline header is a single `TITLE` placeholder carrying
-/// two styled paragraphs (Slides' native text model) + a `ThemeColorType` role for the accent — never
-/// a bespoke element — so a generated deck round-trips to the real Slides API unchanged.
+/// この層は Google Slides ワイヤースキーマ（`GSlidesSchema`）の*上*に位置し、
+/// 常にスキーマ準拠の構造を出力する。アイブロウ/ヘッドラインヘッダーは 2 つのスタイル付きパラグラフを持つ
+/// 単一の `TITLE` プレースホルダー（Slides ネイティブのテキストモデル）+ アクセント用の `ThemeColorType` ロールで、
+/// 独自要素は使わない。生成したデッキは実際の Slides API にそのまま round-trip できる。
 public struct SpacingScale: Sendable, Equatable {
     // EMU on the standard 16:9 page (PresentationTemplate.pageW/H).
 
-    /// Top of the title box (page content margin).
+    /// タイトルボックスの上端（ページコンテンツマージン）。
     public var headerTop: Double
-    /// Title box height. Holds the eyebrow + headline paragraphs, top-aligned.
+    /// タイトルボックスの高さ。アイブロウ + ヘッドラインの段落を上端揃えで収める。
     public var headerHeight: Double
-    /// Gap from the title box to the body region.
+    /// タイトルボックスからボディ領域までのギャップ。
     public var headlineToBody: Double
 
-    /// Eyebrow (category kicker) point size — small relative to the headline.
+    /// アイブロウ（カテゴリキッカー）のポイントサイズ。ヘッドラインより小さい。
     public var eyebrowFontPt: Double
-    /// Space below the eyebrow paragraph (the eyebrow → headline gap), in points.
+    /// アイブロウパラグラフの下のスペース（アイブロウ → ヘッドライン間のギャップ）、ポイント単位。
     public var eyebrowGapPt: Double
 
-    /// Height of the content body region below the header.
+    /// ヘッダー下のコンテンツボディ領域の高さ。
     public var bodyHeight: Double
-    /// Gap between side-by-side columns (two-column layout, paired-comparison divider).
+    /// 横並びカラム間のギャップ（2 カラムレイアウト、並列比較の区切り）。
     public var columnGap: Double
-    /// Footer band: box inset from the page bottom edge, and the footer box height.
+    /// フッターバンド: ページ下端からのボックスインセット、およびフッターボックスの高さ。
     public var footerBottomInset: Double
     public var footerHeight: Double
 
@@ -55,11 +55,11 @@ public struct SpacingScale: Sendable, Equatable {
         self.footerHeight = footerHeight
     }
 
-    /// The y where the body region starts for a content slide — derived from the header, never
-    /// hand-placed, so header and body share one source of truth and stay in rhythm.
+    /// コンテンツスライドのボディ領域が始まる y 座標。ヘッダーから導出し、手動配置しない。
+    /// ヘッダーとボディが同一の真実源を共有し、リズムが保たれる。
     public var bodyTop: Double { headerTop + headerHeight + headlineToBody }
 
-    /// Default content-slide rhythm.
+    /// デフォルトのコンテンツスライドリズム。
     public static let content = SpacingScale(
         headerTop: 685_800,        // page margin (0.75")
         headerHeight: 840_000,
@@ -73,27 +73,27 @@ public struct SpacingScale: Sendable, Equatable {
     )
 }
 
-/// How a content slide's header (the title zone) is composed. A finite set — generation and rendering
-/// *choose* a variant, they never invent geometry. New looks are added as cases, not as new magic
-/// numbers, which is what keeps the system both swappable and consistent.
+/// コンテンツスライドのヘッダー（タイトルゾーン）の構成方法。有限のセット — 生成とレンダリングは
+/// バリアントを*選択*するだけで、ジオメトリを新たに作らない。新しい見た目はケースとして追加し、
+/// マジックナンバーを追加しない。これによりシステムが交換可能かつ一貫性を保つ。
 public enum HeaderStyle: Sendable, Equatable {
-    /// A small accent-colored category kicker above a large headline, realized as two paragraphs in
-    /// the title placeholder. Pairs with "ラベル：結論" titles: the label becomes the eyebrow, the
-    /// conclusion the headline. The accent lives as the eyebrow's color — no separate floating rule.
+    /// ヘッドラインの上に小さなアクセントカラーのカテゴリキッカーを置く構成。タイトルプレースホルダー内の
+    /// 2 つのパラグラフで実現する。「ラベル：結論」タイトルと組み合わせ、ラベルがアイブロウに、結論がヘッドラインになる。
+    /// アクセントはアイブロウのカラーとして表現 — 独立したフローティングルールは使わない。
     case eyebrowHeadline
-    /// A single headline, no eyebrow (the historical single-line title). Accent handled by decorations.
+    /// アイブロウなしの単一ヘッドライン（従来のシングルラインタイトル）。アクセントはデコレーションが処理する。
     case plain
 }
 
-/// The full design-system input for a deck's geometry + header treatment, bundled so a profile or
-/// theme can supply it the same way it already supplies color (`ThemeSpec`) and typography
-/// (`PresentationTypography`). The template/expander *receive* this and place accordingly — they never
-/// invent geometry, so swapping the scale or the header variant reskins every content slide at once
-/// while the consistency invariants (one scale → header and body can't drift) still hold by construction.
+/// デッキのジオメトリ + ヘッダー処理に対するデザインシステム入力の全体。カラー（`ThemeSpec`）と
+/// タイポグラフィ（`PresentationTypography`）を供給するのと同じ方法でプロファイルやテーマが提供できるよう
+/// まとめる。テンプレート/エクスパンダーはこれを*受け取り*、それに従って配置する。ジオメトリを発明しないため、
+/// スケールやヘッダーバリアントを交換するだけで全コンテンツスライドが一括で再スキンされる。
+/// 一貫性不変条件（1 スケール → ヘッダーとボディがズレない）は構造的に保証される。
 public struct SlideDesignSystem: Sendable, Equatable {
-    /// Vertical-rhythm tokens. Swap for a denser/looser deck.
+    /// 垂直リズムトークン。よりコンパクト/ゆとりのあるデッキに交換できる。
     public var scale: SpacingScale
-    /// How content-slide headers are composed. Swap for a different title treatment.
+    /// コンテンツスライドヘッダーの構成方法。異なるタイトル処理に交換できる。
     public var headerStyle: HeaderStyle
 
     public init(scale: SpacingScale = .content, headerStyle: HeaderStyle = .eyebrowHeadline) {
@@ -101,6 +101,6 @@ public struct SlideDesignSystem: Sendable, Equatable {
         self.headerStyle = headerStyle
     }
 
-    /// The default content-slide design system: the standard rhythm + eyebrow/headline header.
+    /// デフォルトのコンテンツスライドデザインシステム: 標準リズム + アイブロウ/ヘッドラインヘッダー。
     public static let standard = SlideDesignSystem()
 }

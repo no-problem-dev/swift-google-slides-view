@@ -2,9 +2,9 @@ import DesignSystem
 import GSlidesSchema
 import SwiftUI
 
-/// Resolves profile colors to SwiftUI colors against a presentation-derived DS palette.
-/// Theme colors resolve through the presentation's scheme (fidelity); everything is expressed
-/// on the same `PresentationColorPalette` the chrome uses.
+/// プロファイルカラーをプレゼンテーション由来の DS パレットに対して SwiftUI カラーに解決する。
+/// テーマカラーはプレゼンテーションのスキームを通じて解決し（忠実度を保つ）、
+/// クロームが使う `PresentationColorPalette` と同一のパレット上で全てを表現する。
 public struct GSlidesPalette: Sendable {
     public var presentation: PresentationColorPalette
 
@@ -29,12 +29,12 @@ public struct GSlidesPalette: Sendable {
         return presentation.resolve(fill.color).map { $0.opacity(fill.alpha ?? 1) }
     }
 
-    /// Default on-surface text color for the presentation.
+    /// プレゼンテーションのデフォルトの on-surface テキストカラー。
     public var defaultText: Color { presentation.onSurface }
 }
 
-/// Default typography for placeholder types — sourced from DS Typography tokens (point sizes)
-/// so the renderer's default scale matches the design system. Explicit presentation font sizes win.
+/// プレースホルダータイプのデフォルトタイポグラフィ。DS Typography トークン（ポイントサイズ）から取得し、
+/// レンダラーのデフォルトスケールをデザインシステムと一致させる。明示的なプレゼンテーションフォントサイズが優先される。
 enum PlaceholderTypography {
     static func defaultFontSize(for type: PlaceholderType?, big: Bool = false) -> Double {
         let token: Typography = switch type {

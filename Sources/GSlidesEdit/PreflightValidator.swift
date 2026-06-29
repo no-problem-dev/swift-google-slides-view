@@ -2,21 +2,20 @@ import Foundation
 import GSlidesRequests
 import GSlidesSchema
 
-/// Validates a batch of official `Request`s against the current `Presentation` BEFORE anything is
-/// applied — the local mirror of the server-side check the discovery doc describes ("Each request
-/// is validated before being applied. If any request is not valid, then the entire request will
-/// fail and nothing will be applied", catalog: batch-atomicity).
+/// 何かが適用される前に公式 `Request` のバッチを現在の `Presentation` に対して検証する —
+/// discovery doc が記述するサーバーサイドチェックのローカルミラー（「各リクエストは適用前に
+/// 検証される。いずれかのリクエストが無効な場合、リクエスト全体が失敗し何も適用されない」、catalog: batch-atomicity）。
 ///
-/// It is a pure function returning EVERY violation it finds (not throwing on the first), so an agent
-/// gets the full list in one pass and can fix the whole batch before re-submitting — turning what
-/// would be N rejected server round-trips into one local verdict. The rules are grounded in
-/// `Resources/Spec/constraints-catalog.yaml`; each check names the catalog id it enforces.
+/// 見つかったすべてのバイオレーションを返す純粋関数（最初のバイオレーションでスローしない）なので、
+/// エージェントは 1 パスで全リストを取得し、再送前にバッチ全体を修正できる —
+/// N 回のサーバー往復拒否を 1 回のローカル判定に変換する。ルールは
+/// `Resources/Spec/constraints-catalog.yaml` を根拠とし、各チェックが強制するカタログ ID を名付ける。
 public enum PreflightValidator {
-    /// Optional thresholds for the Tier-B (caller-enforced) checks the API itself doesn't perform.
+    /// API 自体は実行しない Tier-B（呼び出し元強制）チェックのオプションのしきい値。
     public struct Policy: Sendable {
-        /// Reject a transform that would leave the element entirely off the slide. (catalog: page-bounds)
+        /// 要素をスライド完全外に移動させるトランスフォームを拒否する。(catalog: page-bounds)
         public var rejectOffPage: Bool
-        /// Reject a transform whose scaleX or scaleY is exactly 0. (catalog: degenerate-transform)
+        /// scaleX または scaleY が正確に 0 のトランスフォームを拒否する。(catalog: degenerate-transform)
         public var rejectDegenerateScale: Bool
 
         public init(rejectOffPage: Bool = true, rejectDegenerateScale: Bool = true) {
@@ -27,7 +26,7 @@ public enum PreflightValidator {
         public static let `default` = Policy()
     }
 
-    /// Every field violation in `requests`, in batch order. Empty means the batch is safe to apply.
+    /// `requests` 内のすべてのフィールドバイオレーション（バッチ順）。空なら適用しても安全。
     public static func violations(
         in requests: [Request],
         against presentation: Presentation,
@@ -183,8 +182,7 @@ public enum PreflightValidator {
         return [v.notFound(id, kind: allowSlide ? "page element or slide" : "page element")]
     }
 
-    /// A user-supplied new object ID: must match the format rule and not collide. (catalog:
-    /// object-id-format, object-id-uniqueness)
+    /// ユーザー指定の新規オブジェクト ID：フォーマット規則に合致し衝突しないこと。(catalog: object-id-format, object-id-uniqueness)
     static func newIdViolations(_ id: String, at path: String, index: PresentationIndex) -> [FieldViolation] {
         var out: [FieldViolation] = []
         if !GSlidesSpec.ObjectId.isValid(id) {
@@ -200,7 +198,7 @@ public enum PreflightValidator {
         return out
     }
 
-    /// An enum field that decoded to a value the discovery doc doesn't define. (catalog: enum-values-closed)
+    /// discovery doc が定義しない値にデコードされた enum フィールド。(catalog: enum-values-closed)
     static func enumViolation<E: SpecEnum>(_ value: E?, _ path: String) -> [FieldViolation] {
         guard let value, !value.isKnown else { return [] }
         return [FieldViolation(field: path,
@@ -209,8 +207,8 @@ public enum PreflightValidator {
             reason: .unknownEnumValue)]
     }
 
-    /// `fields` mask well-formedness. (catalog: field-mask-semantics) — empty mask is allowed (the
-    /// reducer infers it from the patch's keys); `*` must stand alone; no empty path tokens.
+    /// `fields` マスクの整形式検査。(catalog: field-mask-semantics) — 空マスクは許可（リデューサーが
+    /// パッチのキーから推論）；`*` は単独でなければならない；空のパストークンは不可。
     static func fieldMaskViolations(_ fields: String?, at path: String) -> [FieldViolation] {
         guard let fields, !fields.isEmpty else { return [] }
         let tokens = fields.split(separator: ",", omittingEmptySubsequences: false)
@@ -227,8 +225,8 @@ public enum PreflightValidator {
         return []
     }
 
-    /// A text range that is inverted or negative. (lengths aren't known here; the reducer clamps to
-    /// the actual text — preflight only rejects the structurally impossible.)
+    /// 反転または負のテキスト範囲。（長さはここでは不明；リデューサーが実際のテキストにクランプする —
+    /// preflight は構造的に不可能なものだけを拒否する。）
     static func rangeViolations(_ range: GSlidesRequests.Range?, at path: String) -> [FieldViolation] {
         guard let range else { return [] }
         let start = range.startIndex ?? 0
@@ -254,8 +252,8 @@ public enum PreflightValidator {
 
     // MARK: - Request introspection
 
-    /// The names of every sub-request actually set on `request` (the `kind` union members). Used to
-    /// enforce "exactly one". Data-driven so it never drifts from the 44-member union.
+    /// `request` に実際にセットされているすべてのサブリクエスト名（`kind` ユニオンメンバー）。
+    /// 「正確に 1 件」を強制するために使う。データ駆動なので 44 メンバーユニオンから乖離しない。
     static func setMemberNames(of request: Request) -> [String] {
         var names: [String] = []
         for child in Mirror(reflecting: request).children {
@@ -269,8 +267,7 @@ public enum PreflightValidator {
     }
 }
 
-/// A small helper to build request-relative field paths for one operation, e.g.
-/// `Field(op: "insertText").path("text")` → `"insertText.text"`.
+/// 1 オペレーションに対してリクエスト相対フィールドパスを構築する小さなヘルパー。例: `Field(op: "insertText").path("text")` → `"insertText.text"`。
 struct Field {
     let op: String
     func path(_ sub: String) -> String { "\(op).\(sub)" }

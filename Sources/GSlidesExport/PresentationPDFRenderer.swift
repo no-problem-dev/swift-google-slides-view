@@ -4,14 +4,14 @@ import GSlidesRenderer
 import GSlidesSchema
 import SwiftUI
 
-/// Exports a `Presentation` to PDF — one slide per page — using `ImageRenderer` to draw each
-/// `GSlidesSlideView` into a PDF-page `CGContext`. Pure (no UIKit), so it runs on the CLI for tests.
+/// `Presentation` を PDF にエクスポートする — スライド 1 枚が 1 ページ — `ImageRenderer` を使って
+/// 各 `GSlidesSlideView` を PDF ページの `CGContext` に描画する。UIKit 不使用のため CLI のテストでも動作する。
 ///
-/// Pass an `imageProvider` (preloaded images) so pictures appear; `AsyncImage` would otherwise
-/// snapshot blank. Build one with `PresentationImagePreloader`.
+/// 画像を表示するには、プリロード済みの `imageProvider` を渡す（未渡しの場合 `AsyncImage` がブランクでスナップショットされる）。
+/// `PresentationImagePreloader` でビルドする。
 @MainActor
 public enum PresentationPDFRenderer {
-    /// Default page size in PostScript points for a 16:9 presentation (10in × 5.625in at 96dpi-ish scale).
+    /// 16:9 プレゼンテーションのデフォルトページサイズ（PostScript ポイント。10in × 5.625in、約 96dpi スケール）。
     public static let defaultPageSize = CGSize(width: 960, height: 540)
 
     public static func pdfData(
@@ -39,8 +39,8 @@ public enum PresentationPDFRenderer {
         return data as Data
     }
 
-    /// Writes the PDF to a temporary file and returns its URL (for `ShareLink` / `fileExporter`).
-    /// `filename` is sanitized; defaults to the presentation title.
+    /// PDF を一時ファイルに書き込み、そのURLを返す（`ShareLink` / `fileExporter` 用）。
+    /// `filename` はサニタイズされる。省略時はプレゼンテーションタイトルがデフォルト。
     public static func pdfFile(
         _ presentation: Presentation,
         filename: String? = nil,

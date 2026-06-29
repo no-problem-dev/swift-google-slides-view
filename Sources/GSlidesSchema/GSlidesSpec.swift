@@ -1,15 +1,15 @@
 import Foundation
 
-/// Vendored, pinned Google Slides API specification — the package's single source of truth.
+/// vendoring されたピン留め済み Google Slides API 仕様 — パッケージ全体の単一信頼情報源。
 ///
-/// `slides-api-discovery-v1.json` is the machine-readable discovery document (types + enums);
-/// `constraints-catalog.yaml` captures the prose-only constraints (objectId regex, atomicity,
-/// field masks, page-bounds) quoted verbatim from authoritative Google sources. Both are frozen
-/// here so the build is hermetic and validation is reproducible; `SpecProvenanceTests` fails if
-/// either drifts from the pinned revision. See `Resources/Spec/PROVENANCE.md`.
+/// `slides-api-discovery-v1.json` は型と enum を含む機械可読 discovery document；
+/// `constraints-catalog.yaml` は objectId 正規表現・アトミシティ・フィールドマスク・ページ境界など
+/// 散文のみの制約を権威あるソースから逐語引用する。ビルドの再現性とバリデーションの一貫性を保証するため
+/// 両ファイルはここに凍結される。どちらかがピン留めリビジョンと乖離すると `SpecProvenanceTests` が失敗する。
+/// 詳細は `Resources/Spec/PROVENANCE.md` を参照。
 public enum GSlidesSpec {
-    /// The discovery `revision` this build is pinned to. Bumped only by a human after running
-    /// `scripts/fetch-discovery.sh` and reconciling `SpecProvenanceTests`.
+    /// このビルドがピン留めする discovery `revision`。`scripts/fetch-discovery.sh` を実行し
+    /// `SpecProvenanceTests` と照合した後、人間が手動で更新する。
     public static let pinnedRevision = "20260601"
 
     public static var discoveryDocumentURL: URL {
@@ -28,18 +28,18 @@ public enum GSlidesSpec {
         String(decoding: try Data(contentsOf: constraintsCatalogURL), as: UTF8.self)
     }
 
-    /// The user-supplied object ID rules, lifted verbatim from the discovery doc's
-    /// `CreateShapeRequest.objectId` prose (see `constraints-catalog.yaml`, id `object-id-format`).
-    /// This is the bridge from the frozen prose to the code that enforces it — kept in one place so
-    /// the validator never re-states the rule from memory. `SpecProvenanceTests` asserts the
-    /// discovery doc still carries this exact prose.
+    /// ユーザー指定のオブジェクト ID 規則 — discovery doc の `CreateShapeRequest.objectId`
+    /// 散文から逐語引用（`constraints-catalog.yaml` id `object-id-format` 参照）。
+    /// 凍結された散文とそれを強制するコードの橋渡しであり、バリデーターが規則を記憶から
+    /// 再記述しないよう一箇所に保持する。`SpecProvenanceTests` が discovery doc に
+    /// 完全一致する散文を保持しているか確認する。
     public enum ObjectId {
         public static let minLength = 5
         public static let maxLength = 50
-        /// Anchored regex: first char `[a-zA-Z0-9_]`, remaining `[a-zA-Z0-9_-:]`, total length 5–50.
+        /// アンカー付き正規表現: 先頭 `[a-zA-Z0-9_]`、残り `[a-zA-Z0-9_:-]`、合計長 5〜50。
         public static let pattern = "^[a-zA-Z0-9_][a-zA-Z0-9_:-]{4,49}$"
 
-        /// Whether `id` satisfies the API's documented object-ID format (length + charset).
+        /// `id` が API 仕様のオブジェクト ID フォーマット（長さ＋文字セット）を満たすか。
         public static func isValid(_ id: String) -> Bool {
             guard id.count >= minLength, id.count <= maxLength else { return false }
             guard let first = id.first, first == "_" || first.isASCII && first.isLetter || first.isNumber

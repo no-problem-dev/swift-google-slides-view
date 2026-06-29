@@ -8,8 +8,8 @@ extension RgbColor {
     }
 }
 
-/// Resolves the effective theme color scheme for a page, following the
-/// slide → layout → master inheritance the Slides API defines.
+/// Slides API が定義する slide → layout → master 継承に従い、
+/// ページの有効なテーマカラースキームを解決する。
 public enum PresentationTheme {
     public static func colorScheme(for page: Page, in presentation: Presentation) -> GSlidesSchema.ColorScheme? {
         if let own = page.pageProperties?.colorScheme, own.colors?.isEmpty == false { return own }
@@ -27,7 +27,7 @@ public enum PresentationTheme {
         return presentation.masters?.first?.pageProperties?.colorScheme
     }
 
-    /// The effective page background fill, following slide → layout inheritance.
+    /// slide → layout 継承に従った有効なページ背景フィル。
     public static func backgroundFill(for page: Page, in presentation: Presentation) -> PageBackgroundFill? {
         page.pageProperties?.pageBackgroundFill ?? layoutBackground(for: page, in: presentation)
     }
@@ -48,12 +48,12 @@ public enum PresentationTheme {
     }
 }
 
-/// A DS `ColorPalette` synthesized from the presentation's color scheme.
+/// プレゼンテーションのカラースキームから合成した DS `ColorPalette`。
 ///
-/// This is how "render with the presentation's real theme" and "drive everything through the design
-/// system" become the same thing: the presentation's ACCENT1/TEXT1/BACKGROUND1 fill the DS semantic
-/// slots (primary/onSurface/background…). Slide content and chrome then read one palette via
-/// `@Environment(\.colorPalette)`. Slots the presentation doesn't define fall back to `base`.
+/// 「プレゼンテーションの実際のテーマでレンダリングする」と「デザインシステムを通じて全てを駆動する」が
+/// 同じことになる仕組み。プレゼンテーションの ACCENT1/TEXT1/BACKGROUND1 が DS のセマンティックスロット
+/// （primary/onSurface/background…）を埋める。スライドコンテンツとクロームは
+/// `@Environment(\.colorPalette)` 経由で 1 つのパレットを読む。プレゼンテーションが定義しないスロットは `base` にフォールバックする。
 public struct PresentationColorPalette: ColorPalette {
     let scheme: GSlidesSchema.ColorScheme?
     let base: any ColorPalette
@@ -63,13 +63,13 @@ public struct PresentationColorPalette: ColorPalette {
         self.base = base
     }
 
-    /// The presentation's RGB binding for a theme color, if the scheme defines it.
+    /// スキームが定義している場合、テーマカラーに対するプレゼンテーションの RGB バインディング。
     public func themeColor(_ type: ThemeColorType) -> Color? {
         scheme?.rgb(for: type)?.color
     }
 
-    /// Resolve a profile `OpaqueColor` to a concrete color: explicit RGB wins, theme colors
-    /// resolve through the presentation scheme, otherwise map onto this palette's semantic slot.
+    /// プロファイルの `OpaqueColor` を具体的なカラーに解決する。明示的な RGB が優先。
+    /// テーマカラーはプレゼンテーションスキームを通じて解決し、それ以外はこのパレットのセマンティックスロットにマッピングする。
     public func resolve(_ opaque: OpaqueColor?) -> Color? {
         guard let opaque else { return nil }
         if let rgb = opaque.rgbColor { return rgb.color }
@@ -77,7 +77,7 @@ public struct PresentationColorPalette: ColorPalette {
         return themeColor(theme) ?? semanticSlot(for: theme)
     }
 
-    /// Fallback mapping when the presentation scheme lacks a theme color: use the nearest DS slot.
+    /// プレゼンテーションスキームにテーマカラーがない場合のフォールバックマッピング: 最も近い DS スロットを使用する。
     private func semanticSlot(for theme: ThemeColorType) -> Color {
         switch theme {
         case .accent1: primary

@@ -1581,10 +1581,10 @@ public struct TableBorderFill: Codable, Equatable, Sendable {
     }
 }
 
-/// Typed accessor over the `Request` oneof — mirrors `PageElement.Kind`: exactly one member is
-/// set. Generated from the discovery `Request` schema, so its case set EQUALS the wire protocol
-/// (a parity test pins it). Unknown/empty requests map to `.other` and still round-trip via the
-/// stored optional fields.
+/// `Request` oneof の型付きアクセサ — `PageElement.Kind` をミラーし、正確に 1 メンバーがセットされる。
+/// discovery `Request` スキーマから生成されるため、ケースセットはワイヤープロトコルと一致する
+/// （パリティテストがピン留め）。不明/空リクエストは `.other` にマップされ、
+/// 格納された optional フィールドを通じて往復できる。
 extension Request {
     public enum Kind: Equatable, Sendable {
         case createSlide(CreateSlideRequest)
@@ -1631,11 +1631,11 @@ extension Request {
         case updatePageElementsZOrder(UpdatePageElementsZOrderRequest)
         case updateLineCategory(UpdateLineCategoryRequest)
         case rerouteLine(RerouteLineRequest)
-        /// No member set (an empty request), or a kind newer than this generated mirror.
+        /// メンバーが未設定（空リクエスト）または生成済みミラーより新しい kind。
         case other
     }
 
-    /// The first set member as a typed case.
+    /// セットされている最初のメンバーを型付きケースとして返す。
     public var kind: Kind {
         if let r = createSlide { return .createSlide(r) }
         if let r = createShape { return .createShape(r) }

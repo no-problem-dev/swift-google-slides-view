@@ -6,14 +6,14 @@ import ImageIO
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Exports a `Presentation` to raster images (PNG) — each slide individually, or all stacked into
-/// one tall image for social posts. Like the PDF path, pass a preloaded `imageProvider`.
+/// `Presentation` をラスター画像（PNG）にエクスポートする — スライド個別、またはソーシャル投稿用に全スライドを縦に積んだ 1 枚。
+/// PDF パスと同様、プリロード済みの `imageProvider` を渡す。
 @MainActor
 public enum PresentationImageRenderer {
-    /// Default per-slide pixel size (1920×1080, i.e. the 16:9 page at scale 2 of 960×540).
+    /// スライドごとのデフォルトピクセルサイズ（1920×1080、つまり 960×540 の 16:9 ページをスケール 2 で出力）。
     public static let defaultPixelSize = CGSize(width: 1920, height: 1080)
 
-    /// One CGImage per slide.
+    /// スライドごとに 1 つの CGImage を返す。
     public static func slideImages(
         _ presentation: Presentation,
         pixelSize: CGSize = defaultPixelSize,
@@ -39,7 +39,7 @@ public enum PresentationImageRenderer {
         slideImages(presentation, pixelSize: pixelSize, imageProvider: imageProvider).compactMap(Self.png)
     }
 
-    /// All slides stacked vertically into one PNG (SNS-friendly single image).
+    /// 全スライドを縦に積んだ 1 枚の PNG（SNS 投稿に適した単一画像）。
     public static func stackedPNG(
         _ presentation: Presentation,
         pixelSize: CGSize = defaultPixelSize,

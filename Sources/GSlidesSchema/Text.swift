@@ -1,6 +1,6 @@
 public struct TextContent: Codable, Equatable, Sendable {
     public var textElements: [TextElement]?
-    /// Bulleted lists in this text, keyed by list ID (referenced by `Bullet.listId`).
+    /// このテキスト内の箇条書きリスト。リスト ID をキーとする（`Bullet.listId` から参照）。
     public var lists: [String: List]?
 
     public init(textElements: [TextElement]? = nil, lists: [String: List]? = nil) {
@@ -41,7 +41,7 @@ public struct AutoTextType: SpecEnum {
     public static var knownValues: [Self] { [.unspecified, .slideNumber] }
 }
 
-/// Dynamic text (e.g. slide number) resolved at render time.
+/// レンダリング時に解決される動的テキスト（スライド番号など）。
 public struct AutoText: Codable, Equatable, Sendable {
     public var type: AutoTextType?
     public var content: String?
@@ -54,7 +54,7 @@ public struct AutoText: Codable, Equatable, Sendable {
     }
 }
 
-/// A bulleted list's per-nesting-level styling, keyed by depth (0-based, as string keys).
+/// 箇条書きリストのネストレベルごとのスタイル。深さ（0 起算、文字列キー）でインデックスされる。
 public struct List: Codable, Equatable, Sendable {
     public var listId: String?
     public var nestingLevel: [String: NestingLevel]?

@@ -1,74 +1,46 @@
 # ``GSlidesSchema``
 
-The authoritative Swift mirror of the Google Slides API presentation model.
+Google Slides API プレゼンテーションモデルの権威ある Swift ミラー。
 
 ## Overview
 
-GSlidesSchema provides the foundational types that every other library in this package builds on.
-All field names and enum values mirror the [Slides API discovery document](https://slides.googleapis.com/$discovery/rest?version=v1)
-exactly — `EnumParityTests` and `SpecProvenanceTests` enforce this parity automatically so the
-mirror never drifts from the live spec.
+GSlidesSchema はこのパッケージ内の全ライブラリが依拠する基盤型を提供する。
+フィールド名と enum 値はすべて [Slides API discovery document](https://slides.googleapis.com/$discovery/rest?version=v1) と完全に一致する。
+`EnumParityTests` と `SpecProvenanceTests` がこのパリティを自動検証し、ミラーが仕様とずれないよう保証する。
 
-Types are modeled as open-ended `SpecEnum` structs (not Swift enums) so future API values decode
-losslessly. `knownValues` is tested against the pinned discovery document revision.
+型は Swift enum ではなくオープンエンドな `SpecEnum` 構造体として定義されているため、将来の API 値も損失なくデコードできる。`knownValues` はピン留めされた discovery document のリビジョンに対してテストされる。
 
-This library has **no UI or platform dependencies** and can be used from CLI, server, or test
-targets without importing SwiftUI or UIKit.
+このライブラリは **UI・プラットフォーム依存なし**。SwiftUI や UIKit をインポートせずに CLI・サーバー・テストターゲットから利用できる。
 
-### Package-wide module map
+### パッケージ全体のモジュール構成
 
-The full `swift-google-slides-view` package is organized into nine libraries, each with a
-focused responsibility. GSlidesSchema is the shared data layer that all of them depend on.
+`swift-google-slides-view` パッケージは 9 つのライブラリで構成され、各ライブラリが明確な責務を持つ。GSlidesSchema は全ライブラリが依存する共有データ層。
 
-**GSlidesLayout** translates the schema's EMU dimensions and predefined-layout vocabulary
-into renderable geometry. It resolves the Master → Layout → Slide placeholder inheritance
-chain (`PlaceholderResolver`), matches semantic slide content to the best-fit layout
-(`LayoutMatcher`), and encodes the entire deck design — placeholder rectangles, typography
-roles, color-theme tokens, and spacing scales — as data (`PresentationTemplate`,
-`SlideDesignSystem`, `ThemeSpec`).
+**GSlidesLayout** は、スキーマの EMU 寸法と predefined-layout ボキャブラリーをレンダリング可能なジオメトリへ変換する。Master → Layout → Slide のプレースホルダー継承チェーンを解決し（`PlaceholderResolver`）、セマンティックなスライドコンテンツを最適レイアウトへマッチングする（`LayoutMatcher`）。デッキ設計全体（プレースホルダー矩形・タイポグラフィロール・カラーテーマトークン・スペーシングスケール）もデータとして表現する（`PresentationTemplate`・`SlideDesignSystem`・`ThemeSpec`）。
 
-**GSlidesPrompt** is the LLM boundary. `GSlidesGenerationContract` injects a JSON Schema
-for the compact `SemanticPresentation` type into a system prompt and validates the model's
-output on the way back in. `GSlidesThemeContract` does the same for color-scheme generation.
-`PresentationExpander` converts a validated `SemanticPresentation` into a fully-assembled
-`Presentation` ready for rendering or export.
+**GSlidesPrompt** は LLM バウンダリー。`GSlidesGenerationContract` はコンパクトな `SemanticPresentation` 型の JSON Schema をシステムプロンプトに注入し、モデル出力を受け取る際にバリデーションを行う。`GSlidesThemeContract` もカラースキーム生成に同様の仕組みを提供する。`PresentationExpander` はバリデーション済みの `SemanticPresentation` を、レンダリングまたはエクスポートが可能な完全な `Presentation` へ展開する。
 
-**GSlidesRequests** contains the generated `Codable` request types that mirror the Slides
-API's `batchUpdate` vocabulary — `Request`, `CreateSlideRequest`, `InsertTextRequest`, and
-60-plus sibling types. These are the values `GSlidesEdit` executes locally and `GSlidesA2A`
-streams over the wire.
+**GSlidesRequests** は、Slides API の `batchUpdate` ボキャブラリーをミラーした Codable リクエスト型（`Request`・`CreateSlideRequest`・`InsertTextRequest` ほか 60 種以上）を含む。これらは `GSlidesEdit` がローカル実行し、`GSlidesA2A` がワイヤーでストリーミングする値。
 
-**GSlidesEdit** implements a pure in-memory `batchUpdate` executor with atomic, preflight-
-validated semantics — the same atomicity guarantee as the real API, without any network
-calls.
+**GSlidesEdit** は、純粋なインメモリ `batchUpdate` エグゼキューターをアトミック・preflight バリデーション付きで実装する。本家 API と同じアトミシティ保証をネットワーク呼び出しなしで提供する。
 
-**GSlidesAssembly** is a protocol-agnostic chunk reducer. It assembles a `Presentation`
-from a sequence of `GSlidesChunk` values (envelope / slide / batchUpdate), making streaming
-construction first-class.
+**GSlidesAssembly** はプロトコル非依存のチャンクリデューサー。`GSlidesChunk` 値の列（envelope / slide / batchUpdate）から `Presentation` を組み立て、ストリーミング構築をファーストクラスにする。
 
-**GSlidesA2A** bridges the A2A agent protocol to `GSlidesAssembly`. It encodes and decodes
-`TaskArtifactUpdateEvent` values so an A2A server can stream a presentation slide-by-slide
-to a client without inventing a custom wire format.
+**GSlidesA2A** は A2A エージェントプロトコルを `GSlidesAssembly` へブリッジする。`TaskArtifactUpdateEvent` 値をエンコード・デコードすることで、A2A サーバーがカスタムワイヤーフォーマットを発明せずにスライドを 1 枚ずつストリーミング配信できる。
 
-**GSlidesRenderer** turns a `Presentation` into native SwiftUI views. `GSlidesSlideView`
-renders a single slide on a fixed-aspect 16:9 canvas; navigation views (`GSlidesCarouselView`,
-`GSlidesStackView`, `GSlidesFullScreenView`) compose multiple slides into interactive
-browsing UIs.
+**GSlidesRenderer** は `Presentation` をネイティブ SwiftUI ビューへ変換する。`GSlidesSlideView` は 1 枚のスライドを固定アスペクト 16:9 キャンバスにレンダリングし、ナビゲーションビュー（`GSlidesCarouselView`・`GSlidesStackView`・`GSlidesFullScreenView`）で複数スライドをインタラクティブに閲覧できる。
 
-**GSlidesExport** converts a `Presentation` to files. `PresentationPDFRenderer` produces a
-multi-page PDF; `PresentationImageRenderer` produces per-slide PNG images or a single
-stacked PNG. `PresentationImagePreloader` preloads every image URL referenced in the
-presentation so the export renderers draw them synchronously.
+**GSlidesExport** は `Presentation` をファイルに変換する。`PresentationPDFRenderer` はマルチページ PDF を生成し、`PresentationImageRenderer` はスライドごとの PNG または縦長の結合 PNG を生成する。`PresentationImagePreloader` はエクスポート前にすべての画像 URL を並行してプリロードする。
 
 ## Topics
 
-### Presentation structure
+### プレゼンテーション構造
 
 - ``Presentation``
 - ``Page``
 - ``PageElement``
 
-### Colors and theme
+### カラーとテーマ
 
 - ``RgbColor``
 - ``ThemeColorType``
@@ -78,7 +50,7 @@ presentation so the export renderers draw them synchronously.
 - ``ColorScheme``
 - ``ThemeColorPair``
 
-### Layout and geometry
+### レイアウトと座標系
 
 - ``PredefinedLayout``
 - ``LayoutReference``
@@ -86,7 +58,7 @@ presentation so the export renderers draw them synchronously.
 - ``Dimension``
 - ``AffineTransform``
 
-### Text
+### テキスト
 
 - ``TextContent``
 - ``TextElement``
@@ -94,7 +66,7 @@ presentation so the export renderers draw them synchronously.
 - ``TextStyle``
 - ``ParagraphMarker``
 
-### API spec pinning
+### API 仕様の固定
 
 - ``GSlidesSpec``
 - ``SpecEnum``

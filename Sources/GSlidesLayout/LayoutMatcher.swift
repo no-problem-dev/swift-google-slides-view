@@ -1,7 +1,7 @@
 import GSlidesSchema
 
-/// Semantic slide content used for layout inference.
-/// Swift port of md2googleslides' SlideDefinition (the fields its matching rules read).
+/// レイアウト推論に使うスライドのセマンティック内容。
+/// md2googleslides の SlideDefinition を Swift に移植したもの（マッチングルールが読むフィールドのみ）。
 public struct SlideContent: Equatable, Sendable {
     public struct Text: Equatable, Sendable {
         public var rawText: String
@@ -46,9 +46,9 @@ public struct SlideContent: Equatable, Sendable {
     }
 }
 
-/// Content → predefined layout matching.
-/// Faithful port of md2googleslides src/layout/match_layout.ts (Apache-2.0, see NOTICE);
-/// rule order matters — first match wins.
+/// コンテンツ → 定義済みレイアウトのマッチング。
+/// md2googleslides src/layout/match_layout.ts を忠実に移植（Apache-2.0、NOTICE 参照）。
+/// ルール順序が重要 — 最初にマッチしたものが採用される。
 public enum LayoutMatcher {
     public static func match(_ slide: SlideContent) -> PredefinedLayout {
         if hasText(slide.title), hasText(slide.subtitle), !hasContent(slide) {
@@ -75,8 +75,8 @@ public enum LayoutMatcher {
         return .blank
     }
 
-    /// Resolves a layout reference, preferring an explicit custom layout
-    /// (matched by layoutProperties.displayName) over rule-based inference.
+    /// レイアウト参照を解決する。ルールベース推論より明示的なカスタムレイアウト
+    /// （layoutProperties.displayName で照合）を優先する。
     public static func reference(
         for slide: SlideContent,
         in presentation: Presentation? = nil

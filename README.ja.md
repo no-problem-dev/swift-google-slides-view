@@ -1,12 +1,12 @@
-English | [日本語](./README.ja.md)
+[English](./README.md) | 日本語
 
 # swift-google-slides-view
 
-Render Google Slides API presentation JSON in SwiftUI.
+Google Slides API の presentation JSON を SwiftUI でレンダリングする。
 
 Google Slides API の presentation スキーマ（のセマンティック・サブセット = プロファイル）に準拠した JSON を、SwiftUI で 16:9 スライドとしてレンダリングする Swift Package。LLM エージェントにスキーマ準拠 JSON を生成させ、A2A Artifact ストリーミングで 1 枚ずつ配信する用途を主眼に設計しているが、スキーマとレンダラ自体は LLM にも A2A にも依存しない。
 
-> This project is not affiliated with, endorsed by, or sponsored by Google. "Google Slides" is a trademark of Google LLC. The schema vocabulary follows the publicly documented [Google Slides API](https://developers.google.com/slides/api) discovery document.
+> このプロジェクトは Google と提携・推薦・後援のいずれとも関係しない。「Google Slides」は Google LLC の商標である。スキーマ語彙は公開されている [Google Slides API](https://developers.google.com/slides/api) discovery document に準拠する。
 
 ## 設計原則
 
@@ -84,6 +84,6 @@ dependencies: [
 - [x] M6 GSlidesRenderer: CLI ImageRenderer スモーク + スナップショットダンプ
 - [ ] M7 デモ統合（A2AResearchDemo content 層）
 
-## License
+## ライセンス
 
-MIT. Vendored assets and ported test rules from [md2googleslides](https://github.com/googleworkspace/md2googleslides) (Apache-2.0) — see [NOTICE](NOTICE).
+MIT。[md2googleslides](https://github.com/googleworkspace/md2googleslides)（Apache-2.0）のテストルールを移植した vendored アセットを含む — [NOTICE](NOTICE) 参照。

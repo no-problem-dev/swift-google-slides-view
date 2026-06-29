@@ -1,15 +1,15 @@
 import CoreGraphics
 import GSlidesSchema
 
-/// English Metric Unit constants used by the Slides API for all length values.
-/// 914,400 EMU = 1 inch; 12,700 EMU = 1 point.
+/// Slides API が全長さ値に使う English Metric Unit 定数。
+/// 914,400 EMU = 1 インチ、12,700 EMU = 1 ポイント。
 public enum EMU {
-    /// EMU per inch (1 inch = 914,400 EMU).
+    /// 1 インチあたりの EMU（1 in = 914,400 EMU）。
     public static let perInch: Double = 914_400
-    /// EMU per typographic point (1 pt = 12,700 EMU).
+    /// 1 タイポグラフィポイントあたりの EMU（1 pt = 12,700 EMU）。
     public static let perPoint: Double = 12_700
 
-    /// Standard 16:9 page (10in × 5.625in).
+    /// 標準 16:9 ページ（10 in × 5.625 in）。
     public static let defaultPageSize = Size(
         width: Dimension(magnitude: 9_144_000, unit: .emu),
         height: Dimension(magnitude: 5_143_500, unit: .emu)
@@ -17,7 +17,7 @@ public enum EMU {
 }
 
 extension Dimension {
-    /// Magnitude normalized to EMU (PT values are converted, EMU passes through).
+    /// EMU に正規化した magnitude（PT 値は変換、EMU はそのまま通過）。
     public var emuMagnitude: Double? {
         guard let magnitude else { return nil }
         switch unit {
@@ -32,8 +32,8 @@ extension Dimension {
 }
 
 public enum PageGeometry {
-    /// Element frame in EMU page coordinates: translate + scale applied to the base size
-    /// (shear is out of profile and ignored).
+    /// 要素の EMU ページ座標フレーム: ベースサイズに translate + scale を適用した値
+    /// （シアーはプロファイル外のため無視する）。
     public static func frame(of element: PageElement) -> CGRect? {
         guard let width = element.size?.width?.emuMagnitude,
               let height = element.size?.height?.emuMagnitude

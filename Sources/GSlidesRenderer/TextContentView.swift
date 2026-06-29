@@ -2,23 +2,23 @@ import GSlidesLayout
 import GSlidesSchema
 import SwiftUI
 
-/// Renders TextContent the way the Slides API structures it: `textElements` is a flat stream where
-/// a `paragraphMarker` opens a paragraph and the following `textRun` / `autoText` elements are its
-/// runs. We group them into paragraphs, then render each as one line — an `AttributedString` that
-/// concatenates the runs with per-run styling (bold/italic/underline/strike/color/highlight/
-/// baseline/link), prefixed by the bullet glyph and indented by nesting level.
+/// Slides API の構造に従って TextContent を描画する。`textElements` はフラットなストリームで、
+/// `paragraphMarker` がパラグラフを開き、続く `textRun` / `autoText` 要素がそのランになる。
+/// これらをパラグラフにグループ化し、各パラグラフを 1 行として描画する。`AttributedString` はランを
+/// 連結してランごとのスタイル（bold/italic/underline/strike/color/highlight/baseline/link）を適用し、
+/// 箇条書きグリフを先頭に付けてネストレベルに応じてインデントする。
 ///
-/// This handles both a real `presentations.get` (marker and runs in separate elements) and the
-/// compact form `PresentationExpander` emits (marker + run in one element).
+/// 実際の `presentations.get`（マーカーとランが別要素）と `PresentationExpander` が出力する
+/// コンパクト形式（マーカー + ランが同一要素）の両方を処理する。
 struct TextContentView: View {
     var text: TextContent
     var placeholderType: PlaceholderType?
-    /// Display points per profile point (canvas scale).
+    /// プロファイルポイントあたりの表示ポイント（キャンバススケール）。
     var pointScale: Double
     var palette: GSlidesPalette
-    /// Shape autofit (TEXT_AUTOFIT): the API-computed shrink factor applied to every font size.
+    /// シェイプオートフィット（TEXT_AUTOFIT）: API が算出した全フォントサイズに適用する縮小係数。
     var fontScale: Double = 1
-    /// Shape autofit: points to subtract from inter-line spacing.
+    /// シェイプオートフィット: 行間スペースから減算するポイント数。
     var lineSpacingReduction: Double = 0
 
     @Environment(\.gslidesSlideNumber) private var slideNumber
@@ -46,7 +46,7 @@ struct TextContentView: View {
         var plainText: String { runs.map(\.content).joined() }
     }
 
-    /// Group the flat `textElements` stream into paragraphs.
+    /// フラットな `textElements` ストリームをパラグラフにグループ化する。
     var paragraphs: [Paragraph] {
         var result: [Paragraph] = []
         var current: Paragraph?
@@ -75,8 +75,8 @@ struct TextContentView: View {
         return result.filter { !$0.plainText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     }
 
-    /// AutoText content — SLIDE_NUMBER fields arrive with empty content (resolved at present time),
-    /// so substitute the injected slide number.
+    /// AutoText コンテンツ。SLIDE_NUMBER フィールドはコンテンツが空の状態で到着する（プレゼンテーション時に解決）。
+    /// 注入されたスライド番号で代替する。
     private func autoTextContent(_ auto: AutoText?) -> String? {
         guard let auto else { return nil }
         if auto.type == .slideNumber, (auto.content ?? "").isEmpty, let number = slideNumber {
@@ -101,9 +101,9 @@ struct TextContentView: View {
             .minimumScaleFactor(0.3)
     }
 
-    /// A bulleted paragraph renders the marker and the text as separate columns so wrapped lines hang
-    /// — they align under the text, not under the marker (the professional default; a single prefixed
-    /// string would wrap back under the bullet). Non-bulleted paragraphs stay a single full-width Text.
+    /// 箇条書きパラグラフはマーカーとテキストを別カラムとして描画し、折り返し行をハングさせる
+    /// — 折り返しはバレット下ではなくテキスト下に揃える（プロフェッショナルなデフォルト。単一の
+    /// プレフィックス文字列ではバレット下に折り返してしまう）。箇条書きでないパラグラフは全幅の単一 Text を保持する。
     @ViewBuilder
     private func paragraphBody(_ paragraph: Paragraph, style: ParagraphStyle?, rtl: Bool) -> some View {
         let leadingAlign: SwiftUI.Alignment = rtl ? .trailing : .leading
@@ -120,7 +120,7 @@ struct TextContentView: View {
         }
     }
 
-    /// The bullet marker as a standalone styled string (so it can live in its own column).
+    /// バレットマーカーをスタンドアロンのスタイル付き文字列として返す（独自カラムに配置できるよう）。
     private func styledGlyph(_ glyph: String) -> AttributedString {
         var prefix = AttributedString(glyph)
         prefix.font = font(for: scaledSize(nil), style: nil)
@@ -128,7 +128,7 @@ struct TextContentView: View {
         return prefix
     }
 
-    /// The paragraph's runs without the bullet glyph (the hanging-indent text column).
+    /// バレットグリフを除いたパラグラフのラン（ハンギングインデントのテキストカラム）。
     private func attributedRuns(_ paragraph: Paragraph) -> AttributedString {
         var result = AttributedString()
         for run in paragraph.runs { result += styledRun(run) }
@@ -139,8 +139,8 @@ struct TextContentView: View {
         CGFloat((value?.pointMagnitude ?? 0) * pointScale)
     }
 
-    /// Extra spacing between wrapped lines: `lineSpacing` is a percentage of normal; autofit's
-    /// `lineSpacingReduction` (points) is then subtracted. Clamped to ≥ 0.
+    /// 折り返し行間の追加スペース。`lineSpacing` は通常の割合で、オートフィットの
+    /// `lineSpacingReduction`（ポイント）を差し引く。0 以上にクランプする。
     private func extraLineSpacing(_ style: ParagraphStyle?, _ paragraph: Paragraph) -> CGFloat {
         let percent = style?.lineSpacing ?? 100
         let representative = scaledSize(paragraph.runs.first?.style)
@@ -148,7 +148,7 @@ struct TextContentView: View {
         return max(0, extra - CGFloat(lineSpacingReduction) * pointScale)
     }
 
-    /// Build the paragraph's styled string: optional bullet glyph + each run with its own style.
+    /// パラグラフのスタイル付き文字列を構築する: オプションのバレットグリフ + 各ランに独自スタイル。
     private func attributed(_ paragraph: Paragraph) -> AttributedString {
         var result = AttributedString()
         if let glyph = paragraph.marker?.bullet?.glyph {
@@ -163,8 +163,8 @@ struct TextContentView: View {
         return result
     }
 
-    /// A run's effective point size on the canvas (explicit size or placeholder default), with the
-    /// canvas scale and autofit font scale applied.
+    /// キャンバス上のランの有効ポイントサイズ（明示的なサイズまたはプレースホルダーのデフォルト）。
+    /// キャンバススケールとオートフィットフォントスケールを適用した値。
     private func scaledSize(_ style: TextStyle?) -> CGFloat {
         let points = style?.fontSize?.pointMagnitude ?? PlaceholderTypography.defaultFontSize(for: placeholderType)
         return CGFloat(points * pointScale * fontScale)
@@ -196,10 +196,10 @@ struct TextContentView: View {
         return piece
     }
 
-    /// Resolve a run's font from the Slides schema: honor `fontFamily` (`TextStyle` or the weighted
-    /// family) via `Font.custom`, and the numeric weight (100–900) via `Font.Weight`. Falls back to
-    /// the system font and the placeholder's default weight when the schema leaves them unset, so a
-    /// presentation that specifies no typography renders exactly as before.
+    /// Slides スキーマからランのフォントを解決する。`fontFamily`（`TextStyle` またはウェイト付きファミリー）を
+    /// `Font.custom` で尊重し、数値ウェイト（100–900）を `Font.Weight` で適用する。
+    /// スキーマで未設定の場合はシステムフォントとプレースホルダーのデフォルトウェイトにフォールバックする。
+    /// タイポグラフィを指定しないプレゼンテーションは従来通り描画される。
     private func font(for size: CGFloat, style: TextStyle?) -> Font {
         let weight = resolvedWeight(style)
         let family = (style?.fontFamily ?? style?.weightedFontFamily?.fontFamily)?
@@ -211,8 +211,8 @@ struct TextContentView: View {
         return .system(size: size, weight: weight)
     }
 
-    /// Effective SwiftUI weight: an explicit numeric weight (100–900) wins; otherwise the bold flag;
-    /// otherwise the placeholder's default weight.
+    /// 有効な SwiftUI ウェイト: 明示的な数値ウェイト（100–900）が最優先。次に bold フラグ。
+    /// それ以外はプレースホルダーのデフォルトウェイト。
     private func resolvedWeight(_ style: TextStyle?) -> Font.Weight {
         if let numeric = style?.weightedFontFamily?.weight {
             return Self.fontWeight(numeric: numeric)
@@ -221,7 +221,7 @@ struct TextContentView: View {
         return PlaceholderTypography.weight(for: placeholderType)
     }
 
-    /// Map a Google Slides numeric font weight (100–900) to the nearest `Font.Weight`.
+    /// Google Slides の数値フォントウェイト（100–900）を最も近い `Font.Weight` にマッピングする。
     static func fontWeight(numeric weight: Int) -> Font.Weight {
         switch weight {
         case ..<150: .ultraLight

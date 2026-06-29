@@ -1,65 +1,67 @@
 # ``GSlidesPrompt``
 
-LLM-facing contracts and semantic types for structured slide generation and theme design.
+LLM 向けコントラクトと、構造化スライド生成・テーマ設計用のセマンティック型。
 
 ## Overview
 
-GSlidesPrompt is the "model ↔ package" boundary: it defines what an LLM must emit and
-validates that the output is safe to expand into a full `Presentation`. Two independent
-contracts handle the two structured-output surfaces.
+GSlidesPrompt は「モデル ↔ パッケージ」の境界を定義する。LLM が出力すべき内容を定め、
+その出力が完全な `Presentation` へ安全に展開できることを検証する。2 つの独立した
+コントラクトが、2 つの構造化出力インターフェースをそれぞれ担う。
 
-### Generation contract
+### 生成コントラクト
 
-``GSlidesGenerationContract`` governs slide content. It exposes a JSON Schema for the
-``SemanticPresentation`` type — the compact, model-friendly representation of a deck —
-so the exact schema can be injected into the system prompt. The contract's `validate(_:)`
-enforces the receiving side of the sandwich: strict decode plus semantic checks (no empty
-deck, only known layout names). `presentation(from:themeSpec:)` is the end-to-end path
-from raw model bytes to a fully expanded `Presentation`.
+``GSlidesGenerationContract`` はスライドコンテンツを管理する。``SemanticPresentation`` 型の
+JSON Schema を公開し — コンパクトでモデルが扱いやすいデッキ表現 —
+その正確なスキーマをシステムプロンプトに注入できる。`validate(_:)` はサンドイッチの受信側を担い、
+厳格なデコードとセマンティックチェック（デッキが空でない・レイアウト名が既知）を実行する。
+`presentation(from:themeSpec:)` は生のモデルバイトから完全に展開した `Presentation` への
+エンドツーエンドパス。
 
-``SemanticPresentation`` carries one ``SemanticSlide`` per slide. Each slide may contain
-any mix of ``SemanticBody`` (text, bullets, image URL, ``SemanticMetric`` cards,
-``SemanticChart``, ``SemanticStep`` flows, ``SemanticQuote``, or ``SemanticTable``), which
-``PresentationExpander`` maps to the Slides API's native page elements.
+``SemanticPresentation`` はスライドごとに ``SemanticSlide`` を持つ。各スライドは
+``SemanticBody``（テキスト、バレット、画像 URL、``SemanticMetric`` カード、
+``SemanticChart``、``SemanticStep`` フロー、``SemanticQuote``、``SemanticTable``）を
+任意に組み合わせて持つことができ、``PresentationExpander`` が Slides API ネイティブの
+ページ要素にマッピングする。
 
-### Theme contract
+### テーマコントラクト
 
-``GSlidesThemeContract`` governs color scheme generation. It exposes the JSON Schema for
-a `ColorScheme` restricted to the 12 editable `ThemeColorType` slots, plus `promptBlock()`
-— a ready-made system-instruction block (rules + schema + worked example) to paste directly
-into a prompt. `themeSpec(from:)` validates the model's output and returns a ``ThemeSpec``
-ready to bake into the master page.
+``GSlidesThemeContract`` はカラースキーム生成を管理する。12 個の編集可能な
+`ThemeColorType` スロットに制限した `ColorScheme` の JSON Schema と、`promptBlock()` —
+プロンプトにそのまま貼り付けられるシステム指示ブロック（ルール + スキーマ + ワーク済み例）— を公開する。
+`themeSpec(from:)` はモデルの出力を検証し、マスターページへの焼き込みに準備が整った
+``ThemeSpec`` を返す。
 
 ```swift
 import GSlidesPrompt
 
-// --- Slide generation ---
+// --- スライド生成 ---
+let schemaData = try GSlidesGenerationContract.jsonSchemaData()
 let systemPrompt = """
-Produce a JSON presentation matching this schema:
-\(String(decoding: try GSlidesGenerationContract.jsonSchemaData(), as: UTF8.self))
+以下のスキーマに合う JSON プレゼンテーションを生成してください:
+\(String(decoding: schemaData, as: UTF8.self))
 """
 
-// Validate and expand model output to a full Presentation
+// モデル出力を検証して完全な Presentation に展開する
 let presentation = try GSlidesGenerationContract.presentation(from: modelOutputData)
 
-// --- Theme generation ---
+// --- テーマ生成 ---
 let themeInstructions = GSlidesThemeContract.promptBlock()
 let themeSpec = try GSlidesThemeContract.themeSpec(from: modelThemeData)
 ```
 
 ## Topics
 
-### Generation contract
+### 生成コントラクト
 
 - ``GSlidesGenerationContract``
 - ``GenerationContractError``
 
-### Theme contract
+### テーマコントラクト
 
 - ``GSlidesThemeContract``
 - ``GSlidesThemeContractError``
 
-### Semantic slide model
+### セマンティックスライドモデル
 
 - ``SemanticPresentation``
 - ``SemanticSlide``
@@ -72,7 +74,7 @@ let themeSpec = try GSlidesThemeContract.themeSpec(from: modelThemeData)
 - ``SemanticQuote``
 - ``SemanticTable``
 
-### Expansion and formatting
+### 展開とフォーマット
 
 - ``PresentationExpander``
 - ``GSlidesExampleFormatter``
