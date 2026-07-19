@@ -1,5 +1,5 @@
 {
-  "originHash" : "e782326ab444b2c1cfcc8009719d15326e6dcc5e61e7f250abca042b3d5e04f1",
+  "originHash" : "773c6cc9f1a115d8d368e87427c1775730d2c8d29a5765a149b6690ef19e62b5",
   "pins" : [
     {
       "identity" : "swift-a2a",
@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/no-problem-dev/swift-design-system.git",
       "state" : {
-        "revision" : "e9fbaf61ff68c3daa058bfed90b3229c07458e70",
-        "version" : "1.4.0"
+        "revision" : "07166c2f08e9db5c88f46cf28034d5e05379c4bf",
+        "version" : "2.0.1"
       }
     },
     {

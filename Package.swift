@@ -38,7 +38,7 @@ let package = Package(
         .package(url: "https://github.com/no-problem-dev/swift-a2a.git", from: "0.5.0"),
         // レンダラのテーミング基盤: デッキの ColorScheme を DS ColorPalette に写し、
         // 中身もクロームも同じ @Environment(colorPalette) / Typography で描く。
-        .package(url: "https://github.com/no-problem-dev/swift-design-system.git", from: "1.4.0"),
+        .package(url: "https://github.com/no-problem-dev/swift-design-system.git", from: "2.0.1"),
     ],
     targets: [
         .target(
