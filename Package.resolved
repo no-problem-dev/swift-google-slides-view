@@ -1,13 +1,13 @@
 {
-  "originHash" : "773c6cc9f1a115d8d368e87427c1775730d2c8d29a5765a149b6690ef19e62b5",
+  "originHash" : "16e524f935649c2011c4b01638f724d8910f27eb7ac742ab6a101a982c68d91b",
   "pins" : [
     {
       "identity" : "swift-a2a",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/no-problem-dev/swift-a2a.git",
       "state" : {
-        "revision" : "c9675f1d165cedbb35fe82d290be56592125cf55",
-        "version" : "0.5.0"
+        "revision" : "86d06404fb28494a7ef0b272eb2115507c12e0fb",
+        "version" : "0.7.1"
       }
     },
     {
@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/no-problem-dev/swift-design-system.git",
       "state" : {
-        "revision" : "07166c2f08e9db5c88f46cf28034d5e05379c4bf",
-        "version" : "2.0.1"
+        "revision" : "e1de50687e9108fef3d000ce6f6534eb7bb75a61",
+        "version" : "3.0.0"
       }
     },
     {
@@ -42,8 +42,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/no-problem-dev/swift-structured-data.git",
       "state" : {
-        "revision" : "0b0580351e5b944f99f8beff3ad5b6eed84f052d",
-        "version" : "1.3.0"
+        "revision" : "8bfbfe1091610e300409c2dad0506e498d04d014",
+        "version" : "2.0.0"
       }
     }
   ],
