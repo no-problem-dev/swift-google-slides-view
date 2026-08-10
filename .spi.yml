@@ -1,0 +1,13 @@
+version: 1
+builder:
+  configs:
+    - documentation_targets:
+        - GSlidesA2A
+        - GSlidesAssembly
+        - GSlidesEdit
+        - GSlidesExport
+        - GSlidesLayout
+        - GSlidesPrompt
+        - GSlidesRenderer
+        - GSlidesRequests
+        - GSlidesSchema
