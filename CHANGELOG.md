@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Changed
+
+- The unofficial-status notice on the DocC landing page is English, matching the README word for
+  word. It was the last Japanese line on the published documentation site — the `///` doc-comment
+  check does not read catalog pages, so it had never been looked at.
+
 ## [0.14.0] - 2026-08-11
 
 ### Changed

@@ -2,7 +2,7 @@
 
 A Swift mirror of a semantic subset of the Google Slides API presentation model.
 
-> **非公式。** Google と提携・推薦・後援のいずれの関係もない。「Google Slides」は Google LLC の商標である。ここにあるのは Google Slides API の presentation スキーマのセマンティック・サブセットであり、Google の製品でも API クライアントでもない。API に準拠することはこのプロジェクトの目標ではない。
+> **Unofficial.** Not affiliated with, endorsed by, or sponsored by Google; "Google Slides" is a trademark of Google LLC. This renders a semantic subset of the [Google Slides API](https://developers.google.com/slides/api) presentation schema — it is not a Google product and not an API client. Conforming to the API is not a goal of this project.
 
 ## Overview
 
