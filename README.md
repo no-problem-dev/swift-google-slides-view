@@ -69,7 +69,7 @@ let event = try GSlidesArtifactCoding.envelopeEvent(
 ```swift
 // Package.swift
 dependencies: [
-    .package(url: "https://github.com/no-problem-dev/swift-google-slides-view", from: "0.12.1"),
+    .package(url: "https://github.com/no-problem-dev/swift-google-slides-view", .upToNextMinor(from: "0.13.0")),
 ],
 ```
 
