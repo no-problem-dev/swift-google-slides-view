@@ -1,12 +1,14 @@
 # ``GSlidesSchema``
 
-Google Slides API プレゼンテーションモデルの権威ある Swift ミラー。
+Google Slides API プレゼンテーションモデルのセマンティック・サブセットの Swift ミラー。
+
+> **非公式。** Google と提携・推薦・後援のいずれの関係もない。「Google Slides」は Google LLC の商標である。ここにあるのは Google Slides API の presentation スキーマのセマンティック・サブセットであり、Google の製品でも API クライアントでもない。API に準拠することはこのプロジェクトの目標ではない。
 
 ## Overview
 
 GSlidesSchema はこのパッケージ内の全ライブラリが依拠する基盤型を提供する。
-フィールド名と enum 値はすべて [Slides API discovery document](https://slides.googleapis.com/$discovery/rest?version=v1) と完全に一致する。
-`EnumParityTests` と `SpecProvenanceTests` がこのパリティを自動検証し、ミラーが仕様とずれないよう保証する。
+モデル化している範囲のフィールド名と enum 値は [Slides API discovery document](https://slides.googleapis.com/$discovery/rest?version=v1) と同じ語彙を使う。
+`EnumParityTests` と `SpecProvenanceTests` がこのパリティを自動検証し、ミラーがピン留めした discovery document とずれないよう見張っている。
 
 型は Swift enum ではなくオープンエンドな `SpecEnum` 構造体として定義されているため、将来の API 値も損失なくデコードできる。`knownValues` はピン留めされた discovery document のリビジョンに対してテストされる。
 

@@ -4,7 +4,7 @@ Google Slides プレゼンテーションへのローカル batchUpdate 実行�
 
 ## Overview
 
-GSlidesEdit は Slides API の `batchUpdate` エンドポイントを純粋なインメモリで再現する。ネットワーク呼び出しなしで、ワイヤーと同じ型（GSlidesRequests 由来の公式 `Request` ボキャブラリー）を ``GSlidesSchema/Presentation`` に適用する。
+GSlidesEdit は Slides API の `batchUpdate` エンドポイントを純粋なインメモリで再現する。ネットワーク呼び出しなしで、ワイヤーと同じ型（GSlidesRequests の `Request` ボキャブラリー）を ``GSlidesSchema/Presentation`` に適用する。
 
 本家 API と同じアトミシティ保証を強制する。**バッチ内のいずれかのリクエストが不正であれば何も適用されず**、``BatchUpdateError`` が throw される。エラーには発見されたすべての ``FieldViolation`` が含まれるため、呼び出し側（または LLM エージェント）は 1 パスで全問題を修正できる。
 

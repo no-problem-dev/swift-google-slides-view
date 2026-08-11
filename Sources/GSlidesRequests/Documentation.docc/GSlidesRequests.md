@@ -4,8 +4,8 @@ Google Slides API `batchUpdate` リクエスト語彙の生成済み Swift 型�
 
 ## Overview
 
-GSlidesRequests は、[Slides API discovery document](https://slides.googleapis.com/$discovery/rest?version=v1) をミラーした `Codable` リクエスト型の完全なセットを提供する。
-すべての型が discovery スキーマから生成されるため、Swift の語彙がワイヤープロトコルから乖離することはない。
+GSlidesRequests は、[Slides API discovery document](https://slides.googleapis.com/$discovery/rest?version=v1) をミラーした `Codable` リクエスト型を提供する。
+型は discovery スキーマから生成されるため、Swift の語彙がワイヤーの語彙から乖離することはない。
 
 トップレベルのエントリポイントは ``BatchUpdatePresentationRequest``（API が受け取るエンベロープ）と
 ``Request``（`requests` 配列の各要素で正確に 1 つのオペレーションをラップするタグ付きユニオン）。

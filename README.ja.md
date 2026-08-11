@@ -4,9 +4,9 @@
 
 Google Slides API の presentation JSON を SwiftUI でレンダリングする。
 
-Google Slides API の presentation スキーマ（のセマンティック・サブセット = プロファイル）に準拠した JSON を、SwiftUI で 16:9 スライドとしてレンダリングする Swift Package。LLM エージェントにスキーマ準拠 JSON を生成させ、A2A Artifact ストリーミングで 1 枚ずつ配信する用途を主眼に設計しているが、スキーマとレンダラ自体は LLM にも A2A にも依存しない。
+> **非公式。** Google と提携・推薦・後援のいずれの関係もない。「Google Slides」は Google LLC の商標である。ここでレンダリングするのは [Google Slides API](https://developers.google.com/slides/api) の presentation スキーマのセマンティック・サブセットであり、Google の製品でも API クライアントでもない。API に準拠することはこのプロジェクトの目標ではない。
 
-> このプロジェクトは Google と提携・推薦・後援のいずれとも関係しない。「Google Slides」は Google LLC の商標である。スキーマ語彙は公開されている [Google Slides API](https://developers.google.com/slides/api) discovery document に準拠する。
+Google Slides API の presentation スキーマのセマンティック・サブセット（プロファイル）に沿った JSON を、SwiftUI で 16:9 スライドとしてレンダリングする Swift Package。LLM エージェントにそのプロファイルの JSON を生成させ、A2A Artifact ストリーミングで 1 枚ずつ配信する用途を主眼に設計しているが、スキーマとレンダラ自体は LLM にも A2A にも依存しない。
 
 ## 設計原則
 
@@ -30,7 +30,7 @@ Google Slides API の presentation スキーマ（のセマンティック・サ
 
 ## 編集とバリデーション（GSlidesEdit）
 
-編集エージェントは独自語彙ではなく **公式 batchUpdate リクエスト**（`Request` 型のキュレートされた部分集合）を直接 emit する。適用は **decode → preflight → atomic apply** の 3 段で、本家 API のセマンティクスに忠実：
+編集エージェントは独自語彙ではなく **Slides API の batchUpdate リクエスト**（`Request` 型のキュレートされた部分集合）を直接 emit する。適用は **decode → preflight → atomic apply** の 3 段：
 
 - **2 層構造**: 下層（`Presentation.applying`）は本家同様 **all-or-nothing**（「1 件でも不正ならバッチ全体が失敗し、何も適用されない」）。上層（`PreflightValidator`）は送信前に **全違反を一括収集**し、エージェントが 1 パスで全部直せるようにする（サーバ往復を 1 回の判定に畳む）。
 - **権威ある制約**: バリデーション規則は `Sources/GSlidesSchema/Resources/Spec/constraints-catalog.yaml`（一次仕様から逐語引用 + 出典 URL）が SSOT。objectId 正規表現/長さ/一意性、enum 網羅、oneof「ちょうど 1 つ」、field mask、テキスト範囲は **(A) API が弾く制約**として、ページ境界外への移動・退化変形（scale=0）は **(B) API が弾かないため呼び出し側が担保する制約**として検証する。
@@ -41,7 +41,7 @@ Google Slides API の presentation スキーマ（のセマンティック・サ
 
 デッキの `ColorScheme`（master/layout/slide 継承）を DesignSystem の `ColorPalette` に射影する（`DeckColorPalette`）。
 `ACCENT1→primary`、`TEXT1/DARK1→onSurface`、`BACKGROUND1/LIGHT1→background` のように DS のセマンティックスロットを埋め、
-スライドの中身とクロームを同じ `@Environment(\.colorPalette)` で描く — 「Google Slides のテーマ忠実再現」と「デザインシステム統一」を両立する。
+スライドの中身とクロームを同じ `@Environment(\.colorPalette)` で描く — 「デッキ自身のテーマを反映すること」と「デザインシステム統一」を両立する。
 `basePalette` でデッキが定義しないスロットのフォールバックを差し替え可能。
 
 ## 使い方
