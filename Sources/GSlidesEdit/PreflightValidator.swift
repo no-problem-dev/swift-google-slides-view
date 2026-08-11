@@ -2,20 +2,27 @@ import Foundation
 import GSlidesRequests
 import GSlidesSchema
 
-/// 何かが適用される前に公式 `Request` のバッチを現在の `Presentation` に対して検証する —
-/// discovery doc が記述するサーバーサイドチェックのローカルミラー（「各リクエストは適用前に
-/// 検証される。いずれかのリクエストが無効な場合、リクエスト全体が失敗し何も適用されない」、catalog: batch-atomicity）。
+/// Checks a batch of official requests before anything is applied.
 ///
-/// 見つかったすべてのバイオレーションを返す純粋関数（最初のバイオレーションでスローしない）なので、
-/// エージェントは 1 パスで全リストを取得し、再送前にバッチ全体を修正できる —
-/// N 回のサーバー往復拒否を 1 回のローカル判定に変換する。ルールは
-/// `Resources/Spec/constraints-catalog.yaml` を根拠とし、各チェックが強制するカタログ ID を名付ける。
+/// A local mirror of the server-side checks the discovery document describes.
+///
+/// "Each request is validated before applying it. If any request is not valid, then the entire
+/// request will fail and nothing will be applied" (catalog: batch-atomicity).
+///
+/// Pure, and it returns every violation it finds rather than throwing on the first, so an agent gets
+/// the whole list in one pass and can fix the batch before resending — turning N rejected round
+/// trips into one local verdict. Rules are sourced from `Resources/Spec/constraints-catalog.yaml`
+/// and each check names the catalog ID it enforces.
 public enum PreflightValidator {
-    /// API 自体は実行しない Tier-B（呼び出し元強制）チェックのオプションのしきい値。
+    /// Thresholds for the checks the API does not perform itself and the caller must opt into.
     public struct Policy: Sendable {
-        /// 要素をスライド完全外に移動させるトランスフォームを拒否する。(catalog: page-bounds)
+        /// Reject a transform that would move an element entirely off the slide.
+        ///
+        /// Only enforceable when the presentation declares a page size; without one the check is
+        /// skipped, not failed. (catalog: page-bounds)
         public var rejectOffPage: Bool
-        /// scaleX または scaleY が正確に 0 のトランスフォームを拒否する。(catalog: degenerate-transform)
+        /// Reject a transform whose scaleX or scaleY is exactly 0, which collapses the element to
+        /// nothing. (catalog: degenerate-transform)
         public var rejectDegenerateScale: Bool
 
         public init(rejectOffPage: Bool = true, rejectDegenerateScale: Bool = true) {
@@ -26,7 +33,11 @@ public enum PreflightValidator {
         public static let `default` = Policy()
     }
 
-    /// `requests` 内のすべてのフィールドバイオレーション（バッチ順）。空なら適用しても安全。
+    /// Every field violation in the batch, in request order. An empty result means it is safe to apply.
+    ///
+    /// Each request is checked against the presentation as it is now, not as the batch would leave
+    /// it, so a request that references an object an earlier request in the same batch creates is
+    /// reported as not found.
     public static func violations(
         in requests: [Request],
         against presentation: Presentation,
@@ -182,7 +193,8 @@ public enum PreflightValidator {
         return [v.notFound(id, kind: allowSlide ? "page element or slide" : "page element")]
     }
 
-    /// ユーザー指定の新規オブジェクト ID：フォーマット規則に合致し衝突しないこと。(catalog: object-id-format, object-id-uniqueness)
+    /// Checks a caller-supplied new object ID against both the format rule and the existing IDs.
+    /// (catalog: object-id-format, object-id-uniqueness)
     static func newIdViolations(_ id: String, at path: String, index: PresentationIndex) -> [FieldViolation] {
         var out: [FieldViolation] = []
         if !GSlidesSpec.ObjectId.isValid(id) {
@@ -198,7 +210,8 @@ public enum PreflightValidator {
         return out
     }
 
-    /// discovery doc が定義しない値にデコードされた enum フィールド。(catalog: enum-values-closed)
+    /// Flags an enum field holding a value the pinned discovery document does not define, and lists
+    /// the allowed values in the message. (catalog: enum-values-closed)
     static func enumViolation<E: SpecEnum>(_ value: E?, _ path: String) -> [FieldViolation] {
         guard let value, !value.isKnown else { return [] }
         return [FieldViolation(field: path,
@@ -207,8 +220,11 @@ public enum PreflightValidator {
             reason: .unknownEnumValue)]
     }
 
-    /// `fields` マスクの整形式検査。(catalog: field-mask-semantics) — 空マスクは許可（リデューサーが
-    /// パッチのキーから推論）；`*` は単独でなければならない；空のパストークンは不可。
+    /// Checks that a `fields` mask is well formed. (catalog: field-mask-semantics)
+    ///
+    /// An empty mask is allowed — the reducer infers it from the patch's keys. A `*` must stand
+    /// alone, and no token may be empty. Path *names* are not checked against the target type, so a
+    /// mask naming a field that does not exist passes here and simply matches nothing.
     static func fieldMaskViolations(_ fields: String?, at path: String) -> [FieldViolation] {
         guard let fields, !fields.isEmpty else { return [] }
         let tokens = fields.split(separator: ",", omittingEmptySubsequences: false)
@@ -225,8 +241,10 @@ public enum PreflightValidator {
         return []
     }
 
-    /// 反転または負のテキスト範囲。（長さはここでは不明；リデューサーが実際のテキストにクランプする —
-    /// preflight は構造的に不可能なものだけを拒否する。）
+    /// Flags a text range that is inverted or negative.
+    ///
+    /// The text length is not known here, so a range past the end of the text is not a violation —
+    /// the reducer clamps it. Preflight rejects only what is structurally impossible.
     static func rangeViolations(_ range: GSlidesRequests.Range?, at path: String) -> [FieldViolation] {
         guard let range else { return [] }
         let start = range.startIndex ?? 0
@@ -252,8 +270,10 @@ public enum PreflightValidator {
 
     // MARK: - Request introspection
 
-    /// `request` に実際にセットされているすべてのサブリクエスト名（`kind` ユニオンメンバー）。
-    /// 「正確に 1 件」を強制するために使う。データ駆動なので 44 メンバーユニオンから乖離しない。
+    /// Every sub-request name actually set on the request — the members of the `kind` union.
+    ///
+    /// Used to enforce "exactly one". Found by reflection rather than a switch, so it cannot drift
+    /// from the 44-member union as the mirror is regenerated.
     static func setMemberNames(of request: Request) -> [String] {
         var names: [String] = []
         for child in Mirror(reflecting: request).children {
@@ -267,7 +287,8 @@ public enum PreflightValidator {
     }
 }
 
-/// 1 オペレーションに対してリクエスト相対フィールドパスを構築する小さなヘルパー。例: `Field(op: "insertText").path("text")` → `"insertText.text"`。
+/// Builds request-relative field paths for one operation: `Field(op: "insertText").path("text")`
+/// gives `"insertText.text"`. The batch index is prefixed later by the caller.
 struct Field {
     let op: String
     func path(_ sub: String) -> String { "\(op).\(sub)" }

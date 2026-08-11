@@ -1,15 +1,17 @@
 import CoreGraphics
 import GSlidesSchema
 
-/// Slides API が全長さ値に使う English Metric Unit 定数。
-/// 914,400 EMU = 1 インチ、12,700 EMU = 1 ポイント。
+/// Conversion constants for the English Metric Unit the Slides API uses for every length.
+///
+/// EMU are integers by convention, which is why the API can express both inches and points exactly:
+/// 914,400 EMU = 1 inch, 12,700 EMU = 1 point.
 public enum EMU {
-    /// 1 インチあたりの EMU（1 in = 914,400 EMU）。
+    /// EMU per inch (1 in = 914,400 EMU).
     public static let perInch: Double = 914_400
-    /// 1 タイポグラフィポイントあたりの EMU（1 pt = 12,700 EMU）。
+    /// EMU per typographic point (1 pt = 12,700 EMU).
     public static let perPoint: Double = 12_700
 
-    /// 標準 16:9 ページ（10 in × 5.625 in）。
+    /// The standard 16:9 page, 10 in × 5.625 in, used when a presentation declares no `pageSize`.
     public static let defaultPageSize = Size(
         width: Dimension(magnitude: 9_144_000, unit: .emu),
         height: Dimension(magnitude: 5_143_500, unit: .emu)
@@ -17,7 +19,9 @@ public enum EMU {
 }
 
 extension Dimension {
-    /// EMU に正規化した magnitude（PT 値は変換、EMU はそのまま通過）。
+    /// The magnitude normalized to EMU: PT is converted, EMU and an unspecified unit pass through.
+    ///
+    /// nil when no magnitude is set. An unspecified unit is read as EMU, matching what the API returns.
     public var emuMagnitude: Double? {
         guard let magnitude else { return nil }
         switch unit {
@@ -26,14 +30,23 @@ extension Dimension {
         }
     }
 
+    /// The magnitude normalized to typographic points — the unit SwiftUI font sizes want.
     public var pointMagnitude: Double? {
         emuMagnitude.map { $0 / EMU.perPoint }
     }
 }
 
+/// Turns the API's `size` + `transform` pair into rectangles in EMU page coordinates.
 public enum PageGeometry {
-    /// 要素の EMU ページ座標フレーム: ベースサイズに translate + scale を適用した値
-    /// （シアーはプロファイル外のため無視する）。
+    /// The element's axis-aligned frame in EMU page coordinates, origin top-left, y growing down.
+    ///
+    /// Applies the transform's translation and scale to the base size and normalizes a negative
+    /// scale into a positive rectangle. **Shear is ignored** — an element with a non-zero `shearX`
+    /// or `shearY` gets the same frame as an unsheared one, so a rotated element reports its
+    /// pre-rotation box.
+    ///
+    /// - Returns: nil when the element declares no size, which is the case for a placeholder that
+    ///   has not been resolved against its layout yet. Run `PlaceholderResolver` first.
     public static func frame(of element: PageElement) -> CGRect? {
         guard let width = element.size?.width?.emuMagnitude,
               let height = element.size?.height?.emuMagnitude
@@ -54,6 +67,7 @@ public enum PageGeometry {
         return CGRect(x: x + min(signedW, 0), y: y + min(signedH, 0), width: abs(signedW), height: abs(signedH))
     }
 
+    /// The presentation's page size in EMU, falling back to the standard 16:9 page when unset.
     public static func pageSize(of presentation: Presentation) -> CGSize {
         let size = presentation.pageSize ?? EMU.defaultPageSize
         return CGSize(

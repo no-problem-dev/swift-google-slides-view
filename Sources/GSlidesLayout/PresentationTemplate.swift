@@ -1,18 +1,23 @@
 import GSlidesSchema
 
-/// レイアウトのスロット 1 つ分のプレースホルダージオメトリとデフォルトテキストスタイル。
-/// 実際の Google Slides レイアウトページが持つ形式（EMU rect + スタイル）でデータとして表現する。
+/// One layout slot: where a placeholder sits and what its text looks like by default.
+///
+/// Holds the same shape a real Google Slides layout page does — an EMU rectangle plus a style — so
+/// `size`, `transform` and `defaultStyle` can be dropped straight onto a `PageElement`.
 public struct PlaceholderSpec: Sendable {
-    public var x, y, w, h: Double          // 標準 16:9 ページ上の EMU 座標
+    public var x, y, w, h: Double          // EMU on the standard 16:9 page; x, y is the upper-left corner
+    /// Font size in typographic points, not EMU.
     public var fontSizePt: Double
+    /// The theme slot the text color resolves through, so the deck recolors with its master.
     public var themeColor: ThemeColorType
     public var bold: Bool
-    public var align: Alignment            // 水平テキスト配置
-    public var vAlign: ContentAlignment    // ボックス内の垂直配置
-    /// タイポグラフィの意図（Slides `TextStyle.fontFamily` / `weightedFontFamily`）。両方 nil の場合、
-    /// レンダラーはシステムフォント + プレースホルダーのデフォルトウェイトを使う（従来の挙動）。
-    public var fontFamily: String?         // 例: "Hiragino Sans" — ランのフォントファミリーとして適用
-    public var weight: Int?                // 数値フォントウェイト 100–900（bold フラグより細かい指定）
+    public var align: Alignment            // horizontal text alignment
+    public var vAlign: ContentAlignment    // vertical alignment inside the box
+    /// The typography intent, mapped to Slides `TextStyle.fontFamily` / `weightedFontFamily`.
+    ///
+    /// With both nil the renderer uses the system font at the placeholder's default weight.
+    public var fontFamily: String?         // e.g. "Hiragino Sans" — applied as the run's font family
+    public var weight: Int?                // numeric font weight 100–900; finer-grained than the bold flag
 
     public init(
         x: Double, y: Double, w: Double, h: Double,
@@ -26,12 +31,15 @@ public struct PlaceholderSpec: Sendable {
         self.fontFamily = fontFamily; self.weight = weight
     }
 
+    /// The slot's `w` × `h` as an EMU `Size`.
     public var size: Size {
         Size(width: Dimension(magnitude: w, unit: .emu), height: Dimension(magnitude: h, unit: .emu))
     }
+    /// An unscaled EMU transform that translates to the slot's upper-left corner.
     public var transform: AffineTransform {
         AffineTransform(scaleX: 1, scaleY: 1, translateX: x, translateY: y, unit: .emu)
     }
+    /// The slot's default run style: size in points, color as a theme slot, family and weight when set.
     public var defaultStyle: TextStyle {
         TextStyle(
             bold: bold,
@@ -45,10 +53,14 @@ public struct PlaceholderSpec: Sendable {
     }
 }
 
-/// プレゼンテーションのデザインをデータとして表現する。マスターテーマ（ColorScheme）と、各定義済みレイアウトの
-/// プレースホルダー矩形・デフォルトスタイルを保持する。「見た目」はプロトコル固有の語彙（layout/master ページ）で
-/// 表現され、レンダラーコードに埋め込まない。実際の `presentations.get` も同じデータを持つ。
-/// LLM 生成プレゼンテーションは `PresentationExpander` 経由でこれを借用し、同一のジオメトリパスでレンダリングする。
+/// A deck's design expressed as data: a master color scheme, plus the placeholder rectangles and
+/// default styles for each predefined layout.
+///
+/// The look lives in the protocol's own vocabulary — master and layout pages — rather than in
+/// renderer code, which is the same place a real `presentations.get` keeps it. `PresentationExpander`
+/// borrows these specs so a generated deck goes through the identical geometry path as a fetched one.
+///
+/// All coordinates are EMU on the standard 16:9 page (9,144,000 × 5,143,500).
 public enum PresentationTemplate {
     // Standard 16:9 page (EMU) and a comfortable margin.
     static let pageW: Double = 9_144_000
@@ -58,9 +70,10 @@ public enum PresentationTemplate {
 
     public static let masterObjectId = "gslides-master"
 
-    /// 任意のデザイン意図のカラースキームを持つマスターページ。`ThemeSpec`（編集可能な 12 スロット）を
-    /// マスターの `ColorScheme` に焼き込む。各プレースホルダー/デコレーションはそのスロットを
-    /// シンボリックに参照（`.text1`/`.dark2`/`.accent1`）するため、デッキ全体が自動的に再配色される。
+    /// A master page carrying `theme` as its color scheme.
+    ///
+    /// Placeholders and decorations reference slots symbolically (`.text1`, `.dark2`, `.accent1`)
+    /// rather than baking in literal RGB, so replacing this master recolors the whole deck.
     public static func master(theme: ThemeSpec, displayName: String = "GSlides Theme") -> Page {
         Page(
             objectId: masterObjectId,
@@ -71,10 +84,12 @@ public enum PresentationTemplate {
     }
 
 
-    /// スロットのプレースホルダー spec。このレイアウトが定義していなければ nil を返す（レンダラーは
-    /// セマンティックスタックレイアウトにフォールバックする）。`typography` スケールはスロットの
-    /// セマンティックロールに応じてフォントファミリー + ウェイトをジオメトリに重ねる（nil 埋めのみ。
-    /// 既にタイポグラフィが固定されているスロットはそのまま保持）。`.system` は従来のシステムフォントデフォルト。
+    /// The placeholder spec for a slot, with the typography scale layered onto the base geometry.
+    ///
+    /// The scale only fills in nil fields, so a slot that already pins a family or weight keeps it.
+    ///
+    /// - Returns: nil when this layout defines no such slot. Callers treat that as "place it
+    ///   yourself" rather than an error.
     public static func spec(
         layout: PredefinedLayout,
         type: PlaceholderType,
@@ -89,9 +104,8 @@ public enum PresentationTemplate {
         return spec
     }
 
-    /// スロットが対応するセマンティックタイポグラフィロール。プレースホルダーが
-    /// `PresentationTypography` からファミリー/ウェイトを取得する際の参照先を決定する。
-    /// カラーは直交（テーマが管理する）。
+    /// The typography role a slot draws its family and weight from. Color is orthogonal and comes
+    /// from the theme.
     static func typographicRole(layout: PredefinedLayout, type: PlaceholderType) -> PresentationTypography.Role {
         switch type {
         case .centeredTitle, .title:
@@ -103,8 +117,8 @@ public enum PresentationTemplate {
         }
     }
 
-    /// スロットのプレースホルダージオメトリとデフォルト（タイポグラフィ以外の）スタイル。
-    /// データとしてのレイアウトデザイン。`spec(...)` がこの上にタイポグラフィスケールを重ねる。
+    /// The slot's geometry and non-typographic style — the layout design itself.
+    /// `spec(layout:type:index:typography:scale:)` layers the type scale on top of this.
     private static func baseSpec(layout: PredefinedLayout, type: PlaceholderType, index: Int, scale: SpacingScale = .content) -> PlaceholderSpec? {
         let M = margin, cW = contentW
         switch (layout, type) {
@@ -154,9 +168,11 @@ public enum PresentationTemplate {
         PlaceholderSpec(x: margin, y: margin, w: contentW, h: 880_000, fontSizePt: 28, themeColor: .text1, bold: true, align: .start, vAlign: .middle)
     }
 
-    /// コンテンツスライドのヘッドラインボックス。ジオメトリは `SpacingScale` から取得し、
-    /// アイブロウ（存在する場合）がボックス上端に、ヘッドラインがその下に配置されるよう上端揃え。
-    /// 全コンテンツタイトルバンドレイアウトで共用するため、ヘッダー間のズレが生じない。
+    /// The headline box shared by every content title-band layout.
+    ///
+    /// Geometry comes from the spacing scale and the box is top-aligned so the eyebrow, when present,
+    /// sits at the top with the headline beneath it. Shared rather than per-layout, so headers cannot
+    /// drift apart between slides.
     public static func contentHeadlineSpec(scale: SpacingScale = .content) -> PlaceholderSpec {
         PlaceholderSpec(
             x: margin, y: scale.headerTop, w: contentW, h: scale.headerHeight,
@@ -164,8 +180,10 @@ public enum PresentationTemplate {
         )
     }
 
-    /// レイアウトがコンテンツヘッダー処理（アイブロウ+ヘッドライン）を使うかどうか。
-    /// ステートメント/カバー/セクション/ビッグナンバーレイアウトは独自のタイトル配置を持ち、デコレーションアクセントを保持する。
+    /// Whether a layout uses the eyebrow-plus-headline content header.
+    ///
+    /// False for the cover, section, big-number and main-point layouts: they place their titles
+    /// themselves and keep a drawn accent rule instead of an eyebrow.
     public static func usesContentHeader(_ layout: PredefinedLayout) -> Bool {
         switch layout {
         case .title, .sectionHeader, .sectionTitleAndDescription, .bigNumber, .mainPoint: false
@@ -173,9 +191,10 @@ public enum PresentationTemplate {
         }
     }
 
-    /// アイブロウ（カテゴリキッカー）のランスタイル。小さくアクセントカラーで、アイブロウタイポグラフィ
-    /// ロール（タイトルファミリーにフォールバック）で描画する。アクセントは `ACCENT1` テーマロールなので
-    /// テーマと一緒にデッキ全体が再配色される — リテラルカラーは焼き込まない。
+    /// The run style for the eyebrow: small, accent-colored, in the eyebrow role's font.
+    ///
+    /// Falls back to the title family when the eyebrow role sets none. The color is the `ACCENT1`
+    /// theme slot rather than a literal RGB, so it recolors with the theme.
     public static func eyebrowStyle(typography: PresentationTypography, scale: SpacingScale = .content) -> TextStyle {
         let eyebrow = typography.style(for: .eyebrow)
         let title = typography.style(for: .title)
@@ -192,9 +211,11 @@ public enum PresentationTemplate {
         )
     }
 
-    /// ボディ領域を等幅の `count` カラムに分割する（ギャップあり）。シングルカラムレイアウト上に
-    /// 複数ボディがある場合に使用する。テキストボディと画像ボディが同じ矩形に重なるのではなく、
-    /// 横並びに配置される。
+    /// Splits a spec into `count` equal-width columns separated by `gap` EMU.
+    ///
+    /// Used when a single-column layout carries more than one body, so a text body and an image body
+    /// end up side by side instead of stacked in the same rectangle. `count` of 1 or less returns the
+    /// spec unchanged; a gap wider than the box yields negative widths rather than clamping.
     public static func columns(of spec: PlaceholderSpec, count: Int, gap: Double = 360_000) -> [PlaceholderSpec] {
         guard count > 1 else { return [spec] }
         let colW = (spec.w - gap * Double(count - 1)) / Double(count)
@@ -208,7 +229,8 @@ public enum PresentationTemplate {
 
     // MARK: - Decorations (accent rules / bars, as filled shapes — color and structure as data)
 
-    /// 塗りつぶしアクセント矩形（レンダラーが shapeBackgroundFill を描画する）。
+    /// A filled accent rectangle, positioned and sized in EMU. The renderer draws it via
+    /// `shapeBackgroundFill`.
     static func bar(_ id: String, _ x: Double, _ y: Double, _ w: Double, _ h: Double, _ color: ThemeColorType = .accent1) -> PageElement {
         PageElement(
             objectId: id,
@@ -222,8 +244,11 @@ public enum PresentationTemplate {
         )
     }
 
-    /// レイアウトのアクセントデコレーション。スライドを「白地に黒テキスト」から引き上げる
-    /// カラーと視覚構造を、レンダラーコードではなくシェイプ（データ）として表現する。
+    /// The accent shapes for a layout, as ordinary filled elements rather than renderer-side drawing.
+    ///
+    /// Returns an empty array for layouts whose accent is carried by the eyebrow instead. Object IDs
+    /// are derived from `slideId`, so calling this twice for the same slide produces colliding IDs.
+    /// Emit them once, before the slide's content, since they are meant to sit underneath it.
     public static func decorations(for layout: PredefinedLayout, slideId: String, scale: SpacingScale = .content) -> [PageElement] {
         let M = margin
         switch layout {
@@ -253,9 +278,11 @@ public enum PresentationTemplate {
         }
     }
 
-    /// コンテンツスライドのフッター（TITLE / SECTION はなし）。右下にミュートされたページ番号、
-    /// デッキタイトルが指定された場合は左下にそのタイトルをミュートで表示する。
-    /// コンテンツスライドのブランドラインは「デザインされたプレゼンテーション」の小さなシグナル（お手本デッキはランニングフッターを持つ）。
+    /// The footer band for a content slide: a muted page number at bottom right, and the deck title
+    /// at bottom left when one is given.
+    ///
+    /// Returns an empty array for the cover and section layouts, which carry no footer. As with
+    /// decorations, object IDs derive from `slideId`, so call this once per slide.
     public static func footer(
         slideId: String,
         number: Int,
@@ -304,9 +331,11 @@ public enum PresentationTemplate {
         }
     }
 
-    /// プレースホルダージオメトリを持つレイアウトページ。プレゼンテーションを整合した形式に
-    /// するために出力する（`presentations.get` が返す形式と一致）。
-    /// レイアウトごとに使用するプレースホルダータイプが、どのスロットを生成するかを決定する。
+    /// Layout pages carrying the placeholder geometry for the slots a deck actually uses.
+    ///
+    /// Emitted so a generated presentation has the same shape as one from `presentations.get`, which
+    /// is what lets `PlaceholderResolver` resolve inherited geometry. Slots not listed in `used` get
+    /// no element, and a slot this template does not define is skipped silently.
     public static func layoutPages(
         used: [(layout: PredefinedLayout, slots: [(PlaceholderType, Int)])],
         typography: PresentationTypography = .system,

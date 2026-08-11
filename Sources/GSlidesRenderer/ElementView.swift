@@ -33,8 +33,11 @@ struct ElementView: View {
         }
     }
 
-    /// グループは子要素を自身のフレーム内に配置する。各子要素のページ空間フレームはグループの原点で
-    /// オフセットされ、グループの表示サイズにスケーリングされる（子要素はプロファイルのページ座標を保持する）。
+    /// Lays a group's children out inside the group's own frame.
+    ///
+    /// Children keep their page-space coordinates on the wire, so each child's frame is offset by
+    /// the group's origin and scaled to the group's displayed size. A child with no resolvable frame
+    /// is drawn unpositioned, filling the group.
     private func groupView(_ group: GSlidesSchema.Group) -> some View {
         let groupFrame = PageGeometry.frame(of: element)
         return GeometryReader { geo in
@@ -230,14 +233,15 @@ struct ElementView: View {
         }
     }
 
-    /// プロファイルの `imageProperties` を適用する — クロップ、次にカラー調整、アウトライン、シャドウの順。
+    /// Applies the element's image properties in order: crop, then color adjustments, outline and
+    /// shadow. Order matters — cropping after recoloring would tint pixels that get thrown away.
     private func styledImage(_ img: SwiftUI.Image, _ props: ImageProperties?) -> some View {
         cropped(img, props?.cropProperties)
             .modifier(ImageEffectsModifier(props: props, palette: palette, scale: pointScale))
     }
 
-    /// クロップオフセットは各辺のフラクション。表示領域が要素ボックスを埋める。
-    /// クロップなしの場合は従来通りフィット（レターボックス）する。
+    /// Whether the crop actually removes anything. Crop offsets are fractions of each edge, and a
+    /// cropped image fills the element box while an uncropped one is letterboxed to fit.
     private func cropHasOffsets(_ crop: CropProperties) -> Bool {
         let l: Double = crop.leftOffset ?? 0
         let r: Double = crop.rightOffset ?? 0
@@ -255,8 +259,11 @@ struct ElementView: View {
         }
     }
 
-    /// バウンディングボックスの対角線（左上 → 右下）に沿って線を描画する。横長なら水平、縦長なら垂直、
-    /// 正方形なら斜め — 水平バーを強制するのではなく要素のジオメトリを尊重する。矢印がある場合は描画する。
+    /// Draws a line along the diagonal of its bounding box, plus any arrowheads.
+    ///
+    /// A wide box reads as horizontal, a tall one as vertical and a square one as diagonal, which
+    /// respects the element's geometry instead of forcing a horizontal rule. A vertical flip picks
+    /// the other diagonal, so a line rises instead of falling.
     private func lineView(_ line: GSlidesSchema.Line) -> some View {
         let props = line.lineProperties
         let color = palette.color(props?.lineFill?.solidFill) ?? .secondary
@@ -283,7 +290,10 @@ struct ElementView: View {
         }
     }
 
-    /// 有効な線カテゴリ。明示的な `lineCategory` を優先し、なければ BENT_/CURVED_ の `lineType` から推論する。
+    /// The effective line category.
+    ///
+    /// An explicit `lineCategory` wins; otherwise it is inferred from a `BENT_` or `CURVED_` prefix
+    /// on `lineType`, falling back to straight.
     private func lineCategory(_ line: GSlidesSchema.Line) -> LineCategory {
         if let category = line.lineCategory, category != .unspecified { return category }
         let raw = line.lineType?.rawValue ?? ""
@@ -315,7 +325,8 @@ struct ElementView: View {
         return style != .none && style != .unspecified
     }
 
-    /// `tip` に `from` から離れる向きの塗りつぶし三角形矢印を描画する（全矢印バリアントを塗りつぶし三角形で近似）。
+    /// Draws an arrowhead at `tip`, pointing away from `from`. Every arrow style in the schema is
+    /// approximated by the same filled triangle.
     private func arrowHead(tip: CGPoint, from: CGPoint, size: CGFloat, color: Color) -> some View {
         let angle = atan2(tip.y - from.y, tip.x - from.x)
         let wing = CGFloat.pi / 7
@@ -337,9 +348,12 @@ struct ElementView: View {
     }
 }
 
-/// プロファイルの `ImageProperties` のカラー調整（リカラー、輝度、コントラスト、透明度）を適用し、
-/// 次にアウトラインとシャドウを適用する。値が欠損/ゼロの場合は no-op なので、プレーン画像はそのまま描画される。
-/// 輝度/透明度は 1:1 マッピング。プロファイルのコントラスト（−1…1、0 = 通常）→ SwiftUI の値（1 = 通常）へは `1 + contrast`。
+/// Applies an image's color adjustments — recolor, brightness, contrast, transparency — and then its
+/// outline and shadow.
+///
+/// Missing or zero values are no-ops, so a plain image passes through untouched. Brightness and
+/// transparency map one to one; the schema's contrast runs −1…1 with 0 as normal, so it becomes
+/// `1 + contrast` for SwiftUI, where 1 is normal.
 struct ImageEffectsModifier: ViewModifier {
     var props: ImageProperties?
     var palette: GSlidesPalette
@@ -375,7 +389,7 @@ struct ImageEffectsModifier: ViewModifier {
         }
     }
 
-    /// 最も明るいカスタムリカラーストップ。デュオトーンのハイライトティントとして使用する。
+    /// The brightest stop of a custom recolor, used as the highlight tint of an approximated duotone.
     private var customRecolorTint: Color? {
         let stops = props?.recolor?.recolorStops ?? []
         let stop = stops.max { ($0.position ?? 0) < ($1.position ?? 0) } ?? stops.first
@@ -394,7 +408,7 @@ struct ImageEffectsModifier: ViewModifier {
     }
 }
 
-/// プロファイルの `Shadow` を SwiftUI シャドウとして描画する（OUTER のみ。それ以外の状態は no-op）。
+/// Draws a shadow as a SwiftUI shadow. Only OUTER is rendered; every other shadow type is a no-op.
 struct ShadowModifier: ViewModifier {
     var shadow: Shadow?
     var palette: GSlidesPalette
@@ -420,8 +434,10 @@ struct AnyInsettableShape: InsettableShape {
         }
     }
 
-    /// rect → Path クロージャから任意のシェイプを構築する。インセットは rect を縮小する
-    /// （多角形/有機的なシェイプのストロークインセットの良い近似）。
+    /// Builds a shape from a rect-to-path closure, applying inset by shrinking the rect.
+    ///
+    /// That approximates a true stroke inset well enough for polygonal and organic shapes, but it is
+    /// not exact for shapes with sharp corners.
     init(path builder: @escaping @Sendable (CGRect) -> Path) {
         pathBuilder = { rect, inset in builder(rect.insetBy(dx: inset, dy: inset)) }
     }
@@ -439,8 +455,8 @@ struct AnyInsettableShape: InsettableShape {
     }
 }
 
-/// プロファイルの非矩形 `ShapeType` のパスジオメトリ。各関数は rect 内の閉じたパスを構築する。
-/// ここでモデル化されていないシェイプは矩形にフォールバックする。
+/// Path geometry for the non-rectangular shape types. Each function builds a closed path inside the
+/// given rect. A shape not modeled here is drawn as a plain rectangle rather than being dropped.
 enum ShapeGeometry {
     enum Direction { case right, left, up, down }
 
@@ -463,7 +479,7 @@ enum ShapeGeometry {
         }
     }
 
-    /// ブロック矢印。右向きで構築し、他の方向は回転で対応する。
+    /// A block arrow, built pointing right and rotated for the other directions.
     static func arrow(_ r: CGRect, _ direction: Direction) -> Path {
         let w = r.width, h = r.height
         let headW = w * 0.45, shaft = h * 0.5
@@ -490,7 +506,7 @@ enum ShapeGeometry {
         return p.applying(transform).applying(CGAffineTransform(translationX: r.minX, y: r.minY))
     }
 
-    /// N 角星（STAR_4 … STAR_32）。
+    /// An N-pointed star, for STAR_4 through STAR_32.
     static func star(_ r: CGRect, points: Int) -> Path {
         let center = CGPoint(x: r.midX, y: r.midY)
         let outer = min(r.width, r.height) / 2
@@ -506,7 +522,7 @@ enum ShapeGeometry {
         }
     }
 
-    /// 正 N 角形（PENTAGON … DODECAGON）、上辺がほぼ水平。
+    /// A regular N-sided polygon, rotated so its top edge sits roughly horizontal.
     static func regularPolygon(_ r: CGRect, sides: Int) -> Path {
         let center = CGPoint(x: r.midX, y: r.midY)
         let radius = min(r.width, r.height) / 2
@@ -551,7 +567,12 @@ enum ShapeGeometry {
         }
     }
 
-    /// 12 頂点の単一ポリゴンとしてのギリシャ十字（`arm` = ギャップとして残す各辺のフラクション）。
+    /// A Greek cross as a single 12-vertex polygon.
+    ///
+    /// - Parameters:
+    ///   - r: The bounding rect.
+    ///   - arm: The fraction of each side left as the gap beside the arms.
+    ///   - rotated: Whether to turn the cross 45 degrees into an X.
     static func cross(_ r: CGRect, arm: CGFloat, rotated: Bool = false) -> Path {
         let tx = r.width * arm, ty = r.height * arm
         let path = Path { p in
@@ -598,7 +619,7 @@ enum ShapeGeometry {
 
     // MARK: misc
 
-    /// リング — 外側 + 内側楕円。イーブン・オッドフィルで穴を作る。
+    /// A ring: an outer and an inner ellipse. Requires an even-odd fill or the hole fills in.
     static func donut(_ r: CGRect) -> Path {
         Path { p in
             p.addEllipse(in: r)
@@ -606,7 +627,7 @@ enum ShapeGeometry {
         }
     }
 
-    /// 矩形ボーダー — 外側 + 内側 rect。イーブン・オッドで穴を作る。
+    /// A rectangular border: an outer and an inner rect. Requires an even-odd fill for the hole.
     static func frame(_ r: CGRect) -> Path {
         Path { p in
             p.addRect(r)
@@ -614,7 +635,7 @@ enum ShapeGeometry {
         }
     }
 
-    /// L 字型のコーナーボーダー。
+    /// An L-shaped corner border.
     static func halfFrame(_ r: CGRect) -> Path {
         let t = min(r.width, r.height) * 0.18
         return Path { p in
@@ -628,7 +649,7 @@ enum ShapeGeometry {
         }
     }
 
-    /// パイのくさび形（約 3/4 円）。
+    /// A pie wedge covering roughly three quarters of a circle.
     static func pie(_ r: CGRect) -> Path {
         let c = CGPoint(x: r.midX, y: r.midY)
         return Path { p in
@@ -638,7 +659,7 @@ enum ShapeGeometry {
         }
     }
 
-    /// 水平弦で切り取った円弧セグメント。
+    /// A circular segment cut off by a horizontal chord.
     static func chord(_ r: CGRect) -> Path {
         Path { p in
             p.addArc(center: CGPoint(x: r.midX, y: r.midY), radius: min(r.width, r.height) / 2,
@@ -647,7 +668,7 @@ enum ShapeGeometry {
         }
     }
 
-    /// 右上の四分の一を直角の角に置き換えた円（水滴形）。
+    /// A circle with its top-right quarter replaced by a square corner.
     static func teardrop(_ r: CGRect) -> Path {
         let rad = min(r.width, r.height) / 2
         let c = CGPoint(x: r.minX + rad, y: r.maxY - rad)
@@ -659,7 +680,7 @@ enum ShapeGeometry {
         }
     }
 
-    /// 角を面取り（カット）した矩形。
+    /// A rectangle with its corners cut off.
     static func bevel(_ r: CGRect) -> Path {
         let c = min(r.width, r.height) * 0.2
         return Path { p in
@@ -675,7 +696,8 @@ enum ShapeGeometry {
         }
     }
 
-    /// 3D ボックス（前面 + 上面 + 右面。重ならないためイーブン・オッドで solid に塗りつぶされる）。
+    /// A 3D box drawn as front, top and right faces. They do not overlap, so an even-odd fill still
+    /// renders it solid.
     static func cube(_ r: CGRect) -> Path {
         let d = min(r.width, r.height) * 0.25
         return Path { p in
@@ -693,7 +715,7 @@ enum ShapeGeometry {
         }
     }
 
-    /// 右下角を折り返した矩形。
+    /// A rectangle with its bottom-right corner folded back.
     static func foldedCorner(_ r: CGRect) -> Path {
         let f = min(r.width, r.height) * 0.25
         return Path { p in
@@ -709,7 +731,6 @@ enum ShapeGeometry {
         }
     }
 
-    /// ボックスを横断する斜めのバンド。
     static func diagonalStripe(_ r: CGRect) -> Path {
         Path { p in
             p.move(to: CGPoint(x: r.minX, y: r.maxY))
@@ -734,7 +755,9 @@ enum ShapeGeometry {
         }
     }
 
-    /// 五角形矢印 / ホームプレート（HOME_PLATE）と CHEVRON は右向きの尖った輪郭を共有する。
+    /// The right-pointing outline shared by HOME_PLATE and CHEVRON.
+    ///
+    /// - Parameter notched: Whether to notch the left edge, which is what makes it a chevron.
     static func homePlate(_ r: CGRect, notched: Bool) -> Path {
         let point = r.width * 0.3
         return Path { p in
@@ -774,7 +797,7 @@ enum ShapeGeometry {
         }
     }
 
-    /// 近似形状: 平らな底面の上に重なる突起 — 塗りつぶすと雲に見える。
+    /// An approximation: overlapping bumps on a flat base, which reads as a cloud once filled.
     static func cloud(_ r: CGRect) -> Path {
         let w = r.width, h = r.height
         return Path { p in
@@ -787,7 +810,10 @@ enum ShapeGeometry {
     }
 }
 
-/// プロファイルの `DashStyle` → SwiftUI ストロークダッシュパターン（シェイプ、線、テーブルボーダーで共用）。
+/// Converts a dash style into a SwiftUI stroke dash pattern, scaled to the canvas.
+///
+/// Shared by shapes, lines and table borders so a dashed edge looks the same everywhere. A solid or
+/// unrecognized style gives an empty pattern.
 func gslidesDashPattern(_ style: DashStyle?, scale: Double) -> [CGFloat] {
     switch style {
     case .some(.dot): [1 * scale, 3 * scale]
@@ -797,9 +823,11 @@ func gslidesDashPattern(_ style: DashStyle?, scale: Double) -> [CGFloat] {
     }
 }
 
-/// テーブルレイアウトエンジン。比例カラム幅/行高さ、結合セル（rowSpan / columnSpan）、
-/// セルごとの背景 + コンテンツ配置、テーブルの水平/垂直ボーダー行からの辺ごとのボーダーを処理する
-/// （テーブルがボーダーを宣言しない場合はデフォルトグリッドライン）。
+/// Lays out and draws a table: proportional column widths and row heights, merged cells, per-cell
+/// background and content alignment, and per-edge borders.
+///
+/// Track sizes are weights, not absolute lengths — the table is always scaled to fill its element
+/// box. A table that declares no borders gets default grid lines rather than none.
 struct TableElementView: View {
     var table: GSlidesSchema.Table
     var pointScale: Double
@@ -815,7 +843,7 @@ struct TableElementView: View {
         let cell: TableCell
     }
 
-    /// スパンが覆う位置をスキップした先頭セルと、そのスパン情報。
+    /// The head cell of each merged region with its span, skipping the positions a span covers.
     private var placedCells: [Placed] {
         var covered = Set<[Int]>()
         var result: [Placed] = []
@@ -861,7 +889,9 @@ struct TableElementView: View {
         return heights.contains(where: { $0 > 0 }) ? heights : Array(repeating: 1, count: rowCount)
     }
 
-    /// トラックウェイトから算出した累積エッジオフセット（count+1 個）を `total` にスケーリングする。
+    /// The count + 1 cumulative edge offsets derived from track weights, scaled to fill `total`.
+    ///
+    /// Tracks that are all zero are treated as equal, so a table without declared sizes divides evenly.
     private func edges(spans: [CGFloat], total: CGFloat) -> [CGFloat] {
         let weights = spans.contains(where: { $0 > 0 }) ? spans : Array(repeating: 1, count: spans.count)
         let sum = weights.reduce(0, +)
@@ -896,8 +926,8 @@ struct TableElementView: View {
 
     // MARK: borders
 
-    /// （結合セルを含む）セルの 4 辺。各辺はボーダープロパティ（またはデフォルトの細い線）でストロークする。
-    /// セルのローカル座標空間で描画する。
+    /// The four edges of a cell, merged ones included, each stroked from its border properties or a
+    /// default hairline. Drawn in the cell's local coordinate space.
     private func cellBorders(_ placed: Placed, xs: [CGFloat], ys: [CGFloat]) -> some View {
         let w = xs[min(placed.c + placed.columnSpan, columnCount)] - xs[placed.c]
         let h = ys[min(placed.r + placed.rowSpan, rowCount)] - ys[placed.r]
@@ -930,9 +960,10 @@ struct TableElementView: View {
     }
 }
 
-/// クロップオフセットが各辺のフラクションで、表示領域が要素ボックスを埋めるクロップ画像を描画する。
-/// ジオメトリ式を分離して型チェッカーが処理できるよう独立したビューに抽出する
-/// （「unable to type-check in reasonable time」を回避）。
+/// Draws a cropped image, where the crop offsets are fractions of each edge and the visible region
+/// fills the element box.
+///
+/// Split into its own view so the geometry expressions type-check in reasonable time.
 private struct CroppedImageView: View {
     let img: SwiftUI.Image
     let crop: CropProperties

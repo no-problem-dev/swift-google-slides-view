@@ -8,19 +8,25 @@ public enum GenerationContractError: Error, Hashable {
     case unknownLayout(String, allowed: [String])
 }
 
-/// スライド生成用の構造化出力コントラクト。バリデーションサンドイッチの受信側も担う。
-/// プロバイダー側のスキーマ強制だけを信頼してはならない。
+/// The structured-output contract for generating a deck, and the validator for what comes back.
+///
+/// Validate even when the provider claims to enforce the schema: provider-side enforcement varies by
+/// model and mode, and an invalid layout name would otherwise reach the expander.
 public enum GSlidesGenerationContract {
-    /// モデルに提示するレイアウト語彙。プロファイルの定義済みレイアウトから
-    /// UNSPECIFIED を除いたもの（モデルは常に選択するか省略する）。
+    /// The layout names offered to the model.
+    ///
+    /// The predefined layouts minus UNSPECIFIED, which is never a useful choice — the model either
+    /// picks a layout or omits the field and lets inference decide.
     public static var allowedLayouts: [String] {
         PredefinedLayout.knownValues
             .filter { $0 != .unspecified }
             .map(\.rawValue)
     }
 
-    /// SemanticPresentation の JSON Schema。単一の情報源: レイアウト enum は
-    /// PredefinedLayout.knownValues から構成されるため、モデル型からズレることがない。
+    /// The JSON Schema for a semantic presentation.
+    ///
+    /// The layout enum is built from `PredefinedLayout.knownValues`, so the schema cannot drift from
+    /// the model types as the pinned specification is regenerated.
     public static var jsonSchema: [String: Any] {
         [
             "type": "object",
@@ -172,7 +178,12 @@ public enum GSlidesGenerationContract {
         try JSONSerialization.data(withJSONObject: jsonSchema, options: [.sortedKeys])
     }
 
-    /// バリデーションサンドイッチの受信側: 厳格なデコード + セマンティックチェック。
+    /// Decodes model output strictly and checks what the schema cannot express.
+    ///
+    /// - Throws: ``GenerationContractError/invalidJSON(_:)`` for bytes that do not decode,
+    ///   ``GenerationContractError/emptyPresentation`` for a deck with no slides, and
+    ///   ``GenerationContractError/unknownLayout(_:allowed:)`` for a layout name outside the offered
+    ///   vocabulary. Stops at the first bad slide.
     public static func validate(_ data: Data) throws -> SemanticPresentation {
         let presentation: SemanticPresentation
         do {
@@ -189,8 +200,12 @@ public enum GSlidesGenerationContract {
         return presentation
     }
 
-    /// 検証済みのエンドツーエンドパス: モデル出力バイト → プロファイルプレゼンテーション（`themeSpec` で焼き込み済み）。
-    /// テーマはコンテンツから推論せず、個別に供給する（例: `GSlidesThemeContract` 経由。デフォルトはライト）。
+    /// The whole validated path: model output bytes to a renderable presentation.
+    ///
+    /// The theme is supplied separately rather than inferred from the content — generate one with
+    /// `GSlidesThemeContract` or pass a built-in spec.
+    ///
+    /// - Throws: Whatever `validate(_:)` throws. Expansion itself cannot fail.
     public static func presentation(from data: Data, themeSpec: ThemeSpec = .light) throws -> Presentation {
         PresentationExpander.expand(try validate(data), themeSpec: themeSpec)
     }

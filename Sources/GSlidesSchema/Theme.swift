@@ -1,4 +1,4 @@
-/// テーマカラー 1 種と具体 RGB の対応（マスターのカラースキームエントリー）。
+/// One entry of a master's color scheme: a theme color slot bound to a concrete RGB value.
 public struct ThemeColorPair: Codable, Equatable, Sendable {
     public var type: ThemeColorType?
     public var color: RgbColor?
@@ -9,8 +9,10 @@ public struct ThemeColorPair: Codable, Equatable, Sendable {
     }
 }
 
-/// プレゼンテーションのパレット：テーマカラー名 → RGB。ページプロパティ上に存在し、
-/// master → layout → slide の順に継承される。`ACCENT1` を実際の色に解決するのはこれ。
+/// A presentation's palette: theme color name to RGB.
+///
+/// Lives on page properties and inherits master → layout → slide. This is what turns `ACCENT1` into
+/// an actual color at render time, so changing it on the master restyles the whole deck.
 public struct ColorScheme: Codable, Equatable, Sendable {
     public var colors: [ThemeColorPair]?
 
@@ -18,19 +20,23 @@ public struct ColorScheme: Codable, Equatable, Sendable {
         self.colors = colors
     }
 
-    /// このスキームにテーマカラーの RGB 束縛が存在すれば解決して返す。
+    /// The RGB this scheme binds to a theme color, or nil when the scheme leaves it unbound.
+    ///
+    /// Does not walk the master → layout → slide inheritance chain; it reads this scheme only.
     public func rgb(for themeColor: ThemeColorType) -> RgbColor? {
         colors?.first { $0.type == themeColor }?.color
     }
 
-    /// このスキームで未束縛の編集可能スロット。API のカラースキーム更新には先頭 12 種のすべてが必要なため、
-    /// 空でなければ更新できない。(catalog: theme-color-scheme-editable)
+    /// The editable slots this scheme leaves unbound.
+    ///
+    /// A color scheme update must supply all 12, so a non-empty result means this scheme cannot be
+    /// written back to a master. (catalog: theme-color-scheme-editable)
     public var missingEditableSlots: [ThemeColorType] {
         let bound = Set((colors ?? []).compactMap { $0.type?.rawValue })
         return ThemeColorType.editableSlots.filter { !bound.contains($0.rawValue) }
     }
 
-    /// RGB 成分が仕様の 0.0〜1.0 範囲外の束縛スロットとそのスロット名。
+    /// The bound slots whose RGB components fall outside the specified 0.0–1.0 range.
     public var outOfRangeSlots: [ThemeColorType] {
         (colors ?? []).compactMap { pair in
             guard let type = pair.type, let color = pair.color, !color.componentsInRange else { return nil }
@@ -38,7 +44,8 @@ public struct ColorScheme: Codable, Equatable, Sendable {
         }
     }
 
-    /// このスキームが有効な設定可能カラースキームかどうか：12 種すべてが束縛済みかつ全成分が範囲内。
+    /// Whether this scheme can be sent as a color scheme update: all 12 editable slots bound and
+    /// every component in range.
     public var isCompleteEditableScheme: Bool {
         missingEditableSlots.isEmpty && outOfRangeSlots.isEmpty
     }

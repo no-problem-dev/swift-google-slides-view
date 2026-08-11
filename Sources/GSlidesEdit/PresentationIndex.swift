@@ -2,15 +2,20 @@ import Foundation
 import GSlidesRequests
 import GSlidesSchema
 
-/// `Presentation` の読み取り専用インデックス。preflight パスごとに 1 回構築される：
-/// 存在するオブジェクト ID（スライド＋要素、共有名前空間。catalog: object-id-uniqueness）、
-/// 各要素の現在のトランスフォーム / サイズ、ページサイズを持つ。
-/// バリデーターがリクエストごとにツリーを再走査せずに存在確認とページ境界の問いに答えるために必要なすべて。
+/// A read-only index of a presentation, built once per preflight pass.
+///
+/// Holds the object IDs in use (slides and elements share one namespace — catalog:
+/// object-id-uniqueness), each element's current transform and size, and the page size. Enough to
+/// answer existence and page-bounds questions without re-walking the tree for every request. It is a
+/// snapshot: it does not track edits, so a batch that creates an object cannot see it here.
 struct PresentationIndex {
     private(set) var slideIds: Set<String> = []
     private(set) var elementIds: Set<String> = []
     private var elements: [String: PageElement] = [:]
-    /// EMU 単位のページサイズ。プレゼンテーションが宣言している場合のみ（インメモリプレゼンテーションは宣言しないことが多い）。
+    /// The page size in EMU, or nil when the presentation declares none.
+    ///
+    /// In-memory presentations usually declare none, which is why off-page checks are skipped for
+    /// them rather than failed.
     let pageSizeEmu: (w: Double, h: Double)?
 
     init(_ presentation: Presentation) {
@@ -41,13 +46,17 @@ struct PresentationIndex {
 
     func elementExists(_ id: String) -> Bool { elementIds.contains(id) }
     func slideExists(_ id: String) -> Bool { slideIds.contains(id) }
-    /// 共有名前空間：スライドまたは要素のいずれかが使用する ID は専有済み。
+    /// Whether the ID is taken by anything. Slides and elements share one namespace, so a new ID
+    /// must avoid both.
     func exists(_ id: String) -> Bool { elementIds.contains(id) || slideIds.contains(id) }
 
-    /// `mode` で `transform` を適用した後に要素が占める EMU バウンディングボックス。
-    /// 左上は平行移動成分から、広さは要素の固有サイズにトランスフォームのスケールをかけた値から算出する。
-    /// 要素が未知の場合は nil を返す。`translate` は左上角（catalog: page-bounds）なので
-    /// ボックスは [tx, tx+w] × [ty, ty+h]。
+    /// The EMU bounding box the element would occupy after applying `transform` under `mode`.
+    ///
+    /// The upper-left corner comes from the translation, the extent from the element's own size
+    /// times the absolute scale, so the box is [tx, tx+w] × [ty, ty+h] (catalog: page-bounds). A nil
+    /// `mode` is read as ABSOLUTE, matching the reducer.
+    ///
+    /// - Returns: nil when no element with that ID is indexed.
     func resultingBox(ofElement id: String, after transform: GSlidesSchema.AffineTransform, mode: UpdatePageElementTransformRequestApplyMode?) -> Box? {
         guard let element = elements[id] else { return nil }
         let existing = element.transform ?? GSlidesEditor.identity
@@ -75,11 +84,13 @@ struct PresentationIndex {
     }
 }
 
-/// スライド上の軸平行 EMU バウンディングボックス。
+/// An axis-aligned bounding box on a slide, in EMU, with x, y at the upper-left corner.
 struct Box: Equatable {
     var x: Double, y: Double, w: Double, h: Double
 
-    /// ページ矩形 [0,width] × [0,height] と全く重ならない — 要素がスライド完全外にある。
+    /// Whether the box misses the page rectangle entirely — the element is fully off the slide.
+    ///
+    /// Partial overlap is fine; only a complete miss counts, matching what the API rejects.
     func isEntirelyOutside(width: Double, height: Double) -> Bool {
         x + w <= 0 || x >= width || y + h <= 0 || y >= height
     }

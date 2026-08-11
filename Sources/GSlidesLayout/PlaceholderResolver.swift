@@ -1,16 +1,21 @@
 import GSlidesSchema
 
-/// レンダリングに必要な範囲で Master → Layout → Slide のプレースホルダー継承チェーンを解決する。
-/// スライド要素がジオメトリ（size/transform）を省略した場合、対応するレイアウトの
-/// プレースホルダーへフォールバックする。
+/// Fills in the geometry a slide's placeholder elements inherit from their layout.
+///
+/// The API omits `size` and `transform` on a placeholder that has not been moved or resized, leaving
+/// the value on the layout page instead. Without this step such elements have no frame and cannot be
+/// drawn. Only size and transform are inherited — text style is not.
 public enum PlaceholderResolver {
+    /// The layout page this slide points at, or nil when it names none or the layout is missing.
     public static func layoutPage(for slide: Page, in presentation: Presentation) -> Page? {
         guard let layoutObjectId = slide.slideProperties?.layoutObjectId else { return nil }
         return presentation.layouts?.first { $0.objectId == layoutObjectId }
     }
 
-    /// スライドのプレースホルダーが継承するレイアウト要素。
-    /// 明示的な parentObjectId が優先され、なければ（type, index）でマッチングする。
+    /// The layout element a slide placeholder inherits from.
+    ///
+    /// An explicit `parentObjectId` wins; otherwise the first layout placeholder with the same
+    /// (type, index) pair is used, treating a missing index as 0.
     public static func parentElement(for element: PageElement, in layout: Page) -> PageElement? {
         guard let placeholder = placeholder(of: element) else { return nil }
         let candidates = layout.pageElements ?? []
@@ -24,7 +29,10 @@ public enum PlaceholderResolver {
         }
     }
 
-    /// ジオメトリが欠けているスライド要素をレイアウトチェーンで補完した要素の配列。
+    /// The slide's elements with missing size and transform filled in from the layout.
+    ///
+    /// Elements that already carry both are returned untouched, and an element whose parent cannot
+    /// be found is passed through still missing its geometry rather than dropped.
     public static func resolvedElements(of slide: Page, in presentation: Presentation) -> [PageElement] {
         let layout = layoutPage(for: slide, in: presentation)
         return (slide.pageElements ?? []).map { element in

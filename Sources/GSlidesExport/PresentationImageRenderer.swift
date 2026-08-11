@@ -6,14 +6,20 @@ import ImageIO
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// `Presentation` をラスター画像（PNG）にエクスポートする — スライド個別、またはソーシャル投稿用に全スライドを縦に積んだ 1 枚。
-/// PDF パスと同様、プリロード済みの `imageProvider` を渡す。
+/// Exports a presentation as raster PNG — one image per slide, or every slide stacked vertically
+/// into one image for a social post.
+///
+/// As with the PDF path, pass a preloaded `imageProvider` or remote images snapshot blank.
 @MainActor
 public enum PresentationImageRenderer {
-    /// スライドごとのデフォルトピクセルサイズ（1920×1080、つまり 960×540 の 16:9 ページをスケール 2 で出力）。
+    /// The default output size, 1920×1080 pixels — a 960×540 point 16:9 page rendered at scale 2.
     public static let defaultPixelSize = CGSize(width: 1920, height: 1080)
 
-    /// スライドごとに 1 つの CGImage を返す。
+    /// One rendered image per slide.
+    ///
+    /// The point size is always half `pixelSize`, since the renderer is fixed at scale 2. A slide
+    /// that fails to render is dropped, so the result can be shorter than the slide count — index
+    /// into it by position at your own risk.
     public static func slideImages(
         _ presentation: Presentation,
         pixelSize: CGSize = defaultPixelSize,
@@ -31,6 +37,7 @@ public enum PresentationImageRenderer {
         }
     }
 
+    /// The slides encoded as PNG data, one element per successfully rendered slide.
     public static func pngData(
         _ presentation: Presentation,
         pixelSize: CGSize = defaultPixelSize,
@@ -39,7 +46,12 @@ public enum PresentationImageRenderer {
         slideImages(presentation, pixelSize: pixelSize, imageProvider: imageProvider).compactMap(Self.png)
     }
 
-    /// 全スライドを縦に積んだ 1 枚の PNG（SNS 投稿に適した単一画像）。
+    /// Every slide stacked top to bottom in one PNG, on a white background.
+    ///
+    /// The whole stack is composited in memory at full resolution, so a long deck at the default
+    /// 1920×1080 allocates roughly 8 MB per slide.
+    ///
+    /// - Returns: nil when the deck has no slides, or when the bitmap context or PNG encoding fails.
     public static func stackedPNG(
         _ presentation: Presentation,
         pixelSize: CGSize = defaultPixelSize,

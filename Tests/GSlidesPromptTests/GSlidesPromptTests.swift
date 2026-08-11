@@ -698,7 +698,7 @@ import GSlidesLayout
         let elements = try #require(body.shape?.text?.textElements)
         // one paragraph: marker+first run, then run-only elements (no extra markers)
         #expect(elements.filter { $0.paragraphMarker != nil }.count == 1)
-        #expect(elements.first?.textRun?.style?.bold == true)               // "重要" bold
+        #expect(elements.first?.textRun?.style?.bold == true)               // the emphasized span is bold
         #expect(elements.contains { $0.textRun?.content?.contains("な点") == true })
     }
 

@@ -1,80 +1,104 @@
 # ``GSlidesPrompt``
 
-LLM 向けコントラクトと、構造化スライド生成・テーマ設計用のセマンティック型。
+LLM contracts and the semantic types for generating slides and color themes.
 
 ## Overview
 
-GSlidesPrompt は「モデル ↔ パッケージ」の境界を定義する。LLM が出力すべき内容を定め、
-その出力が完全な `Presentation` へ安全に展開できることを検証する。2 つの独立した
-コントラクトが、2 つの構造化出力インターフェースをそれぞれ担う。
+GSlidesPrompt defines the boundary between a model and this package: what the model is asked to
+emit, and the check that what came back can safely expand into a `Presentation`. Two independent
+contracts cover the two structured-output calls.
 
-### 生成コントラクト
+Validate even when the provider claims to enforce the schema. Provider-side enforcement varies by
+model and mode, and an unchecked layout name would reach the expander.
 
-``GSlidesGenerationContract`` はスライドコンテンツを管理する。``SemanticPresentation`` 型の
-JSON Schema を公開し — コンパクトでモデルが扱いやすいデッキ表現 —
-その正確なスキーマをシステムプロンプトに注入できる。`validate(_:)` はサンドイッチの受信側を担い、
-厳格なデコードとセマンティックチェック（デッキが空でない・レイアウト名が既知）を実行する。
-`presentation(from:themeSpec:)` は生のモデルバイトから完全に展開した `Presentation` への
-エンドツーエンドパス。
+### Generation contract
 
-``SemanticPresentation`` はスライドごとに ``SemanticSlide`` を持つ。各スライドは
-``SemanticBody``（テキスト、バレット、画像 URL、``SemanticMetric`` カード、
-``SemanticChart``、``SemanticStep`` フロー、``SemanticQuote``、``SemanticTable``）を
-任意に組み合わせて持つことができ、``PresentationExpander`` が Slides API ネイティブの
-ページ要素にマッピングする。
+``GSlidesGenerationContract`` governs slide content. It exposes a JSON Schema for the
+``SemanticPresentation`` types — a compact deck representation a model can hold in its head — so the
+exact schema can be injected into the system prompt. `validate(_:)` decodes strictly and checks what
+the schema cannot express: a non-empty deck, and layout names drawn from the offered vocabulary.
+`presentation(from:themeSpec:)` runs the whole path from raw model bytes to a fully expanded
+presentation.
 
-### テーマコントラクト
+The model emits layout intent and content, never geometry. ``PresentationExpander`` supplies the
+coordinates from `PresentationTemplate`, which is what makes a generated deck go through the same
+layout path as one fetched from the API — and what makes it round-trip back to the API unchanged.
 
-``GSlidesThemeContract`` はカラースキーム生成を管理する。12 個の編集可能な
-`ThemeColorType` スロットに制限した `ColorScheme` の JSON Schema と、`promptBlock()` —
-プロンプトにそのまま貼り付けられるシステム指示ブロック（ルール + スキーマ + ワーク済み例）— を公開する。
-`themeSpec(from:)` はモデルの出力を検証し、マスターページへの焼き込みに準備が整った
-``ThemeSpec`` を返す。
+A ``SemanticSlide`` holds ``SemanticBody`` values combining text, bullets, an image URL,
+``SemanticMetric`` cards, a ``SemanticChart``, a ``SemanticStep`` flow, a ``SemanticQuote`` or a
+``SemanticTable``. The visuals are mutually exclusive with each other and with text: a body carrying
+metrics takes over the whole body box, and any text or image on the same body is not drawn. Each
+visual is built from native text, shape and line elements, so nothing here needs an external image
+service or a chart engine.
+
+When a layout gives a body no geometry, visuals degrade rather than disappear — metrics, charts and
+step flows become labeled bullet lists, and a quote becomes plain body text. The information
+survives; the picture does not.
+
+### Theme contract
+
+``GSlidesThemeContract`` governs color scheme generation. It exposes a JSON Schema for a
+`ColorScheme` restricted to the 12 editable `ThemeColorType` slots, and `promptBlock()`, a
+ready-to-paste system-instruction block of rules, schema and a worked example. `themeSpec(from:)`
+validates model output and returns a `ThemeSpec` ready to bake into a master page.
+
+All 12 slots are required, each exactly once — JSON Schema can express the count but not the
+uniqueness, so validation is what enforces it. Validation reports one failure kind at a time, in the
+order unknown types, missing slots, out-of-range components.
+
+### Few-shot examples
+
+The worked examples are built from typed Swift values and serialized, not written by hand. A
+hand-written example drifts silently as the schema changes and then teaches the model to emit
+something the validator rejects. Serialization is byte-stable, which keeps prompt caching effective.
 
 ```swift
 import GSlidesPrompt
 
-// --- スライド生成 ---
+// --- Slide generation ---
 let schemaData = try GSlidesGenerationContract.jsonSchemaData()
 let systemPrompt = """
-以下のスキーマに合う JSON プレゼンテーションを生成してください:
+Generate a JSON presentation matching this schema:
 \(String(decoding: schemaData, as: UTF8.self))
 """
 
-// モデル出力を検証して完全な Presentation に展開する
+// Validate model output and expand it into a full Presentation
 let presentation = try GSlidesGenerationContract.presentation(from: modelOutputData)
 
-// --- テーマ生成 ---
+// --- Theme generation ---
 let themeInstructions = GSlidesThemeContract.promptBlock()
 let themeSpec = try GSlidesThemeContract.themeSpec(from: modelThemeData)
 ```
 
 ## Topics
 
-### 生成コントラクト
+### Generation contract
 
 - ``GSlidesGenerationContract``
 - ``GenerationContractError``
 
-### テーマコントラクト
+### Theme contract
 
 - ``GSlidesThemeContract``
 - ``GSlidesThemeContractError``
 
-### セマンティックスライドモデル
+### Semantic slide model
 
 - ``SemanticPresentation``
 - ``SemanticSlide``
 - ``SemanticBody``
 - ``SemanticBullet``
+- ``SemanticTable``
+
+### Semantic visuals
+
 - ``SemanticMetric``
 - ``SemanticChart``
 - ``SemanticChartBar``
 - ``SemanticStep``
 - ``SemanticQuote``
-- ``SemanticTable``
 
-### 展開とフォーマット
+### Expansion and formatting
 
 - ``PresentationExpander``
 - ``GSlidesExampleFormatter``

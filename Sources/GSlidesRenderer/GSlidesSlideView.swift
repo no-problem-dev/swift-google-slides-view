@@ -3,21 +3,26 @@ import GSlidesLayout
 import GSlidesSchema
 import SwiftUI
 
-/// 1 枚のスライドをプレゼンテーションのページサイズに合わせた固定アスペクトキャンバスに描画する。
-/// ジオメトリ（size + transform、レイアウトから継承している場合も含む）を持つ要素は
-/// ページ座標で絶対配置する。ジオメトリを持たないセマンティック層要素は
-/// プレースホルダータイプ主導のスタックレイアウトにフォールバックする。
+/// Draws one slide on a fixed-aspect canvas matching the presentation's page size.
 ///
-/// カラーはプレゼンテーションのテーマから取得する。master/layout/slide の `ColorScheme` を
-/// DS `ColorPalette`（`PresentationColorPalette`）に射影し、スライドコンテンツと DS クロームの
-/// 両方が `@Environment(\.colorPalette)` を共有する。
+/// Elements that have geometry — their own `size` and `transform`, or one inherited from the layout
+/// — are positioned absolutely in page coordinates. Elements with no geometry fall back to a stacked
+/// layout driven by placeholder type, which is what a semantic deck that never went through the
+/// layout template looks like.
+///
+/// The view scales to whatever width it is given; there is no minimum, so a thumbnail and a
+/// full-screen slide use the same code path.
+///
+/// Colors come from the deck's own theme: the master, layout and slide `ColorScheme` chain is
+/// projected onto a design-system palette, and slide content and surrounding chrome both read
+/// `@Environment(\.colorPalette)`.
 public struct GSlidesSlideView: View {
     public var slide: Page
     public var presentation: Presentation
-    /// プレゼンテーションが定義していないスロット用のベース DS パレット。nil の場合、
-    /// 周囲のアプリパレット（`@Environment(\.colorPalette)`、DS ThemeProvider など）を使用する。
-    /// プレゼンテーション未定義のスロットとクロームはアプリのダークモードに従い、
-    /// キャンバスに対しては自身のカラーが権威を保つ。
+    /// The design-system palette used for slots the presentation does not define.
+    ///
+    /// Leave nil to inherit the app's surrounding palette, which lets undefined slots and chrome
+    /// follow the app's dark mode while the deck stays authoritative over its own canvas.
     public var basePalette: (any ColorPalette)?
 
     @Environment(\.colorPalette) private var envPalette
@@ -70,7 +75,8 @@ public struct GSlidesSlideView: View {
         .environment(\.colorPalette, presentationPalette)
     }
 
-    /// スライドの背景。ページが定義していればストレッチされたピクチャフィル、なければテーマカラーの単色塗り。
+    /// The slide's backdrop: a stretched picture fill when the page defines one, otherwise a solid
+    /// theme color. A picture that fails to load falls back to that same solid color.
     @ViewBuilder
     private func slideBackground(_ presentationPalette: PresentationColorPalette) -> some View {
         if let url = PresentationTheme.backgroundFill(for: slide, in: presentation)?
@@ -88,7 +94,8 @@ public struct GSlidesSlideView: View {
         }
     }
 
-    /// プレゼンテーション内でのスライドの 1 始まりの位置（autoText SLIDE_NUMBER 用）。
+    /// The slide's one-based position in the deck, matched by objectId, for SLIDE_NUMBER auto text.
+    /// nil when the slide is not part of the presentation it is being drawn against.
     private var slideNumber: Int? {
         (presentation.slides ?? []).firstIndex { $0.objectId == slide.objectId }.map { $0 + 1 }
     }
@@ -101,9 +108,11 @@ public struct GSlidesSlideView: View {
     }
 }
 
-/// ジオメトリなし要素のレイアウト名認識配置。
-/// タイトルバンドを上部に（TITLE / SECTION_HEADER 系は中央揃え）、
-/// ボディを横並びに、画像は残りのスペースを埋める。
+/// Places elements that have no geometry, using the layout name as a hint.
+///
+/// Titles go at the top — centered for the cover, section and main-point layouts — subtitles below
+/// them, and everything else side by side in the remaining space. Element order within each band is
+/// the deck's order.
 struct SemanticSlideLayout: View {
     var elements: [PageElement]
     var layoutName: PredefinedLayout?
@@ -163,8 +172,10 @@ struct SemanticSlideLayout: View {
     }
 }
 
-/// 最小限のクロスプラットフォームプレゼンテーションコンテナ。現在のスライド + ページャーコントロール。
-/// 独自クロームを持つアプリは GSlidesSlideView を直接使用する。
+/// A minimal cross-platform container: the current slide plus previous/next controls.
+///
+/// Meant for a quick preview. It owns its own index, so the host cannot drive or observe the current
+/// slide — an app with its own chrome should use `GSlidesSlideView` directly.
 public struct GSlidesPresentationView: View {
     public var presentation: Presentation
     public var basePalette: (any ColorPalette)?

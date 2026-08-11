@@ -1,25 +1,36 @@
 # ``GSlidesRequests``
 
-Google Slides API `batchUpdate` リクエスト語彙の生成済み Swift 型。
+Generated Swift types for the Google Slides API `batchUpdate` request vocabulary.
 
 ## Overview
 
-GSlidesRequests は、[Slides API discovery document](https://slides.googleapis.com/$discovery/rest?version=v1) をミラーした `Codable` リクエスト型を提供する。
-型は discovery スキーマから生成されるため、Swift の語彙がワイヤーの語彙から乖離することはない。
+GSlidesRequests provides `Codable` request types mirroring the
+[Slides API discovery document](https://slides.googleapis.com/$discovery/rest?version=v1). They are
+generated from the discovery schema, so the Swift vocabulary cannot drift from the wire vocabulary.
 
-トップレベルのエントリポイントは ``BatchUpdatePresentationRequest``（API が受け取るエンベロープ）と
-``Request``（`requests` 配列の各要素で正確に 1 つのオペレーションをラップするタグ付きユニオン）。
-``Request`` はオペレーション種別ごとに 1 つの optional フィールドを公開し、
-`GSlidesEdit` と `GSlidesAssembly` がインターチェンジフォーマットとして使用する。
+The two entry points are ``BatchUpdatePresentationRequest``, the envelope the API accepts, and
+``Request``, the tagged union that is one element of the `requests` array. ``Request`` exposes one
+optional field per operation kind and is the interchange format `GSlidesEdit` and `GSlidesAssembly`
+work in.
 
-enum ライクなフィールド（ライン種別・シェイプ種別・置換方式・Z オーダーオペレーションなど）は
-オープンエンドな ``GSlidesSchema/SpecEnum`` 構造体でモデル化されており、Swift の enum ではない —
-将来の API 値もライブラリ更新なしにロスレスでデコードできる。
+Read ``Request/kind`` rather than testing the optional fields. It returns the first member that is
+set, and `.other` when none is — which also covers a member newer than this mirror, whose fields
+still survive a decode/encode round trip. Because it reports only the first, `kind` is not a check
+that exactly one operation is set; `PreflightValidator` in `GSlidesEdit` enforces that.
+
+Requests are applied in array order, so one may depend on an object an earlier one created.
+
+Enum-like fields — line types, shape types, replace methods, z-order operations — are open-ended
+`SpecEnum` structs rather than Swift enums, so a value the API adds later decodes
+without a library update.
+
+Every property is optional, including required ones, so a partial or unfamiliar payload decodes
+rather than throwing. Validation is a separate step.
 
 ```swift
 import GSlidesRequests
 
-// シェイプにテキストを挿入する batchUpdate を構築する
+// Build a batchUpdate that inserts text into a shape
 let batch = BatchUpdatePresentationRequest(requests: [
     Request(insertText: InsertTextRequest(
         objectId: "my-shape-id",
@@ -31,20 +42,22 @@ let batch = BatchUpdatePresentationRequest(requests: [
 
 ## Topics
 
-### バッチコンテナ
+### Batch container
 
 - ``BatchUpdatePresentationRequest``
 - ``Request``
+- ``WriteControl``
 
-### スライドオペレーション
+### Slide operations
 
 - ``CreateSlideRequest``
 - ``DeleteObjectRequest``
 - ``DuplicateObjectRequest``
 - ``UpdateSlidesPositionRequest``
+- ``UpdateSlidePropertiesRequest``
 - ``UpdatePagePropertiesRequest``
 
-### シェイプとテキスト
+### Shapes and text
 
 - ``CreateShapeRequest``
 - ``InsertTextRequest``
@@ -55,7 +68,7 @@ let batch = BatchUpdatePresentationRequest(requests: [
 - ``CreateParagraphBulletsRequest``
 - ``DeleteParagraphBulletsRequest``
 
-### 画像とメディア
+### Images and media
 
 - ``CreateImageRequest``
 - ``CreateVideoRequest``
@@ -65,18 +78,20 @@ let batch = BatchUpdatePresentationRequest(requests: [
 - ``ReplaceAllShapesWithSheetsChartRequest``
 - ``RefreshSheetsChartRequest``
 
-### ジオメトリとプロパティ
+### Geometry and properties
 
 - ``UpdatePageElementTransformRequest``
 - ``UpdateShapePropertiesRequest``
 - ``UpdateImagePropertiesRequest``
 - ``UpdateVideoPropertiesRequest``
 - ``UpdateLinePropertiesRequest``
+- ``UpdateLineCategoryRequest``
 - ``CreateLineRequest``
+- ``RerouteLineRequest``
 - ``UpdatePageElementAltTextRequest``
 - ``UpdatePageElementsZOrderRequest``
 
-### テーブルオペレーション
+### Table operations
 
 - ``CreateTableRequest``
 - ``InsertTableRowsRequest``
@@ -90,7 +105,13 @@ let batch = BatchUpdatePresentationRequest(requests: [
 - ``UpdateTableColumnPropertiesRequest``
 - ``UpdateTableRowPropertiesRequest``
 
-### グルーピング
+### Grouping
 
 - ``GroupObjectsRequest``
 - ``UngroupObjectsRequest``
+
+### Targeting
+
+- ``Range``
+- ``RangeType``
+- ``PageElementProperties``

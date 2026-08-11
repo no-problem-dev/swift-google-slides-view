@@ -1,13 +1,14 @@
 import CoreGraphics
 import SwiftUI
 
-/// レンダラー用の同期解決済み画像。絶対 URL 文字列をキーとする。
+/// Images already in memory, keyed by absolute URL string, for renderers that cannot wait.
 ///
-/// `AsyncImage` はメインランループの外でロードするため、PDF/PNG エクスポートで使う
-/// `ImageRenderer` のスナップショットが画像到着前にスライドをキャプチャしてしまう。
-/// プロバイダーを注入することでレンダラーが同期的な `Image` を描画できる。
-/// エクスポートパスは全画像をこのプロバイダーにプリロードする。
-/// 画面上のレンダリングでは nil のままにして `AsyncImage` を使い続ける。
+/// `AsyncImage` loads off the main run loop, so an `ImageRenderer` snapshot — the PDF and PNG export
+/// path — captures the slide before the image arrives. Injecting a provider lets the renderer draw a
+/// synchronous `Image` instead. Export preloads every image into one of these.
+///
+/// Leave it nil for on-screen rendering, which keeps `AsyncImage` and its progressive loading.
+/// A URL that is not in the dictionary falls back to `AsyncImage` rather than failing.
 // CGImage is immutable and thread-safe in practice; the dictionary is built once before use.
 public struct GSlidesImageProvider: @unchecked Sendable {
     public let images: [String: CGImage]
@@ -16,6 +17,10 @@ public struct GSlidesImageProvider: @unchecked Sendable {
         self.images = images
     }
 
+    /// The preloaded image for a URL, or nil when it was never loaded.
+    ///
+    /// Decorative: the returned image carries no accessibility label, since a slide's alt text lives
+    /// on the page element.
     public func image(for url: URL) -> Image? {
         images[url.absoluteString].map { Image(decorative: $0, scale: 1, orientation: .up) }
     }
@@ -26,7 +31,8 @@ private struct GSlidesImageProviderKey: EnvironmentKey {
 }
 
 public extension EnvironmentValues {
-    /// セットされている場合、レンダラーはこのプロバイダーから同期的に画像を描画する（エクスポートパス）。
+    /// When set, the renderer draws images synchronously from this provider — the export path.
+    /// Leave nil on screen so images load progressively.
     var gslidesImageProvider: GSlidesImageProvider? {
         get { self[GSlidesImageProviderKey.self] }
         set { self[GSlidesImageProviderKey.self] = newValue }
@@ -38,8 +44,10 @@ private struct GSlidesSlideNumberKey: EnvironmentKey {
 }
 
 public extension EnvironmentValues {
-    /// 現在のスライドの 1 始まりの番号。API がコンテンツを空のままにする `autoText` の
-    /// SLIDE_NUMBER フィールドをプレゼンテーション時に解決するために使用する。
+    /// The current slide's one-based number, used to resolve a SLIDE_NUMBER `autoText` field.
+    ///
+    /// The API leaves that field's content empty, so without this the slide number renders blank.
+    /// `GSlidesSlideView` sets it from the slide's position in the deck.
     var gslidesSlideNumber: Int? {
         get { self[GSlidesSlideNumberKey.self] }
         set { self[GSlidesSlideNumberKey.self] = newValue }

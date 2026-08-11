@@ -3,17 +3,22 @@ import GSlidesRequests
 import GSlidesSchema
 
 public extension Presentation {
-    /// batchUpdate リクエストのシーケンスをこのプレゼンテーションに適用し、新しい値を返す。
-    /// 純粋（I/O なし、Google 依存なし）：公式 `Request` ボキャブラリーをローカルで実行する。
+    /// Applies a sequence of batchUpdate requests and returns the new presentation.
     ///
-    /// **実際の API とまったく同じアトミック性** — 「いずれかのリクエストが無効な場合、リクエスト
-    /// 全体が失敗し何も適用されない」（catalog: batch-atomicity）。リデューサーはコピー上で動作し、
-    /// 完全適用済みの結果のみを返す。失敗すると `BatchUpdateError` をスローし `self` は変更されない。
-    /// （すべてのバイオレーションを収集するリッチな事前検証は `PreflightValidator` にあり、
-    /// このリデューサーは実行＋最終安全網の役割を持つ。）
+    /// Pure: no I/O, no Google dependency. Atomic, exactly like the real API — "if any request is not
+    /// valid, then the entire request will fail and nothing will be applied" (catalog:
+    /// batch-atomicity). The reducer works on a copy and returns only a fully applied result, so on
+    /// failure `self` is unchanged.
     ///
-    /// テキスト編集のインデックス規約：位置は `textRun` のコンテンツのみをカウントし、
-    /// 段落マーカーおよびオートテキストはゼロ幅 — リデューサー固有の内部一貫した規約。
+    /// This is the execution path plus a last-resort safety net; it stops at the first bad request.
+    /// Run `PreflightValidator` first to collect every violation in one pass.
+    ///
+    /// Text indices count `textRun` content only — paragraph markers and auto text are zero width.
+    /// That convention is internally consistent but is the reducer's own, so an index computed from
+    /// the raw `textElements` array will not line up.
+    ///
+    /// - Throws: `BatchUpdateError` wrapping the violation, with the failing request's batch index
+    ///   already in the field path.
     func applying(_ requests: [Request]) throws -> Presentation {
         var p = self
         for (i, request) in requests.enumerated() {
@@ -26,13 +31,16 @@ public extension Presentation {
     }
 }
 
-/// ローカル `batchUpdate` エグゼキュータ。凍結した Schema+Requests ミラー上に位置し、
-/// 上位のすべて（A2A 差分デリバリー、エージェント編集ループ）がこの 1 つのエントリポイントを通じて
-/// プレゼンテーションを駆動する。
+/// The local `batchUpdate` executor.
+///
+/// Sits on the frozen schema and request mirrors, and everything above it — A2A diff delivery, the
+/// agent edit loop — drives a presentation through this one entry point.
 public enum GSlidesEditor {
-    /// ローカルリデューサーが実際に実行するオペレーション — `PreflightValidator` が使う「サポート済み」
-    /// の SSOT。下の `apply(_:to:)` スイッチをミラーし、テストの `supportedOperationsCoverSwitch`
-    /// が 2 つを同期させる。
+    /// The operations the local reducer actually executes, and the source of truth `PreflightValidator`
+    /// asks about "supported".
+    ///
+    /// Ten of the API's 44 operations. Mirrors the switch in `apply(_:to:)`, and the
+    /// `supportedOperationsCoverSwitch` test keeps the two in step.
     public static let supportedOperations: Set<String> = [
         "deleteObject", "updatePageElementTransform", "updatePageElementsZOrder", "duplicateObject",
         "createSlide", "replaceAllText", "insertText", "deleteText", "updateTextStyle",
@@ -79,7 +87,8 @@ public enum GSlidesEditor {
                        reason: .unsupportedOperation)
     }
 
-    /// リクエストのセットメンバーのワイヤーフィールド名（診断用）— データ駆動で、44 ケースのスイッチ不要。
+    /// The wire field name of the request's set member, for diagnostics. Found by reflection, so
+    /// there is no 44-case switch to keep current. Returns "unknown" when no member is set.
     static func label(_ request: Request) -> String {
         for child in Mirror(reflecting: request).children {
             if let name = child.label, Mirror(reflecting: child.value).displayStyle == .optional,
@@ -94,7 +103,10 @@ public enum GSlidesEditor {
 // MARK: - Element traversal
 
 extension GSlidesEditor {
-    /// id でどこにあっても（グループに再帰して）要素を見つけ、その場で変更する。
+    /// Finds an element by ID anywhere in the deck, recursing into groups, and mutates it in place.
+    ///
+    /// - Throws: An `OBJECT_NOT_FOUND` violation when nothing on any slide has that ID. Layouts,
+    ///   masters and notes pages are not searched.
     static func mutateElement(_ id: String, in p: inout Presentation, _ body: (inout PageElement) -> Void) throws {
         var slides = p.slides ?? []
         for s in slides.indices {
@@ -236,7 +248,11 @@ extension GSlidesEditor {
 
     static let identity = GSlidesSchema.AffineTransform(scaleX: 1, scaleY: 1, translateX: 0, translateY: 0)
 
-    /// 2×3 アフィン連結：`existing` の上に `update` を適用した結果（existing が先）。
+    /// Composes two 2×3 affine transforms, applying `update` on top of `existing`.
+    ///
+    /// Order matters: this is what RELATIVE apply mode means. The result takes its unit from
+    /// `existing`, falling back to `update`'s, so mixing PT and EMU operands silently keeps the
+    /// first unit for both.
     static func concat(_ existing: GSlidesSchema.AffineTransform, _ update: GSlidesSchema.AffineTransform) -> GSlidesSchema.AffineTransform {
         let (esx, esy, ehx, ehy, etx, ety) = coalesce(existing)
         let (usx, usy, uhx, uhy, utx, uty) = coalesce(update)
@@ -251,7 +267,8 @@ extension GSlidesEditor {
         )
     }
 
-    /// (sx, sy, hx, hy, tx, ty) — nil はアイデンティティ成分をデフォルトとする。
+    /// The transform's components as (sx, sy, hx, hy, tx, ty), with nil filled in from the identity
+    /// transform — 1 for scale, 0 for shear and translation.
     static func coalesce(_ t: GSlidesSchema.AffineTransform) -> (Double, Double, Double, Double, Double, Double) {
         (t.scaleX ?? 1, t.scaleY ?? 1, t.shearX ?? 0, t.shearY ?? 0, t.translateX ?? 0, t.translateY ?? 0)
     }
@@ -279,7 +296,10 @@ extension GSlidesEditor {
         p.slides = slides
     }
 
-    /// すべてのシェイプのテキストラン（グループに再帰）を走査し、各ランのコンテンツを変換する。
+    /// Walks every shape's text runs, recursing into groups, and transforms each run's content.
+    ///
+    /// Runs are visited one at a time, so a match spanning a style boundary — bold in the middle of
+    /// a word — is not seen.
     static func mutateAllText(in elements: inout [PageElement], _ transform: (inout String) -> Void) {
         for i in elements.indices {
             if var shape = elements[i].shape, var tc = shape.text, var els = tc.textElements {
@@ -327,7 +347,7 @@ extension GSlidesEditor {
             throw missing("updateTextStyle")
         }
         if r.cellLocation != nil { throw unsupported("updateTextStyle(table cell)") }
-        let fields = r.fields ?? ""  // 省略時は FieldMask が patch の存在キーを推論
+        let fields = r.fields ?? ""  // an empty mask means: apply exactly the keys present in the patch
         var thrown: Error?
         try editText(id, in: &p) { els in
             let (start, end) = resolveRange(r.textRange, total: textLength(els))
@@ -342,8 +362,10 @@ extension GSlidesEditor {
         if let thrown { throw thrown }
     }
 
-    /// シェイプのテキスト要素をその場で編集し、段落マーカーとコンパクト形式
-    /// （1 要素上のマーカー＋ラン）を保持して、フラット化されたインデックスを再導出する。
+    /// Edits a shape's text elements in place, then re-derives the flattened start and end indices.
+    ///
+    /// Paragraph markers and the compact form — a marker and a run on one element — are preserved.
+    /// An element that is not a shape is left untouched rather than reported.
     static func editText(_ id: String, in p: inout Presentation, _ body: (inout [TextElement]) -> Void) throws {
         try mutateElement(id, in: &p) { element in
             guard var shape = element.shape else { return }
@@ -361,7 +383,10 @@ extension GSlidesEditor {
         els.reduce(0) { $0 + ($1.textRun?.content?.count ?? 0) }
     }
 
-    /// 各ラン保持要素のフラット化された [start,end)。要素順。
+    /// The flattened [start, end) span of each run-bearing element, in element order.
+    ///
+    /// Elements with no `textRun` are skipped entirely, so the returned indices are not positions in
+    /// the array.
     static func runRanges(_ els: [TextElement]) -> [(index: Int, start: Int, end: Int)] {
         var out: [(Int, Int, Int)] = []
         var cursor = 0
@@ -383,9 +408,13 @@ extension GSlidesEditor {
         }
     }
 
-    /// フラット化された文字オフセットでスプライスし、各文字を元のランエレメントに束縛させたまま保持する
-    /// （マーカー保持）。挿入テキストは挿入点のランに合流し、そのスタイルを継承する。
-    /// 削除によって空になったラン専用要素は削除し、マーカー付き要素は保持する。
+    /// Splices at a flattened character offset, keeping every surviving character bound to its
+    /// original run element so styling and paragraph markers survive.
+    ///
+    /// Inserted text joins the run at the insertion point and inherits its style. A run-only element
+    /// left empty by the deletion is removed; one carrying a paragraph marker is kept empty. The
+    /// offset and length are clamped to the text, so an out-of-range range is a no-op rather than an
+    /// error.
     static func splice(_ els: inout [TextElement], at offset: Int, removing: Int, inserting: String) {
         let runs = runRanges(els)
         if runs.isEmpty {  // empty shape — seed a single run
@@ -438,7 +467,7 @@ extension GSlidesEditor {
         guard let id = r.objectId, let patch = r.shapeProperties else {
             throw missing("updateShapeProperties")
         }
-        let fields = r.fields ?? ""  // 省略時は FieldMask が patch の存在キーを推論
+        let fields = r.fields ?? ""  // an empty mask means: apply exactly the keys present in the patch
         var thrown: Error?
         try mutateElement(id, in: &p) { element in
             guard var shape = element.shape else { return }

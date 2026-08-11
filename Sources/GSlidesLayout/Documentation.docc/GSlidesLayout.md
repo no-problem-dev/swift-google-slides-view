@@ -1,68 +1,101 @@
 # ``GSlidesLayout``
 
-Google Slides プレゼンテーションのジオメトリ、座標変換、レイアウトマッチング、スライドデザインシステム。
+Geometry, layout matching and the slide design system for Google Slides presentations.
 
 ## Overview
 
-GSlidesLayout は `GSlidesSchema`（ワイヤー型）と `GSlidesRenderer` / `GSlidesAssembly`（コンシューマー）の間に位置するデザインデータ層。このライブラリが扱う全計測値は Slides API のネイティブ単位である English Metric Unit (EMU) を使用する。``EMU`` は変換定数（1 インチ = 914,400 EMU、1 ポイント = 12,700 EMU）と標準 16:9 デフォルトページサイズを提供する。``PageGeometry`` は、API が全 `PageElement` に返す `size` + `transform` フィールドを読み取り、生の数値を `CGRect` / `CGSize` 値に変換する。
+GSlidesLayout sits between the wire types in `GSlidesSchema` and their consumers — `GSlidesRenderer`,
+`GSlidesPrompt` and `GSlidesExport`. It answers two questions the schema leaves open: where does an
+element go, and which layout should a slide use.
 
-### レイアウトマッチング
+### Units
 
-``LayoutMatcher`` は セマンティックな ``SlideContent`` の記述（タイトル、サブタイトル、ボディ、テーブル数）を最適な `PredefinedLayout` にマッピングする。md2googleslides と同じルール順序を移植している。``PlaceholderResolver`` は Master → Layout → Slide の継承チェーンを辿り、レイアウト親に依存するスライド要素の欠損ジオメトリを補完する。
+Every measurement here is in EMU, the Slides API's native unit, except font sizes, which are in
+typographic points. ``EMU`` carries the conversion constants — 914,400 EMU per inch, 12,700 per
+point — and the standard 16:9 page size used when a presentation declares none.
 
-### テンプレートとデザインシステム
+``PageGeometry`` reads the `size` + `transform` pair the API returns on every `PageElement` and
+produces a `CGRect` in page coordinates, origin top-left, y growing downward. It normalizes a
+negative scale into a positive rectangle and **ignores shear**, so a rotated element reports its
+pre-rotation box. It returns nil for an element with no size, which is what an unresolved
+placeholder looks like — run ``PlaceholderResolver`` first.
 
-``PresentationTemplate`` はデッキ全体のデザインをデータとして表現する。マスターページ（``ThemeSpec`` カラースキームを持つ）と、各定義済みレイアウトのプレースホルダー矩形・デフォルトテキストスタイル（``PlaceholderSpec`` 値）がある。コンシューマーは `spec(layout:type:index:)` を呼び出してマジックナンバーを埋め込まずに完全設定済みのプレースホルダーを取得できる。
+### Placeholder inheritance
 
-デザインシステム型 — ``SpacingScale``、``HeaderStyle``、``SlideDesignSystem`` — は垂直リズムトークンとヘッダー処理の選択をまとめ、1 つの値を変更するだけでデッキ全体の見た目を交換できるようにする。
+The API omits `size` and `transform` on a placeholder the author never moved, leaving those values on
+the layout page. ``PlaceholderResolver`` walks master → layout → slide and fills them in, matching on
+`parentObjectId` when present and on the (type, index) pair otherwise. Only geometry is inherited,
+not text style.
 
-``PresentationTypography`` は各セマンティックロール（タイトル、サブタイトル、ボディ、アイブロウ、ビッグナンバー、フッター）にフォントファミリーと数値ウェイトを割り当てる。``ThemeSpec`` がカラーを適用するのと同じ方法でジオメトリの上に重ねて適用し、`.system`（全ロール未設定）は常に安全なデフォルト。
+### Layout matching
+
+``LayoutMatcher`` maps a semantic ``SlideContent`` description — title, subtitle, bodies, table count
+— onto a `PredefinedLayout`, porting the rule order from md2googleslides. The rules are ordered and
+the first match wins; nothing matching yields `.blank`.
+
+### Template and design system
+
+``PresentationTemplate`` holds a deck's design as data: a master page carrying a ``ThemeSpec`` color
+scheme, and a ``PlaceholderSpec`` rectangle plus default style for every predefined layout slot.
+Consumers call `spec(layout:type:index:typography:scale:)` instead of embedding coordinates.
+
+``SpacingScale``, ``HeaderStyle`` and ``SlideDesignSystem`` collect the vertical rhythm tokens and
+the header treatment, so changing one value reskins every content slide at once. Header and body
+positions are derived from the same scale, which is why a taller header pushes bodies down instead of
+overlapping them.
+
+``PresentationTypography`` assigns a font family and numeric weight per semantic role — title,
+subtitle, body, eyebrow, big number, footer — and is layered onto the geometry the way ``ThemeSpec``
+is layered onto color. It only fills in fields a slot leaves nil, and `.system` sets nothing at all.
 
 ```swift
 import GSlidesLayout
 
-// スライドに最適な定義済みレイアウトを推論する
+// Infer the best predefined layout for a slide
 let content = SlideContent(
     title: .init("Q3 Results"),
     bodies: [.init(text: .init("Revenue grew 42 % YoY"))]
 )
 let layout = LayoutMatcher.match(content)   // → .titleAndBody
 
-// そのレイアウトのタイトルスロットのプレースホルダー spec を構築する
+// Build the placeholder spec for that layout's title slot
 let spec = PresentationTemplate.spec(
     layout: layout,
     type: .title,
     index: 0,
     typography: .system
 )
-// spec?.size, spec?.transform — PageElement に埋め込む準備完了
+// spec?.size and spec?.transform are ready to attach to a PageElement
 ```
 
 ## Topics
 
-### 座標ユーティリティ
+### Units and coordinates
 
 - ``EMU``
 - ``PageGeometry``
 
-### プレースホルダー解決
+### Placeholder resolution
 
 - ``PlaceholderResolver``
-- ``PlaceholderSpec``
-- ``PresentationTemplate``
 
-### レイアウトマッチング
+### Layout matching
 
 - ``SlideContent``
 - ``LayoutMatcher``
 
-### デザインシステム
+### Template
+
+- ``PresentationTemplate``
+- ``PlaceholderSpec``
+
+### Design system
 
 - ``SlideDesignSystem``
 - ``SpacingScale``
 - ``HeaderStyle``
 
-### カラーとタイポグラフィ
+### Color and typography
 
 - ``ThemeSpec``
 - ``PresentationTypography``

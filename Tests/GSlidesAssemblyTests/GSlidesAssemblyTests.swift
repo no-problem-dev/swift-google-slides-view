@@ -26,8 +26,8 @@ import GSlidesRequests
         return GSlidesChunk(payload: try JSONEncoder().encode(batch), kind: .batchUpdate, lastChunk: lastChunk)
     }
 
-    // 回帰: 生成ストリーム完了（isComplete）後に来るライブ編集 batchUpdate 差分が
-    // 完了ガードで捨てられず、現在のプレゼンテーションに適用されること（画面が更新されない不具合の防止）。
+    // Regression: a live-edit batchUpdate arriving after the generation stream completed must not be
+    // dropped by the completion guard. When it was, the on-screen presentation never visibly updated.
     @Test func batchUpdateAppliesAfterStreamCompletes() throws {
         var assembler = GSlidesAssembler()
         try assembler.apply(envelope())
@@ -39,7 +39,7 @@ import GSlidesRequests
         ]))
         let text = assembler.presentation?.slides?.first?.pageElements?.first?
             .shape?.text?.textElements?.first?.textRun?.content
-        #expect(text == "Edited")  // 完了後でも編集が反映される
+        #expect(text == "Edited")  // the edit lands even after completion
     }
 
     @Test func envelopeThenAppendsThenComplete() throws {

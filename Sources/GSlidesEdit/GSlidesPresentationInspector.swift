@@ -1,23 +1,30 @@
 import Foundation
 import GSlidesSchema
 
-/// 編集エージェント向けのアドレス可能な 1 要素の記述。変更対象を決定するのに十分なコンテキスト
-/// （kind、ラベル、現在のテキスト、EMU バウンディングボックス）を持つ安定した `objectId`。
-/// 編集ループの「現在の状態を読む」半分 — エージェントが inspect を呼び出し、
-/// その後 batchUpdate リクエストを emit する。
+/// One element described well enough for an editing agent to decide whether to change it.
+///
+/// The stable `objectId` is what a batchUpdate request references; the rest is context — kind,
+/// label, current text and EMU bounding box. This is the read half of the edit loop: an agent
+/// inspects, then emits requests.
 public struct PresentationElementDescriptor: Codable, Equatable, Sendable {
     public var objectId: String
     public var slideIndex: Int
     public var kind: String              // text | image | line | table | shape | group | other
     public var label: String?            // placeholder role or shape type
-    public var text: String?             // current text (runs joined), if any
+    public var text: String?             // current text, runs joined and truncated; nil when empty
+    /// Position and size in EMU, normalized from whatever unit the element declared.
+    ///
+    /// nil where the element carries no transform or size — an unresolved placeholder, typically.
     public var xEmu: Double?
     public var yEmu: Double?
     public var widthEmu: Double?
     public var heightEmu: Double?
 }
 
-/// プレゼンテーション全体を編集可能なサーフェスに縮約したもの — エージェントが編集前に見る情報。
+/// A whole presentation reduced to its editable surface — what an agent sees before it edits.
+///
+/// Only slides are walked; layouts, masters and notes pages are not described. Elements are flat and
+/// carry their slide index rather than being nested under it.
 public struct PresentationSnapshot: Codable, Equatable, Sendable {
     public var presentationTitle: String?
     public var slideCount: Int
@@ -25,9 +32,15 @@ public struct PresentationSnapshot: Codable, Equatable, Sendable {
     public var elements: [PresentationElementDescriptor]
 }
 
-/// `Presentation` をエージェント向けスナップショットにレンダリングする。純粋かつ LLM 非依存：
-/// ホストが `inspect_presentation` ツールとしてラップし、パッケージが射影（objectId ↔ 要素の種別）を所有する。
+/// Renders a presentation as an agent-facing snapshot. Pure, and tied to no particular LLM: a host
+/// wraps it as an `inspect_presentation` tool while this package owns the projection.
 public enum GSlidesPresentationInspector {
+    /// The snapshot of a presentation.
+    ///
+    /// - Parameters:
+    ///   - presentation: The presentation to describe. Only its slides are walked.
+    ///   - textLimit: Maximum characters of element text to include; longer text is truncated with
+    ///     an ellipsis, so the result is a preview, not a source of truth for editing indices.
     public static func snapshot(_ presentation: Presentation, textLimit: Int = 120) -> PresentationSnapshot {
         let slides = presentation.slides ?? []
         var elements: [PresentationElementDescriptor] = []
@@ -43,6 +56,8 @@ public enum GSlidesPresentationInspector {
             elements: elements)
     }
 
+    /// The snapshot encoded as JSON with sorted keys, so the same presentation always produces the
+    /// same bytes and the result is safe to cache or diff.
     public static func snapshotJSON(_ presentation: Presentation, textLimit: Int = 120) throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
@@ -92,7 +107,7 @@ public enum GSlidesPresentationInspector {
         return trimmed.isEmpty ? nil : trimmed
     }
 
-    /// マグニチュードを EMU に正規化する（1pt = 12700 EMU）。既に EMU または単位なしの場合はそのまま返す。
+    /// Normalizes a magnitude to EMU (1 pt = 12,700 EMU). EMU and an unspecified unit pass through.
     static func emu(_ magnitude: Double?, unit: GSlidesSchema.Unit?) -> Double? {
         guard let magnitude else { return nil }
         return unit == .pt ? magnitude * 12700 : magnitude

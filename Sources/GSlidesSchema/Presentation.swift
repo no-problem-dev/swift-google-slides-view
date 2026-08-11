@@ -1,7 +1,7 @@
-/// Slides API が定義する事前定義スライドレイアウト名。
-/// ワイヤーからデコードした未知のレイアウトがロスレスで round-trip できるよう、
-/// Swift enum ではなくオープンエンドな `SpecEnum` としてモデル化する。`knownValues` はテストで強制。
-/// `google.apps.slides.v1.PredefinedLayout` のミラー。
+/// A predefined slide layout name defined by the Slides API.
+///
+/// Open-ended rather than a Swift enum, so a layout name decoded from the wire that this profile
+/// does not list still re-encodes unchanged. Mirrors `google.apps.slides.v1.PredefinedLayout`.
 public struct PredefinedLayout: SpecEnum {
     public var rawValue: String
     public init(rawValue: String) { self.rawValue = rawValue }
@@ -28,8 +28,10 @@ public struct PredefinedLayout: SpecEnum {
     }
 }
 
-/// スライドが使用するレイアウトを識別する。明示的な `layoutId`（`Presentation.layouts` 内ページの objectId）
-/// または事前定義名のいずれか一方を設定する。`google.apps.slides.v1.LayoutReference` のミラー。
+/// Identifies the layout a slide uses — set exactly one of the two fields, never both.
+///
+/// `layoutId` is the objectId of a page in `Presentation.layouts`; `predefinedLayout` names a
+/// built-in layout instead. Mirrors `google.apps.slides.v1.LayoutReference`.
 public struct LayoutReference: Codable, Equatable, Sendable {
     public var layoutId: String?
     public var predefinedLayout: PredefinedLayout?
@@ -40,9 +42,12 @@ public struct LayoutReference: Codable, Equatable, Sendable {
     }
 }
 
-/// Google Slides プレゼンテーションのルートオブジェクト：スライド・レイアウト・マスター。
-/// アセンブラーが構築するインメモリの部分的なプレゼンテーション（例: envelope より先にスライドが届くストリーム）を
-/// サポートするため、すべてのフィールドはオプション。`google.apps.slides.v1.Presentation` のミラー。
+/// The root of a Google Slides presentation: slides, layouts and masters.
+///
+/// Every field is optional, including ones the real API always returns, so an assembler can hold a
+/// half-built presentation — a stream where slides arrive before the envelope, for example. A nil
+/// therefore means "not received yet" as often as it means "absent".
+/// Mirrors `google.apps.slides.v1.Presentation`.
 public struct Presentation: Codable, Equatable, Sendable {
     public var presentationId: String?
     public var title: String?

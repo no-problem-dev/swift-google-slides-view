@@ -2,9 +2,11 @@ import DesignSystem
 import GSlidesSchema
 import SwiftUI
 
-/// プロファイルカラーをプレゼンテーション由来の DS パレットに対して SwiftUI カラーに解決する。
-/// テーマカラーはプレゼンテーションのスキームを通じて解決し（忠実度を保つ）、
-/// クロームが使う `PresentationColorPalette` と同一のパレット上で全てを表現する。
+/// Resolves the schema's color types to SwiftUI colors against a palette built from the presentation.
+///
+/// Theme colors resolve through the presentation's own scheme, so the deck keeps its intended
+/// palette, and both slide content and surrounding chrome read from the same
+/// `PresentationColorPalette`.
 public struct GSlidesPalette: Sendable {
     public var presentation: PresentationColorPalette
 
@@ -24,17 +26,20 @@ public struct GSlidesPalette: Sendable {
         presentation.resolve(optional?.opaqueColor)
     }
 
+    /// The fill's color with its alpha applied. A nil alpha means fully opaque.
     public func color(_ fill: SolidFill?) -> Color? {
         guard let fill else { return nil }
         return presentation.resolve(fill.color).map { $0.opacity(fill.alpha ?? 1) }
     }
 
-    /// プレゼンテーションのデフォルトの on-surface テキストカラー。
+    /// The color to draw text that carries no explicit foreground color.
     public var defaultText: Color { presentation.onSurface }
 }
 
-/// プレースホルダータイプのデフォルトタイポグラフィ。DS Typography トークン（ポイントサイズ）から取得し、
-/// レンダラーのデフォルトスケールをデザインシステムと一致させる。明示的なプレゼンテーションフォントサイズが優先される。
+/// The fallback type scale for a placeholder that declares no font size of its own.
+///
+/// Sizes come from the design system's typography tokens so the renderer's defaults match it. An
+/// explicit font size in the presentation always wins over these.
 enum PlaceholderTypography {
     static func defaultFontSize(for type: PlaceholderType?, big: Bool = false) -> Double {
         let token: Typography = switch type {

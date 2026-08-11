@@ -2,69 +2,68 @@ English | [日本語](./README.ja.md)
 
 # swift-google-slides-view
 
-Render Google Slides API presentation JSON in SwiftUI.
+Show a slide deck natively in a SwiftUI app — including one an agent is still writing, a slide at a time.
 
 > **Unofficial.** Not affiliated with, endorsed by, or sponsored by Google; "Google Slides" is a trademark of Google LLC. This renders a semantic subset of the [Google Slides API](https://developers.google.com/slides/api) presentation schema — it is not a Google product and not an API client. Conforming to the API is not a goal of this project.
 
-Google Slides API の presentation スキーマのセマンティック・サブセット（プロファイル）に沿った JSON を、SwiftUI で 16:9 スライドとしてレンダリングする Swift Package。LLM エージェントにそのプロファイルの JSON を生成させ、A2A Artifact ストリーミングで 1 枚ずつ配信する用途を主眼に設計しているが、スキーマとレンダラ自体は LLM にも A2A にも依存しない。
+## Overview
 
-## 設計原則
+Presentations are described by the same JSON the Slides API returns, so a deck can come from a file,
+from a server, or from a language model asked to produce one. Rendering is plain SwiftUI on a 16:9
+canvas — no web view, no headless browser, and no Google SDK in your app.
 
-1. **語彙を発明しない** — フィールド名・enum は本家 discovery document と同名。Swift の enum が本家の部分集合であることをテストで強制（enum parity）。North-star: 実際の `presentations.get` レスポンス（サブセット）がそのまま decode → レンダリングできること
-2. **依存の向きは内→外** — スキーマは何も知らない。プロトコル依存はアダプタへ、UI 依存は葉へ
-3. **CLI で TDD** — レンダラ以外の全ターゲットは UI 非依存で、`swift test` が CLI で完結する
+- **Draw a deck as it arrives** — feed streamed chunks in and the presentation state rebuilds after
+  each one, so slides appear while the rest is still being written
+- **Edits are all-or-nothing** — a batch of changes either applies completely or leaves the deck
+  untouched, matching the API's own behaviour, so a partial edit can never be shown
+- **Every problem in one pass** — validation collects all violations before applying instead of
+  stopping at the first, so a model fixing its own output does not need one round trip per mistake
+- **Rejections say which field and why** — a dotted path into the offending request and a stable
+  reason code, formattable straight back into a prompt
+- **The deck's own colours drive the UI** — a presentation's colour scheme fills the design system's
+  semantic slots, so slide content and surrounding chrome are themed together
+- **Export without a screen** — render to PDF or PNG
+- **Testable from the command line** — UI is confined to the rendering and export targets, so the
+  schema, layout, assembly and edit layers run under `swift test` with no simulator
 
-## ターゲット構成
+## Quick Start
 
-| ターゲット | 責務 | 依存 |
-|---|---|---|
-| `GSlidesSchema` | プロファイルの Codable モデル + vendored discovery doc + 制約カタログ（SSOT） | swift-structured-data |
-| `GSlidesLayout` | コンテンツ → predefinedLayout マッチング、placeholder 解決、EMU 計算 | GSlidesSchema |
-| `GSlidesAssembly` | チャンク列 `(payload, append, lastChunk)` → presentation 状態の純関数 reducer | GSlidesSchema |
-| `GSlidesPrompt` | LLM 構造化出力スキーマ + few-shot 例（契約の提供のみ） | GSlidesSchema |
-| `GSlidesA2A` | A2A Artifact/DataPart ⇄ schema coding、ストリームイベント写像 | + A2ACore |
-| `GSlidesRequests` | batchUpdate write モデル（44 Request + Response の型安全ミラー） | GSlidesSchema |
-| `GSlidesEdit` | ローカル batchUpdate 実行 reducer + 2 層バリデーション（preflight + atomic apply） | GSlidesRequests |
-| `GSlidesRenderer` | SwiftUI レンダラ（16:9 キャンバス、EMU→pt、デッキテーマ → DS ColorPalette） | + DesignSystem |
-| `GSlidesExport` | Presentation → PDF / PNG（ImageRenderer + CGContext） | GSlidesRenderer |
-
-## 編集とバリデーション（GSlidesEdit）
-
-編集エージェントは独自語彙ではなく **Slides API の batchUpdate リクエスト**（`Request` 型のキュレートされた部分集合）を直接 emit する。適用は **decode → preflight → atomic apply** の 3 段：
-
-- **2 層構造**: 下層（`Presentation.applying`）は本家同様 **all-or-nothing**（「1 件でも不正ならバッチ全体が失敗し、何も適用されない」）。上層（`PreflightValidator`）は送信前に **全違反を一括収集**し、エージェントが 1 パスで全部直せるようにする（サーバ往復を 1 回の判定に畳む）。
-- **権威ある制約**: バリデーション規則は `Sources/GSlidesSchema/Resources/Spec/constraints-catalog.yaml`（一次仕様から逐語引用 + 出典 URL）が SSOT。objectId 正規表現/長さ/一意性、enum 網羅、oneof「ちょうど 1 つ」、field mask、テキスト範囲は **(A) API が弾く制約**として、ページ境界外への移動・退化変形（scale=0）は **(B) API が弾かないため呼び出し側が担保する制約**として検証する。
-- **エラーモデル**: 拒否は `google.rpc.Status` + `BadRequest.FieldViolation` を再現した `BatchUpdateError` で返す。`field`（リクエストへの dotted path）・`reason`（`OBJECT_NOT_FOUND` 等の安定コード）・`description` を持ち、`promptFeedback(for:)` で LLM 自己修正用に整形できる。
-- **仕様の凍結と drift 検出**: discovery doc は `scripts/fetch-discovery.sh` で取得し revision をピン。`SpecProvenanceTests` が revision と検証が依存する逐語プローズの不変を保証する。詳細は `Resources/Spec/PROVENANCE.md`。
-
-## テーマ
-
-デッキの `ColorScheme`（master/layout/slide 継承）を DesignSystem の `ColorPalette` に射影する（`DeckColorPalette`）。
-`ACCENT1→primary`、`TEXT1/DARK1→onSurface`、`BACKGROUND1/LIGHT1→background` のように DS のセマンティックスロットを埋め、
-スライドの中身とクロームを同じ `@Environment(\.colorPalette)` で描く — 「デッキ自身のテーマを反映すること」と「デザインシステム統一」を両立する。
-`basePalette` でデッキが定義しないスロットのフォールバックを差し替え可能。
-
-## 使い方
+Assemble a deck from a stream of artifact events and show it:
 
 ```swift
-// 受信側（A2A ストリーム → 表示）
 var assembler = GSlidesArtifactAssembler()
 for try await event in artifactEvents {           // TaskArtifactUpdateEvent
-    try assembler.apply(event)                    // gslides 以外の artifact は自動スキップ
+    try assembler.apply(event)                    // non-gslides artifacts are skipped
 }
 GSlidesPresentationView(presentation: assembler.presentation!)
+```
 
-// 生成側（LLM 構造化出力 → 配信）
-let schema = try GSlidesGenerationContract.jsonSchemaData()  // モデルに渡す JSON Schema
-let presentation = try GSlidesGenerationContract.presentation(from: llmOutput)  // validate + expand
+Ask a model for a deck, then publish it:
+
+```swift
+let schema = try GSlidesGenerationContract.jsonSchemaData()                    // give this to the model
+let presentation = try GSlidesGenerationContract.presentation(from: llmOutput) // validate + expand
 let event = try GSlidesArtifactCoding.envelopeEvent(
     taskId: taskId, contextId: contextId, artifactId: "deck", presentation: presentation
 )
 ```
 
-スナップショット確認: `GSLIDES_SNAPSHOT_DIR=/tmp/snap swift test --filter SnapshotDumpTests`
+To eyeball rendered output: `GSLIDES_SNAPSHOT_DIR=/tmp/snap swift test --filter SnapshotDumpTests`
 
-## Swift Package Manager
+## Documentation
+
+[**GSlidesSchema**](https://no-problem-dev.github.io/swift-google-slides-view/documentation/gslidesschema/) — the presentation model and which parts of the API it covers ·
+[**GSlidesRenderer**](https://no-problem-dev.github.io/swift-google-slides-view/documentation/gslidesrenderer/) — the SwiftUI views and theming ·
+[**GSlidesEdit**](https://no-problem-dev.github.io/swift-google-slides-view/documentation/gslidesedit/) — applying and validating batch updates ·
+[**GSlidesA2A**](https://no-problem-dev.github.io/swift-google-slides-view/documentation/gslidesa2a/) — streaming a deck as artifacts ·
+[**GSlidesExport**](https://no-problem-dev.github.io/swift-google-slides-view/documentation/gslidesexport/) — PDF and PNG output
+
+Also: [GSlidesLayout](https://no-problem-dev.github.io/swift-google-slides-view/documentation/gslideslayout/),
+[GSlidesAssembly](https://no-problem-dev.github.io/swift-google-slides-view/documentation/gslidesassembly/),
+[GSlidesPrompt](https://no-problem-dev.github.io/swift-google-slides-view/documentation/gslidesprompt/),
+[GSlidesRequests](https://no-problem-dev.github.io/swift-google-slides-view/documentation/gslidesrequests/).
+
+## Installation
 
 ```swift
 // Package.swift
@@ -73,16 +72,19 @@ dependencies: [
 ],
 ```
 
-## ロードマップ
+Add the products you need — `GSlidesRenderer` to draw, `GSlidesSchema` alone if you only handle the
+model, `GSlidesEdit` to apply changes:
 
-- [x] M0 scaffold + vendored spec
-- [x] M1 GSlidesSchema: fixtures round-trip + enum parity
-- [x] M2 GSlidesLayout: md2googleslides ルール移植 parity
-- [x] M3 GSlidesAssembly: reducer（append / 全置換 / lastChunk / unknown layout first-class）
-- [x] M4 GSlidesA2A: イベント写像 + ワイヤ round-trip
-- [x] M5 GSlidesPrompt: validation sandwich
-- [x] M6 GSlidesRenderer: CLI ImageRenderer スモーク + スナップショットダンプ
-- [ ] M7 デモ統合（A2AResearchDemo content 層）
+```swift
+.product(name: "GSlidesRenderer", package: "swift-google-slides-view"),
+.product(name: "GSlidesSchema",   package: "swift-google-slides-view"),
+.product(name: "GSlidesEdit",     package: "swift-google-slides-view"),
+```
+
+## Requirements
+
+- iOS 17.0+ / macOS 14.0+
+- Swift 6.2+
 
 ## License
 

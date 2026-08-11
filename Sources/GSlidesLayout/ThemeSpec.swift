@@ -1,14 +1,15 @@
 import GSlidesSchema
 
-/// プレゼンテーションのデザイン意図を Slides API 固有の権威ある語彙で表現したもの: 12 の編集可能な
-/// テーマカラースロット。API がセット可能なのはこのカラーのみで、`Master` ページにのみ設定でき、
-/// 12 個をまとめて提供する必要がある（discovery: `PageProperties.colorScheme`、
-/// catalog: theme-color-scheme-editable）。LLM は「白ベース」「ブルーアクセント」などの見た目の意図を
-/// `ThemeSpec` として出力し、マスターの `ColorScheme` に無損失で焼き込む。
+/// A deck's color intent as the 12 editable theme color slots, all of them required.
 ///
-/// フィールド名は `ThemeColorType` と完全に一致させる — 独自の語彙は作らない。
-/// Slides API にフォントスキーム（メジャー/マイナーテーマフォント）は存在しない。
-/// タイポグラフィの意図は `TextStyle` ごとに適用するため、このカラースキーム仕様には含まない。
+/// These are the only colors the API lets you set, they can be set on a `Master` page only, and an
+/// update must supply all 12 at once (discovery: `PageProperties.colorScheme`, catalog:
+/// theme-color-scheme-editable). Making every slot non-optional is what makes that requirement
+/// unmissable — a `ThemeSpec` always converts to a complete, writable scheme.
+///
+/// Field names match `ThemeColorType` exactly rather than inventing a parallel vocabulary. There is
+/// no font scheme here because the Slides API has none; typography is applied per `TextStyle` and
+/// lives in `PresentationTypography`.
 public struct ThemeSpec: Equatable, Sendable, Codable {
     // The 12 editable slots, in discovery enum order.
     public var dark1: RgbColor
@@ -35,9 +36,13 @@ public struct ThemeSpec: Equatable, Sendable, Codable {
         self.hyperlink = hyperlink; self.followedHyperlink = followedHyperlink
     }
 
-    /// 12 の編集可能スロットすべてをバインドした `ColorScheme`（例: `GSlidesThemeContract` で検証済みのもの）から構築する。
-    /// 編集可能スロットのみを読み取り、4 つのエイリアスは `colorScheme` が再導出する。
-    /// 編集可能スロットが 1 つでも未バインドの場合は nil を返す。
+    /// Creates a spec from a scheme that binds all 12 editable slots.
+    ///
+    /// Reads the editable slots only; the four derived aliases are recomputed by `colorScheme`, so a
+    /// scheme that disagrees with the convention loses its version of them on the round trip.
+    ///
+    /// - Parameter colorScheme: A scheme from a master page, or one validated by `GSlidesThemeContract`.
+    /// - Returns: nil if any editable slot is unbound.
     public init?(colorScheme: ColorScheme) {
         func slot(_ type: ThemeColorType) -> RgbColor? { colorScheme.rgb(for: type) }
         guard let dark1 = slot(.dark1), let light1 = slot(.light1), let dark2 = slot(.dark2),
@@ -52,7 +57,10 @@ public struct ThemeSpec: Equatable, Sendable, Codable {
             accent5: accent5, accent6: accent6, hyperlink: hyperlink, followedHyperlink: followedHyperlink)
     }
 
-    /// 編集可能スロットごとにバインドされた RGB（enum 順）。シンセサイザーと準拠チェックが読む唯一の情報源。
+    /// The 12 editable slots paired with their RGB, in discovery enum order.
+    ///
+    /// The one place the slot list is enumerated — synthesizers and conformance checks read it
+    /// rather than repeating the order.
     public var editableColors: [(ThemeColorType, RgbColor)] {
         [
             (.dark1, dark1), (.light1, light1), (.dark2, dark2), (.light2, light2),
@@ -62,10 +70,11 @@ public struct ThemeSpec: Equatable, Sendable, Codable {
         ]
     }
 
-    /// 実際の `presentations.get` マスターが持つ 16 エントリの完全な `ColorScheme`。
-    /// 12 の編集可能スロットをそのまま含み、API が導出する 4 つの読み取り専用エイリアスを追加する。
-    /// TEXT1←DARK1、BACKGROUND1←LIGHT1、TEXT2←DARK2、BACKGROUND2←LIGHT2
-    /// （慣例的なテキスト-背景マッピング。API は更新時にこれらを無視する）。順序は discovery enum に一致。
+    /// The full 16-entry scheme a real `presentations.get` master carries.
+    ///
+    /// The 12 editable slots verbatim, plus the four read-only aliases the API derives:
+    /// TEXT1←DARK1, BACKGROUND1←LIGHT1, TEXT2←DARK2, BACKGROUND2←LIGHT2. The aliases are included so
+    /// a generated deck matches what the server returns; the API ignores them on update.
     public var colorScheme: ColorScheme {
         ColorScheme(colors: editableColors.map { ThemeColorPair(type: $0.0, color: $0.1) } + [
             ThemeColorPair(type: .text1, color: dark1),
@@ -77,8 +86,7 @@ public struct ThemeSpec: Equatable, Sendable, Codable {
 }
 
 public extension ThemeSpec {
-    /// クリーンでプロフェッショナルなライトテーマ（白キャンバス、ダークテキスト、ティールのプライマリアクセント）。
-    /// パッケージのデフォルト。従来の組み込みライトスキームと同一の RGB 値。
+    /// A light theme — white canvas, dark text, teal primary accent — and the package default.
     static let light = ThemeSpec(
         dark1: RgbColor(red: 0.11, green: 0.13, blue: 0.16),    // primary text / on-canvas
         light1: RgbColor(red: 1, green: 1, blue: 1),            // canvas
@@ -93,7 +101,7 @@ public extension ThemeSpec {
         hyperlink: RgbColor(red: 0.10, green: 0.45, blue: 0.91),
         followedHyperlink: RgbColor(red: 0.42, green: 0.25, blue: 0.63))
 
-    /// ダークテーマ: 限りなく黒に近いキャンバス、ライトテキスト、コントラストを高めた明るいアクセント。
+    /// A dark theme: near-black canvas, light text, and accents brightened to hold contrast on it.
     static let dark = ThemeSpec(
         dark1: RgbColor(red: 0.92, green: 0.94, blue: 0.96),
         light1: RgbColor(red: 0.07, green: 0.08, blue: 0.10),

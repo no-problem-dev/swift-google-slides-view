@@ -2,8 +2,11 @@ import DesignSystem
 import GSlidesSchema
 import SwiftUI
 
-/// スライドサムネイルの水平カルーセル — インライン「プレゼンテーションセクション」表示。
-/// スライドはストリームに入ってきた順に表示される。`isComplete == false` の場合は末尾に進行中カードを表示する。
+/// A horizontal carousel of slide thumbnails, for an inline "here is the deck" section.
+///
+/// Slides appear in the order they arrived, so this can be shown while a deck is still streaming;
+/// pass `isComplete: false` to append an in-progress card at the end. Thumbnails are live slide
+/// views, not images, so a long deck renders every visible slide.
 public struct GSlidesCarouselView: View {
     @Environment(\.colorPalette) private var colors
     public var presentation: Presentation
@@ -42,7 +45,7 @@ public struct GSlidesCarouselView: View {
                             .shadow(color: .black.opacity(0.12), radius: 4, y: 2)
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("スライド \(index + 1)")
+                    .accessibilityLabel("Slide \(index + 1)")
                 }
                 if !isComplete {
                     generatingCard
@@ -61,14 +64,16 @@ public struct GSlidesCarouselView: View {
             .overlay {
                 VStack(spacing: 6) {
                     ProgressView()
-                    Text("生成中…").typography(.labelSmall).foregroundStyle(colors.onSurfaceVariant)
+                    Text("Generating…").typography(.labelSmall).foregroundStyle(colors.onSurfaceVariant)
                 }
             }
     }
 }
 
-/// 垂直読み取りビュー: スライドを上から下に積み重ねて表示する。スライドをタップすると
-/// そのインデックスを返す（ホストはフルスクリーンページャーを提示する）。
+/// A vertical reading view that stacks slides top to bottom.
+///
+/// Tapping a slide reports its index through `onSelect`, which the host typically uses to present a
+/// full-screen pager. Lazily built, so a long deck only renders what is on screen.
 public struct GSlidesStackView: View {
     public var presentation: Presentation
     public var basePalette: (any ColorPalette)?
@@ -100,7 +105,7 @@ public struct GSlidesStackView: View {
                             .shadow(color: .black.opacity(0.1), radius: 6, y: 3)
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("スライド \(index + 1)")
+                    .accessibilityLabel("Slide \(index + 1)")
                 }
             }
             .padding()
@@ -108,7 +113,10 @@ public struct GSlidesStackView: View {
     }
 }
 
-/// プレゼンテーションのフルスクリーンページャー。`initialIndex` から始まる水平ページング。
+/// A full-screen pager over the deck, opening at `initialIndex` on a black backdrop.
+///
+/// Horizontal swipe paging on iOS, arrow buttons elsewhere. It dismisses through the environment's
+/// `dismiss` action, so present it as a sheet or full-screen cover.
 public struct GSlidesFullScreenView: View {
     public var presentation: Presentation
     public var basePalette: (any ColorPalette)?
@@ -140,7 +148,7 @@ public struct GSlidesFullScreenView: View {
                     .foregroundStyle(.white)
                     .padding()
             }
-            .accessibilityLabel("閉じる")
+            .accessibilityLabel("Close")
         }
         .overlay(alignment: .bottom) {
             if slides.count > 1 {

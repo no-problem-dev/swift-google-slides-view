@@ -4,9 +4,17 @@ import GSlidesRenderer
 import GSlidesSchema
 import ImageIO
 
-/// プレゼンテーションが参照する全画像を `GSlidesImageProvider` にプリロードする。エクスポートレンダラーが
-/// 同期的に描画できるようにし（`AsyncImage` のブランクスナップショットを防ぐ）。file:// は即時ロード、http(s) は並行フェッチ。
+/// Loads every image a presentation references into a `GSlidesImageProvider` up front.
+///
+/// Export renderers draw synchronously, so without this an `AsyncImage` snapshots blank. `file://`
+/// URLs load directly; `http(s)` URLs are fetched concurrently.
 public enum PresentationImagePreloader {
+    /// A provider holding every image that loaded, keyed by absolute URL string.
+    ///
+    /// A URL that fails to fetch or decode is dropped silently and the element renders as a
+    /// placeholder, so the returned provider may cover fewer images than the deck references. There
+    /// is no timeout and no concurrency limit: a deck referencing many slow URLs waits for all of
+    /// them.
     public static func provider(for presentation: Presentation) async -> GSlidesImageProvider {
         let urls = imageURLs(in: presentation)
         var map: [String: CGImage] = [:]
@@ -21,7 +29,10 @@ public enum PresentationImagePreloader {
         return GSlidesImageProvider(images: map)
     }
 
-    /// 全スライドにわたる重複除去済みの画像 URL（シェイプは画像を持たない; image / sheetsChart 要素が持つ）。
+    /// The deduplicated image URLs across every slide, in first-seen order.
+    ///
+    /// Covers image and Sheets-chart elements, recursing into groups. Video thumbnails and page
+    /// background pictures are not collected, so those still fetch asynchronously at render time.
     static func imageURLs(in presentation: Presentation) -> [URL] {
         var seen = Set<String>()
         var urls: [URL] = []

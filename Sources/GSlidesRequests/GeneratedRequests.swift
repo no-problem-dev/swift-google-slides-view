@@ -1581,10 +1581,12 @@ public struct TableBorderFill: Codable, Equatable, Sendable {
     }
 }
 
-/// `Request` oneof の型付きアクセサ — `PageElement.Kind` をミラーし、正確に 1 メンバーがセットされる。
-/// discovery `Request` スキーマから生成されるため、ケースセットはワイヤープロトコルと一致する
-/// （パリティテストがピン留め）。不明/空リクエストは `.other` にマップされ、
-/// 格納された optional フィールドを通じて往復できる。
+/// The typed view of the `Request` oneof, mirroring how `PageElement.Kind` works: exactly one
+/// member is expected to be set.
+///
+/// Generated from the discovery `Request` schema, so the case set cannot drift from the wire
+/// protocol. A request that is empty, or that sets a member newer than this mirror, maps to
+/// `.other` and still round-trips through the stored optional fields.
 extension Request {
     public enum Kind: Equatable, Sendable {
         case createSlide(CreateSlideRequest)
@@ -1631,11 +1633,14 @@ extension Request {
         case updatePageElementsZOrder(UpdatePageElementsZOrderRequest)
         case updateLineCategory(UpdateLineCategoryRequest)
         case rerouteLine(RerouteLineRequest)
-        /// メンバーが未設定（空リクエスト）または生成済みミラーより新しい kind。
+        /// No member is set, or the set member is newer than this generated mirror.
         case other
     }
 
-    /// セットされている最初のメンバーを型付きケースとして返す。
+    /// The first member that is set, as a typed case.
+    ///
+    /// A request that sets several members reports only the first in declaration order, so this is
+    /// not a check that exactly one is set — `PreflightValidator` does that.
     public var kind: Kind {
         if let r = createSlide { return .createSlide(r) }
         if let r = createShape { return .createShape(r) }

@@ -1,40 +1,63 @@
 # ``GSlidesEdit``
 
-Google Slides プレゼンテーションへのローカル batchUpdate 実行とバリデーション。
+Local batchUpdate execution and validation for Google Slides presentations.
 
 ## Overview
 
-GSlidesEdit は Slides API の `batchUpdate` エンドポイントを純粋なインメモリで再現する。ネットワーク呼び出しなしで、ワイヤーと同じ型（GSlidesRequests の `Request` ボキャブラリー）を ``GSlidesSchema/Presentation`` に適用する。
+GSlidesEdit reproduces the Slides API's `batchUpdate` endpoint in memory. It applies the same
+`Request` values that go over the wire to a ``GSlidesSchema/Presentation``, with no network call.
 
-本家 API と同じアトミシティ保証を強制する。**バッチ内のいずれかのリクエストが不正であれば何も適用されず**、``BatchUpdateError`` が throw される。エラーには発見されたすべての ``FieldViolation`` が含まれるため、呼び出し側（または LLM エージェント）は 1 パスで全問題を修正できる。
+It enforces the API's atomicity guarantee: **if any request in a batch is invalid, nothing is
+applied** and a ``BatchUpdateError`` is thrown carrying every ``FieldViolation`` found — not just the
+first. That is what lets a caller, or an LLM agent, fix all the problems in one pass instead of one
+server round trip per mistake.
 
-### 編集ライフサイクル
+### The edit lifecycle
 
-1. **デコード** — ``GSlidesEditContract/decode(_:)`` がモデル出力を `[Request]` へパースする。
-2. **Preflight** — ``PreflightValidator`` がすべての違反を事前に収集する（objectId 存在確認・ページ境界・enum 正当性・フィールドマスク構文）。
-3. **適用** — ``GSlidesSchema/Presentation/applying(_:)`` がバリデーション済みバッチをアトミックに実行する。
+1. **Decode** — ``GSlidesEditContract/decode(_:)`` parses model output into `[Request]`. Structural
+   only: it checks the batch parses and is non-empty.
+2. **Preflight** — ``PreflightValidator`` collects every violation up front: objectId existence,
+   page bounds, enum validity, field-mask syntax, degenerate transforms.
+3. **Apply** — ``GSlidesSchema/Presentation/applying(_:)`` runs the validated batch atomically.
 
-``GSlidesEditContract`` を唯一のエントリーポイントとして使う。3 ステップを合成し、LLM に正しいリクエスト形状を教えるための JSON Schema とワーク済み例も生成する。
+Use ``GSlidesEditContract`` as the single entry point: it composes the three steps and also produces
+the JSON Schema and worked examples that teach a model the correct request shape.
+
+### What it does not cover
+
+The reducer executes 10 of the API's 44 operations — enough to adjust an existing deck, deliberately
+kept small because selection accuracy drops as the operation set grows. Anything outside that set is
+reported as an `UNSUPPORTED_OPERATION` violation rather than being silently skipped. Table-cell text
+editing is likewise rejected rather than ignored.
+
+Preflight reads the presentation as it is now, not as the batch would leave it. A request referencing
+an object an earlier request in the same batch creates is reported as not found.
+
+### Units and coordinates
+
+Transforms are in EMU: 914,400 per inch, 12,700 per point. `translateX` / `translateY` locate an
+element's **upper-left** corner, which is what the off-page check measures against. The off-page
+check needs a declared page size; a presentation without one skips it.
 
 ## Topics
 
-### エントリーポイント
+### Entry point
 
 - ``GSlidesEditContract``
 
-### 実行
+### Execution
 
 - ``GSlidesEditor``
 
-### バリデーション
+### Validation
 
 - ``PreflightValidator``
 - ``FieldViolation``
 - ``ViolationReason``
 - ``BatchUpdateError``
 
-### インスペクション
+### Inspection
 
 - ``GSlidesPresentationInspector``
-- ``PresentationElementDescriptor``
 - ``PresentationSnapshot``
+- ``PresentationElementDescriptor``

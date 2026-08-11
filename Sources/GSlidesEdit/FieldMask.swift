@@ -1,13 +1,21 @@
 import Foundation
 
-/// Google の `update*` リクエストは `fields` マスク（カンマ区切りドットパスまたは `*`）を持ち、
-/// パッチのどのフィールドを適用するかを正確に指定する。マスクにあってパッチにないパスはそのフィールドをリセットする。
-/// JSON オブジェクトレベルでマージすることで汎用的に実装する：任意の `Codable` パッチ＋ベース＋マスク → 新しい値。
-/// 1 つの実装がすべての更新リクエスト（テキストスタイル・シェイプ / 画像 / ライン・ページプロパティなど）をカバーし、
-/// リデューサーがフィールドごとのコピーを手書きする必要がない。
+/// Applies a Google `fields` mask — comma-separated dotted paths, or `*` — when merging an update
+/// patch into an existing value.
+///
+/// A path listed in the mask but absent from the patch resets that field rather than leaving it
+/// alone, which is the part callers get wrong. Implemented once at the JSON-object level so every
+/// `update*` request — text style, shape, image, line, page properties — shares it and the reducer
+/// never hand-copies fields.
 enum FieldMask {
-    /// `fields` で指定されたパスについて `patch` を `base` にマージする。`*`（またはそれを含むパスリスト）は
-    /// 全置換する。マスクにあってパッチにないパスは結果から削除される（リセット）。
+    /// Merges `patch` into `base` for the paths named in `fields`.
+    ///
+    /// A `*` anywhere in the list replaces the whole value with the patch. A path in the mask that
+    /// the patch does not set is removed from the result. An empty mask is inferred from the patch's
+    /// own top-level keys, so an agent that omits `fields` gets exactly the attributes it set.
+    ///
+    /// - Throws: The encoding or decoding error if the patch, the base, or the merged object cannot
+    ///   round-trip through JSON.
     static func merge<T: Codable>(base: T?, patch: T, fields: String, as type: T.Type = T.self) throws -> T {
         let listed = fields
             .split(separator: ",")

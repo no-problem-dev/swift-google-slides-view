@@ -1,7 +1,8 @@
 import GSlidesSchema
 
-/// レイアウト推論に使うスライドのセマンティック内容。
-/// md2googleslides の SlideDefinition を Swift に移植したもの（マッチングルールが読むフィールドのみ）。
+/// What a slide contains, reduced to the handful of facts layout inference actually reads.
+///
+/// Ported from md2googleslides' SlideDefinition, keeping only the fields the matching rules touch.
 public struct SlideContent: Equatable, Sendable {
     public struct Text: Equatable, Sendable {
         public var rawText: String
@@ -46,10 +47,15 @@ public struct SlideContent: Equatable, Sendable {
     }
 }
 
-/// コンテンツ → 定義済みレイアウトのマッチング。
-/// md2googleslides src/layout/match_layout.ts を忠実に移植（Apache-2.0、NOTICE 参照）。
-/// ルール順序が重要 — 最初にマッチしたものが採用される。
+/// Picks a predefined layout from what a slide contains.
+///
+/// A faithful port of md2googleslides `src/layout/match_layout.ts` (Apache-2.0, see NOTICE). The
+/// rules are ordered and the first match wins, so reordering them changes which layout a deck gets.
 public enum LayoutMatcher {
+    /// The predefined layout for this content, falling back to `.blank` when no rule matches.
+    ///
+    /// Deterministic and total: the same content always yields the same layout, and every input
+    /// produces one.
     public static func match(_ slide: SlideContent) -> PredefinedLayout {
         if hasText(slide.title), hasText(slide.subtitle), !hasContent(slide) {
             return .title
@@ -75,8 +81,11 @@ public enum LayoutMatcher {
         return .blank
     }
 
-    /// レイアウト参照を解決する。ルールベース推論より明示的なカスタムレイアウト
-    /// （layoutProperties.displayName で照合）を優先する。
+    /// Resolves a layout reference, preferring an explicit custom layout over rule-based inference.
+    ///
+    /// A `customLayout` name is matched against `layoutProperties.displayName` in the presentation.
+    /// If the name matches nothing — or no presentation is supplied — this silently falls back to
+    /// `match(_:)` rather than reporting the miss.
     public static func reference(
         for slide: SlideContent,
         in presentation: Presentation? = nil

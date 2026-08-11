@@ -1,6 +1,10 @@
-/// PageElement ユニオンのプロファイルサブセット：shape / image / line / table / elementGroup。
-/// 既知のユニオンメンバーがすべて nil の要素はプロファイル外（例: video, wordArt）であり、
-/// レンダラーでは `kind == .unknown` としてファーストクラスに扱われる。
+/// One element on a page — shape, image, line, table, group, video, word art, Sheets chart or
+/// speaker spotlight — as a union of optional members.
+///
+/// Read `kind` rather than testing the members: it returns the first member that is set, in that
+/// order, and `.unknown` when none is. An element the pinned discovery document gained after this
+/// mirror was generated decodes as `.unknown`; the renderer draws it as a dashed placeholder box
+/// instead of dropping it, and its wire fields survive re-encoding.
 public struct PageElement: Codable, Equatable, Sendable {
     public var objectId: String
     public var size: Size?
@@ -59,7 +63,7 @@ public struct PageElement: Codable, Equatable, Sendable {
         case wordArt(WordArt)
         case sheetsChart(SheetsChart)
         case speakerSpotlight(SpeakerSpotlight)
-        /// このプロファイル外のユニオンメンバー（既知の要素種別がいずれも存在しない）。
+        /// No modeled member is set: an empty element, or a union member newer than this mirror.
         case unknown
     }
 
@@ -442,7 +446,7 @@ public struct LineFill: Codable, Equatable, Sendable {
     }
 }
 
-/// ライン要素の接続先ページ要素（始点 / 終点の接続サイト）。
+/// The page element a line end attaches to, plus which connection site on it.
 public struct LineConnection: Codable, Equatable, Sendable {
     public var connectedObjectId: String?
     public var connectionSiteIndex: Int?
@@ -596,8 +600,10 @@ public struct Table: Codable, Equatable, Sendable {
     }
 }
 
-/// `presentations.pages.getThumbnail` のレスポンス — レンダリング済みページ画像。
-/// `Presentation` の一部ではなく単独で存在し、API サーフェスを完全にモデル化する。
+/// The response of `presentations.pages.getThumbnail`: a rendered page image.
+///
+/// Stands alone rather than hanging off `Presentation`, and `contentUrl` is a short-lived URL —
+/// fetch it promptly rather than storing it.
 public struct Thumbnail: Codable, Equatable, Sendable {
     public var width: Int?
     public var height: Int?

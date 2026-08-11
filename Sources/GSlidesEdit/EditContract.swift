@@ -2,23 +2,25 @@ import Foundation
 import GSlidesRequests
 import GSlidesSchema
 
-/// 編集ループのコントラクト。編集エージェントは **公式 batchUpdate リクエスト** — ワイヤーと
-/// リデューサーがすでに使う `Request` 型のキュレーション済みサブセット — を emit してプレゼンテーション
-/// を精製する。独自のボキャブラリーは使わない。これにより単一の信頼情報源を維持し
-/// （並行する編集言語の乖離がない）、実際のエージェント編集システム（Figma / Docs / Office は
-/// 具体的な API ops を emit する）と同じ方式を採用し、型付きでテスト済みのリクエストモデルを再利用する。
-/// スキーマ＋作業済み例が形状を教える。
+/// The contract an editing agent works against: it emits official batchUpdate requests, not a
+/// private edit vocabulary.
 ///
-/// フローは **decode → preflight → アトミック apply** — 実際の API に忠実：バッチ全体を事前検証
-/// （`PreflightValidator`）し、問題があれば何も適用せず、すべての `FieldViolation` を持つ
-/// `BatchUpdateError` をスローする。エージェントはサーバー往復なしに 1 パスですべてを修正する（`promptFeedback`）。
+/// Requests are a curated subset of the same `Request` type the wire and the reducer already use, so
+/// there is no second edit language to keep in sync. The schema plus worked examples teach the shape.
 ///
-/// `allowing:` で提供するオペレーションをサブセットに制限できる（例: "delete" を無効化）：
-/// スキーマ・例・プロンプトすべてが絞り込まれ、禁止オペレーションを使うリクエストは
-/// `OPERATION_NOT_PERMITTED` バイオレーションとして報告される。
+/// The flow is decode → preflight → atomic apply, faithful to the real API: the whole batch is
+/// validated up front by `PreflightValidator`, and on any problem nothing is applied and a
+/// `BatchUpdateError` carrying every `FieldViolation` is thrown. Feed that to `promptFeedback(for:)`
+/// and the agent fixes everything in one pass instead of one server round trip per mistake.
+///
+/// Pass `allowing:` to narrow the offered operations — to withhold deletion, say. It narrows the
+/// schema, the examples and the prompt together, and a request using a withheld operation is
+/// reported as an `OPERATION_NOT_PERMITTED` violation rather than being ignored.
 public enum GSlidesEditContract {
-    /// 編集のために提供する 44 batchUpdate オペレーションのキュレーション済みサブセット — 既存の
-    /// プレゼンテーションを調整するもの。意図的に小さく保つ（オペレーションセットが大きすぎると選択精度が落ちる）。
+    /// The subset of the API's 44 batchUpdate operations offered for editing an existing deck.
+    ///
+    /// Deliberately small: selection accuracy drops as the operation set grows. Ordering is the
+    /// order they are presented to the model.
     public static let curatedOperations = [
         "updatePageElementTransform",   // move / resize an element
         "updateTextStyle",              // bold / italic / color / size of text
@@ -31,8 +33,11 @@ public enum GSlidesEditContract {
         "updatePageElementsZOrder",     // bring to front / send to back
     ]
 
-    /// キュレーション済みオペレーション 1 件につき 1 つの作業例 — 公式ワイヤー形式そのままのもの。
-    /// エージェントが照合するための教材（`allowing:` で許可された形状のみ表示することもできる）。
+    /// One worked example per curated operation, in the exact official wire shape, keyed by
+    /// operation name.
+    ///
+    /// Teaching material for the agent to pattern-match against. Filter with `allowing:` so only the
+    /// permitted shapes are ever shown.
     public static let operationExamples: [String: String] = [
         "updatePageElementTransform": #"{"updatePageElementTransform":{"objectId":"<id>","applyMode":"RELATIVE","transform":{"scaleX":1,"scaleY":1,"translateX":457200,"translateY":-228600,"unit":"EMU"}}}"#,
         "updateTextStyle": #"{"updateTextStyle":{"objectId":"<id>","style":{"bold":true,"foregroundColor":{"opaqueColor":{"rgbColor":{"red":0.86,"green":0.15,"blue":0.15}}}},"fields":"bold,foregroundColor","textRange":{"type":"ALL"}}}"#,
@@ -45,16 +50,23 @@ public enum GSlidesEditContract {
         "updatePageElementsZOrder": #"{"updatePageElementsZOrder":{"pageElementObjectIds":["<id>"],"operation":"BRING_TO_FRONT"}}"#,
     ]
 
-    /// 実際に提供するキュレーション済みオペレーション。`allowed` で絞り込む（nil = すべて）。順序は保持する。
+    /// The curated operations actually offered, in curated order.
+    ///
+    /// - Parameter allowed: The names to keep; nil offers all of them. Names that are not curated
+    ///   operations are ignored rather than added.
     public static func offeredOperations(allowing allowed: Set<String>? = nil) -> [String] {
         curatedOperations.filter { allowed?.contains($0) ?? true }
     }
 
     // MARK: - Decode → preflight → atomic apply
 
-    /// 公式バッチの構造デコード＋空チェック。`{"requests":[…]}` または裸の `[…]` を受け付ける。
-    /// 不正な JSON または空バッチの場合に `BatchUpdateError`（HTTP 400）をスローする —
-    /// 実際の API が返すのと同じ形状なので、ホストはそのままエージェントに中継できる。
+    /// Decodes an official batch, accepting either `{"requests":[…]}` or a bare `[…]`.
+    ///
+    /// Structural only — it checks that the batch parses and is non-empty, not that the requests can
+    /// be applied. Run `validate(_:against:allowing:policy:)` for that.
+    ///
+    /// - Throws: `BatchUpdateError` with HTTP 400 for unparseable JSON or an empty batch. The shape
+    ///   matches what the real API returns, so a host can relay it to the agent unchanged.
     public static func decode(_ data: Data) throws -> [Request] {
         let decoded: [Request]
         do {
@@ -75,9 +87,11 @@ public enum GSlidesEditContract {
         return decoded
     }
 
-    /// `presentation` に対してデコード＋完全 preflight を実行する。バッチが安全に適用できる場合は
-    /// 検証済みリクエストを返す。問題があれば **すべて** のバイオレーションを列挙した
-    /// `BatchUpdateError` をスローする（何も適用しない）。
+    /// Decodes and fully preflights a batch against a presentation, returning the requests when it is
+    /// safe to apply.
+    ///
+    /// - Throws: `BatchUpdateError` listing **every** violation found, not just the first. The
+    ///   presentation is untouched either way — this only reads it.
     @discardableResult
     public static func validate(
         _ data: Data, against presentation: Presentation,
@@ -90,9 +104,12 @@ public enum GSlidesEditContract {
         return requests
     }
 
-    /// 検証済みエンドツーエンドパス：モデル出力バイト → 公式リクエスト → 更新済みプレゼンテーション。
-    /// **アトミック**：preflight がバイオレーションを発見した場合、バッチ全体を拒否し、
-    /// `presentation` はスローされたエラーを通じて変更なしで返される — 何も部分適用しない（catalog: batch-atomicity）。
+    /// The whole validated path: model output bytes → official requests → updated presentation.
+    ///
+    /// Atomic. If preflight finds any violation the entire batch is rejected and `presentation` is
+    /// left as it was — nothing is partially applied (catalog: batch-atomicity).
+    ///
+    /// - Throws: `BatchUpdateError` from decoding, preflight, or the reducer's own safety net.
     public static func apply(
         _ data: Data, to presentation: Presentation,
         allowing allowed: Set<String>? = nil, policy: PreflightValidator.Policy = .default
@@ -101,8 +118,8 @@ public enum GSlidesEditContract {
         return try presentation.applying(requests)
     }
 
-    /// 拒否されたバッチへの LLM 向けフィードバック：API 形式のエラー JSON と、列挙されたすべての
-    /// バイオレーションを修正して再送するよう指示する短文。自己修正を促すためエージェントに返す。
+    /// The feedback to hand an agent after a rejected batch: the API-shaped error JSON plus an
+    /// instruction to fix every listed violation and resend.
     public static func promptFeedback(for error: BatchUpdateError) -> String {
         """
         ### EDIT REJECTED (nothing was applied — the batch is atomic):
@@ -115,8 +132,11 @@ public enum GSlidesEditContract {
 
     // MARK: - Request introspection
 
-    /// リクエストのワイヤーオペレーション名（その単一セットメンバー）。存在しない場合は nil —
-    /// ホストがオペレーション別にリクエストをラベル付けまたはフィルタリングできるよう public にしている。
+    /// The request's wire operation name — its single set member — or nil when none is set.
+    ///
+    /// Public so a host can label or filter requests by operation, for logging or an approval gate.
+    /// If more than one member is set this returns the first, so use it for display rather than
+    /// validation.
     public static func operationName(of request: Request) -> String? {
         for child in Mirror(reflecting: request).children {
             if let name = child.label, Mirror(reflecting: child.value).children.first != nil {
@@ -128,9 +148,11 @@ public enum GSlidesEditContract {
 
     // MARK: - LLM teaching material (schema + examples + constraints)
 
-    /// ツール引数の JSON Schema：`{ "requests": [ <キュレーション済み batchUpdate リクエスト 1 件> … ] }`。
-    /// アイテム形状は意図的に寛容（リクエスト 1 件につき 1 キー、ワイヤーユニオンをミラー）；
-    /// オペレーションリスト＋作業済み EXAMPLES が正確な形状を伝える。
+    /// The JSON Schema for the tool argument: `{ "requests": [ <one curated batchUpdate request> … ] }`.
+    ///
+    /// The item shape is deliberately permissive — one key per request, mirroring the wire union —
+    /// because JSON Schema cannot express a 44-way union readably. The operation list and the worked
+    /// examples carry the precise shape, and preflight catches what the schema lets through.
     public static func jsonSchema(allowing allowed: Set<String>? = nil) -> [String: Any] {
         let ops = offeredOperations(allowing: allowed)
         return [
@@ -157,7 +179,7 @@ public enum GSlidesEditContract {
         try JSONSerialization.data(withJSONObject: jsonSchema(allowing: allowed), options: [.sortedKeys])
     }
 
-    /// 作業例（提供するオペレーションのみ）を `{"requests":[…]}` エンベロープでラップしたもの。
+    /// The worked examples for the offered operations, wrapped in a `{"requests":[…]}` envelope.
     public static func examplesJSON(allowing allowed: Set<String>? = nil) -> String {
         let items = offeredOperations(allowing: allowed)
             .compactMap { operationExamples[$0] }
@@ -165,8 +187,8 @@ public enum GSlidesEditContract {
         return "{\"requests\":[\n  \(items)\n]}"
     }
 
-    /// バリデーターが強制するハード制約。エージェントが拒否から学ぶのではなく最初から正しく
-    /// 編集できるよう提示する。`constraints-catalog.yaml` を根拠とする。
+    /// The hard constraints the validator enforces, stated up front so an agent gets them right the
+    /// first time instead of learning from rejections. Sourced from `constraints-catalog.yaml`.
     public static let constraintRules = """
     ### EDIT RULES (enforced — a violation rejects the WHOLE batch, applying nothing):
     - Reference only objectIds that exist in the current presentation (from inspect_presentation).
@@ -178,7 +200,8 @@ public enum GSlidesEditContract {
     - In `fields`, list exactly the attributes you set; use "*" alone (never mixed with paths).
     """
 
-    /// システム指示ブロック：ルール（何が強制されるか）＋スキーマ（何が許可されるか）＋作業済み例。
+    /// The system-instruction block to paste into a prompt: the rules, the schema and the worked
+    /// examples, all narrowed by `allowing:` together.
     public static func promptBlock(allowing allowed: Set<String>? = nil) -> String {
         let schema = (try? jsonSchemaData(allowing: allowed)).map { String(decoding: $0, as: UTF8.self) } ?? "{}"
         return """

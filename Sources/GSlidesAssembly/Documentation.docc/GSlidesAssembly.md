@@ -1,47 +1,66 @@
 # ``GSlidesAssembly``
 
-型付きチャンク列からストリーミング `Presentation` を組み立てる純粋リデューサー。
+A pure reducer that builds a streaming `Presentation` from a sequence of typed chunks.
 
 ## Overview
 
-GSlidesAssembly は Swift Google Slides ストリーミングパイプラインのプロトコル非依存な受信側。中心的な抽象は ``GSlidesChunk`` — 3 種類のプレゼンテーションストリームペイロードのいずれかを運ぶ型付きエンベロープ。
+GSlidesAssembly is the transport-independent receiving end of the streaming pipeline. It knows
+nothing about A2A, HTTP or any other protocol — an adapter maps its protocol's events onto
+``GSlidesChunk``, and this library folds them into a presentation.
 
-- **envelope** — 完全な `Presentation`。既存の状態をすべて置き換える。
-- **slide** — 単一の `Page`。`slides` に追加される。envelope より先にスライドチャンクが届いた場合は暗黙の空プレゼンテーションを生成するため、スライド先行ストリームもきれいに組み立てられる。
-- **batchUpdate** — `BatchUpdatePresentationRequest`（`GSlidesRequests` 由来）。ローカル `batchUpdate` エグゼキューター経由で現在の状態にアトミックに適用される。
+A chunk carries one of three payload shapes:
 
-``GSlidesAssembler`` はリデューサー本体。純粋な `mutating` 値型で、`apply(_:)` を呼ぶたびに 1 チャンク分だけ状態が進む。`lastChunk == true` でストリームが封印され、以降に envelope や slide チャンクが届くと ``GSlidesAssemblyError/chunkAfterCompletion`` で拒否される。完了後の `batchUpdate` チャンクは受理される（完成したプレゼンテーションを調整するエージェントを黙って無視するべきではないため）。
+- **envelope** — a whole `Presentation`. Replaces the existing state.
+- **slide** — a single `Page`, appended to `slides`. Arriving before any envelope creates an empty
+  presentation to append to, so a slides-first stream assembles cleanly.
+- **batchUpdate** — a `BatchUpdatePresentationRequest` from `GSlidesRequests`, applied atomically to
+  the current state through the local executor in `GSlidesEdit`.
 
-便利なスタティックメソッド `assemble(_:)` はチャンク列全体を 1 呼び出しで畳み込み、完成した `Presentation` を返す。テストやワンショットのパイプラインコンシューマーに便利。
+``GSlidesAssembler`` is the reducer: a `mutating` value type where each `apply(_:)` advances the
+state by exactly one chunk. A chunk with `lastChunk == true` seals the stream, after which envelope
+and slide chunks are refused with ``GSlidesAssemblyError/chunkAfterCompletion``. Batch updates are
+still accepted after completion — an agent adjusting a finished presentation should not be silently
+dropped.
+
+### Failure behavior
+
+Nothing is half-applied. A payload that fails to decode, or a batch the local executor rejects,
+throws ``GSlidesAssemblyError/invalidPayload(_:)`` and leaves the presentation exactly as it was.
+That case carries a *description* of the underlying error, not the error itself, so a rejected
+batch's individual field violations are not recoverable through this API — validate with
+`GSlidesEdit`'s preflight before streaming if you need them.
+
+`assemble(_:)` folds an entire sequence in one call. It does not require the sequence to end in a
+`lastChunk`, so a truncated stream yields whatever assembled rather than an error.
 
 ```swift
 import GSlidesAssembly
 
 var assembler = GSlidesAssembler()
 
-// ストリームからチャンクが届くたびに投入する
+// Feed chunks as they arrive from the stream
 for event in stream {
     try assembler.apply(event)
 }
 
 if let presentation = assembler.presentation, assembler.isComplete {
-    // レンダリング可能
+    // ready to render
 }
 
-// または列全体を一度に畳み込む
+// Or fold a whole sequence at once
 let presentation = try GSlidesAssembler.assemble(chunks)
 ```
 
 ## Topics
 
-### チャンク基本型
+### Chunk primitive
 
 - ``GSlidesChunk``
 
-### リデューサー
+### Reducer
 
 - ``GSlidesAssembler``
 
-### エラー
+### Errors
 
 - ``GSlidesAssemblyError``

@@ -4,16 +4,23 @@ import GSlidesRenderer
 import GSlidesSchema
 import SwiftUI
 
-/// `Presentation` を PDF にエクスポートする — スライド 1 枚が 1 ページ — `ImageRenderer` を使って
-/// 各 `GSlidesSlideView` を PDF ページの `CGContext` に描画する。UIKit 不使用のため CLI のテストでも動作する。
+/// Exports a presentation as a PDF, one slide per page, by drawing each slide view into a PDF
+/// `CGContext` through `ImageRenderer`.
 ///
-/// 画像を表示するには、プリロード済みの `imageProvider` を渡す（未渡しの場合 `AsyncImage` がブランクでスナップショットされる）。
-/// `PresentationImagePreloader` でビルドする。
+/// No UIKit, so it runs under a command-line test as well as in an app.
+///
+/// Pass a preloaded `imageProvider` from `PresentationImagePreloader` if the deck contains images:
+/// rendering is synchronous, so an `AsyncImage` snapshots blank.
 @MainActor
 public enum PresentationPDFRenderer {
-    /// 16:9 プレゼンテーションのデフォルトページサイズ（PostScript ポイント。10in × 5.625in、約 96dpi スケール）。
+    /// The default page size for a 16:9 deck, in PostScript points — 960 × 540, or 10 in × 5.625 in
+    /// at 96 dpi.
     public static let defaultPageSize = CGSize(width: 960, height: 540)
 
+    /// The presentation rendered as PDF bytes, one page per slide.
+    ///
+    /// Returns empty data if the PDF context cannot be created, and produces a zero-page PDF for a
+    /// deck with no slides — neither case throws, so check the result before writing it.
     public static func pdfData(
         _ presentation: Presentation,
         pageSize: CGSize = defaultPageSize,
@@ -39,8 +46,14 @@ public enum PresentationPDFRenderer {
         return data as Data
     }
 
-    /// PDF を一時ファイルに書き込み、そのURLを返す（`ShareLink` / `fileExporter` 用）。
-    /// `filename` はサニタイズされる。省略時はプレゼンテーションタイトルがデフォルト。
+    /// Writes the PDF to a temporary file and returns its URL, ready for `ShareLink` or
+    /// `fileExporter`.
+    ///
+    /// The name is sanitized — trimmed, capped at 60 characters, with `/` and `:` replaced — and
+    /// defaults to the presentation title. Two decks with the same title overwrite each other, and
+    /// nothing cleans the file up; that is the caller's job.
+    ///
+    /// - Throws: The file-writing error if the temporary directory cannot be written to.
     public static func pdfFile(
         _ presentation: Presentation,
         filename: String? = nil,

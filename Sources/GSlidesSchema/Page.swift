@@ -15,7 +15,7 @@ public struct SlideProperties: Codable, Equatable, Sendable {
     public var layoutObjectId: String?
     public var masterObjectId: String?
     public var isSkipped: Bool?
-    /// このスライドのノートページ（Page ⇄ SlideProperties の循環参照を断ち切るため間接参照）。
+    /// This slide's notes page, boxed to break the `Page` ⇄ `SlideProperties` value cycle.
     public var notesPage: Indirect<Page>?
 
     public init(
@@ -31,7 +31,9 @@ public struct SlideProperties: Codable, Equatable, Sendable {
     }
 }
 
-/// 再帰的な `Codable` 値をボックス化する（`notesPage` が完全な `Page` を持つ）。
+/// Boxes a recursive `Codable` value so a struct can transitively contain itself.
+///
+/// Encodes and decodes as the wrapped value alone — the box leaves no trace on the wire.
 public struct Indirect<Wrapped: Codable & Equatable & Sendable>: Codable, Equatable, Sendable {
     private final class Box: @unchecked Sendable { let value: Wrapped; init(_ value: Wrapped) { self.value = value } }
     private let box: Box

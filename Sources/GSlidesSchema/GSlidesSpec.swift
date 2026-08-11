@@ -1,15 +1,17 @@
 import Foundation
 
-/// vendoring されたピン留め済み Google Slides API 仕様 — パッケージ全体の単一信頼情報源。
+/// The vendored, pinned Google Slides API specification the whole package is derived from.
 ///
-/// `slides-api-discovery-v1.json` は型と enum を含む機械可読 discovery document；
-/// `constraints-catalog.yaml` は objectId 正規表現・アトミシティ・フィールドマスク・ページ境界など
-/// 散文のみの制約を権威あるソースから逐語引用する。ビルドの再現性とバリデーションの一貫性を保証するため
-/// 両ファイルはここに凍結される。どちらかがピン留めリビジョンと乖離すると `SpecProvenanceTests` が失敗する。
-/// 詳細は `Resources/Spec/PROVENANCE.md` を参照。
+/// `slides-api-discovery-v1.json` is the machine-readable discovery document (types and enums).
+/// `constraints-catalog.yaml` quotes verbatim the constraints that exist only as prose — objectId
+/// format, batch atomicity, field-mask semantics, page bounds. Both files are frozen here so builds
+/// reproduce and validation does not drift; `SpecProvenanceTests` fails if either stops matching the
+/// pinned revision. See `Resources/Spec/PROVENANCE.md`.
 public enum GSlidesSpec {
-    /// このビルドがピン留めする discovery `revision`。`scripts/fetch-discovery.sh` を実行し
-    /// `SpecProvenanceTests` と照合した後、人間が手動で更新する。
+    /// The discovery-document revision this build is pinned to.
+    ///
+    /// Bumped by hand, after running `scripts/fetch-discovery.sh` and reconciling the result with
+    /// `SpecProvenanceTests`. Nothing updates it automatically.
     public static let pinnedRevision = "20260601"
 
     public static var discoveryDocumentURL: URL {
@@ -28,18 +30,24 @@ public enum GSlidesSpec {
         String(decoding: try Data(contentsOf: constraintsCatalogURL), as: UTF8.self)
     }
 
-    /// ユーザー指定のオブジェクト ID 規則 — discovery doc の `CreateShapeRequest.objectId`
-    /// 散文から逐語引用（`constraints-catalog.yaml` id `object-id-format` 参照）。
-    /// 凍結された散文とそれを強制するコードの橋渡しであり、バリデーターが規則を記憶から
-    /// 再記述しないよう一箇所に保持する。`SpecProvenanceTests` が discovery doc に
-    /// 完全一致する散文を保持しているか確認する。
+    /// The format rules for caller-supplied object IDs, quoted from the discovery document's
+    /// `CreateShapeRequest.objectId` prose (catalog: object-id-format).
+    ///
+    /// Kept in one place so validators never restate the rule from memory. `SpecProvenanceTests`
+    /// checks that the frozen prose still matches the discovery document exactly.
     public enum ObjectId {
         public static let minLength = 5
         public static let maxLength = 50
-        /// アンカー付き正規表現: 先頭 `[a-zA-Z0-9_]`、残り `[a-zA-Z0-9_:-]`、合計長 5〜50。
+        /// Anchored regex: first character `[a-zA-Z0-9_]`, the rest `[a-zA-Z0-9_:-]`, total length 5–50.
+        ///
+        /// Provided for callers that want the literal pattern; `isValid(_:)` applies the same rule
+        /// without a regex engine.
         public static let pattern = "^[a-zA-Z0-9_][a-zA-Z0-9_:-]{4,49}$"
 
-        /// `id` が API 仕様のオブジェクト ID フォーマット（長さ＋文字セット）を満たすか。
+        /// Whether `id` satisfies the API's object ID format.
+        ///
+        /// Checks length and character set only. Uniqueness across a presentation is a separate
+        /// constraint the preflight validator enforces.
         public static func isValid(_ id: String) -> Bool {
             guard id.count >= minLength, id.count <= maxLength else { return false }
             guard let first = id.first, first == "_" || first.isASCII && first.isLetter || first.isNumber
