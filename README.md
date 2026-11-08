@@ -52,16 +52,16 @@ To eyeball rendered output: `GSLIDES_SNAPSHOT_DIR=/tmp/snap swift test --filter 
 
 ## Documentation
 
-[**GSlidesSchema**](https://no-problem-dev.github.io/swift-google-slides-view/documentation/gslidesschema/) — the presentation model and which parts of the API it covers ·
-[**GSlidesRenderer**](https://no-problem-dev.github.io/swift-google-slides-view/documentation/gslidesrenderer/) — the SwiftUI views and theming ·
-[**GSlidesEdit**](https://no-problem-dev.github.io/swift-google-slides-view/documentation/gslidesedit/) — applying and validating batch updates ·
-[**GSlidesA2A**](https://no-problem-dev.github.io/swift-google-slides-view/documentation/gslidesa2a/) — streaming a deck as artifacts ·
-[**GSlidesExport**](https://no-problem-dev.github.io/swift-google-slides-view/documentation/gslidesexport/) — PDF and PNG output
+[**GSlidesSchema**](Sources/GSlidesSchema/Documentation.docc) — the presentation model and which parts of the API it covers ·
+[**GSlidesRenderer**](Sources/GSlidesRenderer/Documentation.docc) — the SwiftUI views and theming ·
+[**GSlidesEdit**](Sources/GSlidesEdit/Documentation.docc) — applying and validating batch updates ·
+[**GSlidesA2A**](Sources/GSlidesA2A/Documentation.docc) — streaming a deck as artifacts ·
+[**GSlidesExport**](Sources/GSlidesExport/Documentation.docc) — PDF and PNG output
 
-Also: [GSlidesLayout](https://no-problem-dev.github.io/swift-google-slides-view/documentation/gslideslayout/),
-[GSlidesAssembly](https://no-problem-dev.github.io/swift-google-slides-view/documentation/gslidesassembly/),
-[GSlidesPrompt](https://no-problem-dev.github.io/swift-google-slides-view/documentation/gslidesprompt/),
-[GSlidesRequests](https://no-problem-dev.github.io/swift-google-slides-view/documentation/gslidesrequests/).
+Also: [GSlidesLayout](Sources/GSlidesLayout/Documentation.docc),
+[GSlidesAssembly](Sources/GSlidesAssembly/Documentation.docc),
+[GSlidesPrompt](Sources/GSlidesPrompt/Documentation.docc),
+[GSlidesRequests](Sources/GSlidesRequests/Documentation.docc).
 
 ## Installation
 
