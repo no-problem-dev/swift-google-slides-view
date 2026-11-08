@@ -52,16 +52,16 @@ let event = try GSlidesArtifactCoding.envelopeEvent(
 
 ## ドキュメント
 
-[**GSlidesSchema**](https://no-problem-dev.github.io/swift-google-slides-view/documentation/gslidesschema/) — presentation モデルと、API のどこまでを覆うか ·
-[**GSlidesRenderer**](https://no-problem-dev.github.io/swift-google-slides-view/documentation/gslidesrenderer/) — SwiftUI ビューとテーマ ·
-[**GSlidesEdit**](https://no-problem-dev.github.io/swift-google-slides-view/documentation/gslidesedit/) — バッチ更新の適用と検証 ·
-[**GSlidesA2A**](https://no-problem-dev.github.io/swift-google-slides-view/documentation/gslidesa2a/) — デッキを artifact として流す ·
-[**GSlidesExport**](https://no-problem-dev.github.io/swift-google-slides-view/documentation/gslidesexport/) — PDF / PNG 出力
+[**GSlidesSchema**](Sources/GSlidesSchema/Documentation.docc) — presentation モデルと、API のどこまでを覆うか ·
+[**GSlidesRenderer**](Sources/GSlidesRenderer/Documentation.docc) — SwiftUI ビューとテーマ ·
+[**GSlidesEdit**](Sources/GSlidesEdit/Documentation.docc) — バッチ更新の適用と検証 ·
+[**GSlidesA2A**](Sources/GSlidesA2A/Documentation.docc) — デッキを artifact として流す ·
+[**GSlidesExport**](Sources/GSlidesExport/Documentation.docc) — PDF / PNG 出力
 
-他: [GSlidesLayout](https://no-problem-dev.github.io/swift-google-slides-view/documentation/gslideslayout/)、
-[GSlidesAssembly](https://no-problem-dev.github.io/swift-google-slides-view/documentation/gslidesassembly/)、
-[GSlidesPrompt](https://no-problem-dev.github.io/swift-google-slides-view/documentation/gslidesprompt/)、
-[GSlidesRequests](https://no-problem-dev.github.io/swift-google-slides-view/documentation/gslidesrequests/)。
+他: [GSlidesLayout](Sources/GSlidesLayout/Documentation.docc)、
+[GSlidesAssembly](Sources/GSlidesAssembly/Documentation.docc)、
+[GSlidesPrompt](Sources/GSlidesPrompt/Documentation.docc)、
+[GSlidesRequests](Sources/GSlidesRequests/Documentation.docc)。
 
 ## インストール
 
